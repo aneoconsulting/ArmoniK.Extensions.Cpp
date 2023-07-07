@@ -19,12 +19,12 @@ find_package(ArmoniK.Api.Client CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Common ArmoniK.Api.Client)
+target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common)
+
+target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_NAMESPACE=${NAMESPACE})
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
-        "$<BUILD_INTERFACE:${ARMONIK_COMMON_INCLUDE_DIR}>"
-        "$<BUILD_INTERFACE:${ARMONIK_CLIENT_INCLUDE_DIR}>"
         "$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )

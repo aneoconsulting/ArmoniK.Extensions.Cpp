@@ -7,8 +7,6 @@ project(${SOLUTION_NAME} C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 list(APPEND CMAKE_PREFIX_PATH "/armonik/api")
-set(ARMONIK_COMMON_INCLUDE_DIR "/armonik/api/include/armonik/common")
-set(ARMONIK_CLIENT_INCLUDE_DIR "/armonik/api/include/armonik/client")
-set(ARMONIK_WORKER_INCLUDE_DIR "/armonik/api/include/armonik/worker")
 
+add_subdirectory(ArmoniK.SDK.Common)
 add_subdirectory(ArmoniK.SDK.Client)
