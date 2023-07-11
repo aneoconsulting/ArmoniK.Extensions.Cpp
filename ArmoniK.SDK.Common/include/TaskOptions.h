@@ -5,4 +5,4 @@
 
 armonik::api::grpc::v1::TaskOptions get_default_task_option();
 
-#endif //ARMONIK_SDK_TASKOPTIONS_H
+#endif // ARMONIK_SDK_TASKOPTIONS_H

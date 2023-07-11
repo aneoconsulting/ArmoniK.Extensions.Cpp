@@ -10,3 +10,4 @@ list(APPEND CMAKE_PREFIX_PATH "/armonik/api")
 
 add_subdirectory(ArmoniK.SDK.Common)
 add_subdirectory(ArmoniK.SDK.Client)
+add_subdirectory(ArmoniK.SDK.Client.Test)

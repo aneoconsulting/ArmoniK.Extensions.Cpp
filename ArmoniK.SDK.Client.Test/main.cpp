@@ -1,11 +1,15 @@
-#include <iostream>
+#include "SessionService.h"
+#include <armonik/common/utils/JsonConfiguration.h>
+#include <fstream>
 #include <grpc++/grpc++.h>
-#include <armonik/client/SubmitterClient.h>
-#include "submitter_service.grpc.pb.h"
+#include <iostream>
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
-    auto channel = grpc::CreateChannel("armonik.local:5001", grpc::InsecureChannelCredentials());
-    SubmitterClient client(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel));
-    return 0;
+  std::cout << "Hello, World!" << std::endl;
+  armonik::api::common::utils::JsonConfiguration config("appsettings.json");
+  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  auto channel = grpc::CreateChannel(config.get("Grpc__EndPoint"), grpc::InsecureChannelCredentials());
+  ArmoniK::SDK::Client::SessionService service(channel);
+  std::cout << service.getSession() << std::endl;
+  return 0;
 }
