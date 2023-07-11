@@ -1,17 +1,8 @@
 #ifndef ARMONIK_SDK_TASKOPTIONS_H
 #define ARMONIK_SDK_TASKOPTIONS_H
 
-#include <map>
-#include <string>
-#include <utility>
 #include <armonik/common/objects.pb.h>
 
-
-
-namespace SDK_COMMON_NAMESPACE {
-    struct TaskOptions {
-
-    };
-}
+armonik::api::grpc::v1::TaskOptions get_default_task_option();
 
 #endif //ARMONIK_SDK_TASKOPTIONS_H
