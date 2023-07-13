@@ -1,11 +1,12 @@
-#include "../include/TaskOptions.h"
+#include "TaskOptions.h"
 
-armonik::api::grpc::v1::TaskOptions get_default_task_option() {
-  armonik::api::grpc::v1::TaskOptions default_task_options;
-  default_task_options.mutable_max_duration()->set_seconds(300);
-  default_task_options.mutable_max_duration()->set_nanos(0);
-  default_task_options.set_max_retries(3);
-  default_task_options.set_priority(1);
-  default_task_options.set_engine_type("Unified");
-  return std::move(default_task_options);
-}
+using namespace SDK_COMMON_NAMESPACE;
+
+TaskOptions::TaskOptions(std::string applicationName, std::string applicationVersion,
+                         std::string applicationNamespace, std::string applicationService,
+                         std::string partitionId = "", std::string engineType = "", int priority = 2, int maxRetries=3,
+                         const Duration &maxDuration = Duration(300, 0), const std::map<std::string, std::string> &options = std::map<std::string, std::string>())
+        : application_name(std::move(applicationName)), application_version(std::move(applicationVersion)),
+          application_namespace(std::move(applicationNamespace)), application_service(std::move(applicationService)),
+          partition_id(std::move(partitionId)), engine_type(std::move(engineType)), priority(priority), max_retries(maxRetries),
+          max_duration(maxDuration), options(options) {}

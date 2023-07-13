@@ -1,33 +1,34 @@
 #ifndef ARMONIK_EXTENSIONS_CPP_SESSIONSERVICE_H
 #define ARMONIK_EXTENSIONS_CPP_SESSIONSERVICE_H
 
-#include "TaskOptions.h"
-#include "TaskRequest.h"
-#include <armonik/client/results_service.grpc.pb.h>
-#include <armonik/client/submitter/SubmitterClient.h>
-#include <armonik/common/objects.pb.h>
-#include <grpc++/grpc++.h>
+#include <memory>
+#include <vector>
+#include <string_view>
+
+namespace ArmoniK::SDK::Common{
+    class TaskOptions;
+    class Properties;
+}
+
+namespace SDK_CLIENT_NAMESPACE::Internal{
+    class SessionServiceImpl;
+}
+
 namespace SDK_CLIENT_NAMESPACE {
+    class TaskRequest;
+    class IServiceInvocationHandler;
 
 class SessionService {
 private:
-  std::string session;
-  SubmitterClient client;
-  std::unique_ptr<armonik::api::grpc::v1::results::Results::Stub> results;
-  armonik::api::grpc::v1::TaskOptions taskOptions;
-
-  std::vector<std::string> generate_result_ids(size_t num);
+    std::unique_ptr<SDK_CLIENT_NAMESPACE::Internal::SessionServiceImpl> impl;
 
 public:
-  [[maybe_unused]] explicit SessionService(
-      const std::shared_ptr<grpc::Channel> &channel,
-      const armonik::api::grpc::v1::TaskOptions &taskOptions = get_default_task_option());
+    SessionService() = delete;
+    explicit SessionService(const ArmoniK::SDK::Common::Properties& properties);
 
-  SessionService() = delete;
+    std::vector<std::string> Submit(const std::vector<TaskRequest> &requests, std::shared_ptr<IServiceInvocationHandler> handler, const ArmoniK::SDK::Common::TaskOptions& task_options);
 
-  [[maybe_unused]] std::vector<std::string> Submit(const std::vector<TaskRequest> &requests);
-
-  std::string getSession() const;
+    [[nodiscard]] std::string_view getSession() const;
 };
 } // namespace SDK_CLIENT_NAMESPACE
 #endif // ARMONIK_EXTENSIONS_CPP_SESSIONSERVICE_H
