@@ -4,6 +4,9 @@
 #include <cstdint>
 
 namespace SDK_COMMON_NAMESPACE {
+/**
+ * @brief Simple duration structure
+ */
 struct Duration {
   int64_t seconds;
   int32_t nanos;

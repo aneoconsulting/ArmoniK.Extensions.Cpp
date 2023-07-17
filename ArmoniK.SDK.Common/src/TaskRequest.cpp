@@ -5,14 +5,30 @@
 
 namespace SDK_COMMON_NAMESPACE {
 
+/**
+ * @brief Type used to define the size of a field in the payload
+ */
 typedef uint32_t field_size_t;
 
+/**
+ * @brief Converts an integer type to a hex string
+ * @tparam T Integer type
+ * @param i Integer
+ * @return Hex string of this integer
+ */
 template <typename T> std::string int_to_hex(T i) {
   std::stringstream stream;
   stream << "0x" << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << i;
   return stream.str();
 }
 
+/**
+ * @brief Converts a hex string into a integer type
+ * @tparam T Integer type
+ * @param str Hex string
+ * @return integer obtained from the string
+ * @throws std::runtime_error if the hex string is invalid or if it's too large for the given type
+ */
 template <typename T> T hex_to_int(std::string_view str) {
   T value;
   auto result = std::from_chars(str.data(), str.data() + str.size(), value);
@@ -28,7 +44,10 @@ template <typename T> T hex_to_int(std::string_view str) {
 std::string TaskRequest::Serialize() const {
   std::stringstream ss;
   ss << int_to_hex((field_size_t)service_name.size()) << service_name << int_to_hex((field_size_t)method_name.size())
-     << method_name << int_to_hex((field_size_t)arguments.size()) << arguments;
+     << method_name << int_to_hex((field_size_t)arguments.size());
+
+  // Writing directly to avoid stopping at null character
+  ss.write(arguments.data(), arguments.size());
 
   for (auto &&dd : data_dependencies) {
     ss << int_to_hex((field_size_t)dd.size()) << dd;

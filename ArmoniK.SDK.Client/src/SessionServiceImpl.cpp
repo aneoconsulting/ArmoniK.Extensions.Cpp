@@ -20,10 +20,12 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
   armonik::api::grpc::v1::results::CreateResultsMetaDataRequest results_request;
   armonik::api::grpc::v1::results::CreateResultsMetaDataResponse results_response;
 
+  // Creates the result creation requests
   std::vector<armonik::api::grpc::v1::results::CreateResultsMetaDataRequest_ResultCreate> results_create;
   results_create.reserve(num);
   for (int i = 0; i < num; i++) {
     armonik::api::grpc::v1::results::CreateResultsMetaDataRequest_ResultCreate result_create;
+    // Random name
     *result_create.mutable_name() = armonik::api::common::utils::GuuId::generate_uuid();
     results_create.push_back(result_create);
   }
@@ -31,6 +33,7 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
   results_request.mutable_results()->Add(results_create.begin(), results_create.end());
   *results_request.mutable_session_id() = session;
 
+  // Creates the results
   auto status = results->CreateResultsMetaData(&context, results_request, &results_response);
 
   if (!status.ok()) {
@@ -42,6 +45,7 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
   }
   std::vector<std::string> result_ids;
   result_ids.reserve(num);
+  // Get the result ids from the response
   std::transform(results_response.results().begin(), results_response.results().end(), std::back_inserter(result_ids),
                  [](auto res) { return res.result_id(); });
   return result_ids;
@@ -56,15 +60,20 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskRequest> &task_requests
   std::vector<armonik::api::grpc::v1::TaskRequest> definitions;
   definitions.reserve(task_requests.size());
 
+  // Creates the needed result ids
   auto result_ids = generate_result_ids(task_requests.size());
 
   for (int i = 0; i < task_requests.size(); i++) {
     armonik::api::grpc::v1::TaskRequest request;
+    // Serialize the request in an ArmoniK format
     *request.mutable_payload() = task_requests[i].Serialize();
+    // One result per task
     request.add_expected_output_keys(result_ids[i]);
+    // Set the data dependencies
     request.mutable_data_dependencies()->Add(task_requests[i].data_dependencies.begin(),
                                              task_requests[i].data_dependencies.end());
   }
+  // Submit the tasks
   auto list =
       client->create_tasks_async(session, static_cast<armonik::api::grpc::v1::TaskOptions>(task_options), definitions)
           .get()
@@ -72,7 +81,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskRequest> &task_requests
           .creation_statuses();
   std::vector<std::string> task_ids;
   task_ids.reserve(task_requests.size());
-
+  // Get the list of task ids
   std::transform(list.begin(), list.end(), std::back_inserter(task_ids),
                  [](const armonik::api::grpc::v1::submitter::CreateTaskReply_CreationStatus &status) {
                    return status.task_info().task_id();
@@ -86,6 +95,7 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties)
       armonik::api::grpc::v1::submitter::Submitter::NewStub(channel_pool.GetChannel())));
   results = std::move(armonik::api::grpc::v1::results::Results::NewStub(channel_pool.GetChannel()));
 
+  // Creates a new session
   session = client->create_session(static_cast<armonik::api::grpc::v1::TaskOptions>(properties.taskOptions),
                                    {properties.taskOptions.partition_id});
 }
