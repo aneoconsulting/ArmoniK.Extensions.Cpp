@@ -4,12 +4,12 @@
 #include <cstdint>
 
 namespace SDK_COMMON_NAMESPACE {
-    struct Duration{
-        int64_t seconds;
-        int32_t nanos;
+struct Duration {
+  int64_t seconds;
+  int32_t nanos;
 
-        Duration(int64_t seconds, int32_t nanos) : seconds(seconds), nanos(nanos) {}
-    };
-}
+  Duration(int64_t seconds, int32_t nanos) : seconds(seconds), nanos(nanos) {}
+};
+} // namespace SDK_COMMON_NAMESPACE
 
-#endif //ARMONIK_SDK_DURATION_H
+#endif // ARMONIK_SDK_DURATION_H
