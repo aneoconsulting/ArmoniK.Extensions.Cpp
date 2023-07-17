@@ -16,7 +16,7 @@ struct TaskRequest {
   std::string arguments;
   std::vector<std::string> data_dependencies;
 
-  std::string Serialize();
+  [[nodiscard]] std::string Serialize() const;
   static TaskRequest Deserialize(std::string_view serialized);
 };
 

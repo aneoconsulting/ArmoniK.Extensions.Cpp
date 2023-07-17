@@ -25,7 +25,7 @@ template <typename T> T hex_to_int(std::string_view str) {
   return value;
 }
 
-std::string TaskRequest::Serialize() {
+std::string TaskRequest::Serialize() const {
   std::stringstream ss;
   ss << int_to_hex((field_size_t)service_name.size()) << service_name << int_to_hex((field_size_t)method_name.size())
      << method_name << int_to_hex((field_size_t)arguments.size()) << arguments;

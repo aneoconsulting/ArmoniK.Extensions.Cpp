@@ -60,7 +60,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskRequest> &task_requests
 
   for (int i = 0; i < task_requests.size(); i++) {
     armonik::api::grpc::v1::TaskRequest request;
-    *request.mutable_payload() = task_requests[i].arguments;
+    *request.mutable_payload() = task_requests[i].Serialize();
     request.add_expected_output_keys(result_ids[i]);
     request.mutable_data_dependencies()->Add(task_requests[i].data_dependencies.begin(),
                                              task_requests[i].data_dependencies.end());
