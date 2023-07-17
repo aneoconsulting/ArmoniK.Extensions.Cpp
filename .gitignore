@@ -390,3 +390,5 @@ packages/web/LICENSE
 **/.idea
 
 gen
+
+build/
