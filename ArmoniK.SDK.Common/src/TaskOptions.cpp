@@ -12,7 +12,7 @@ TaskOptions::TaskOptions(std::string applicationName, std::string applicationVer
       partition_id(std::move(partitionId)), engine_type(std::move(engineType)), priority(priority),
       max_retries(maxRetries), max_duration(maxDuration), options(options) {}
 
-TaskOptions::operator armonik::api::grpc::v1::TaskOptions() {
+TaskOptions::operator armonik::api::grpc::v1::TaskOptions() const {
   armonik::api::grpc::v1::TaskOptions raw;
   raw.mutable_max_duration()->set_seconds(max_duration.seconds);
   raw.mutable_max_duration()->set_nanos(max_duration.nanos);

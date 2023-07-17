@@ -9,7 +9,7 @@ std::string_view ArmoniK::SDK::Client::SessionService::getSession() const { retu
 
 std::vector<std::string>
 ArmoniK::SDK::Client::SessionService::Submit(const std::vector<Common::TaskRequest> &requests,
-                                             std::shared_ptr<IServiceInvocationHandler> handler,
+                                             const std::shared_ptr<IServiceInvocationHandler> &handler,
                                              const ArmoniK::SDK::Common::TaskOptions &task_options) {
-  return impl->Submit(requests, std::move(handler), task_options);
+  return impl->Submit(requests, handler, task_options);
 }

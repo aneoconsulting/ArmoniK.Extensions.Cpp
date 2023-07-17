@@ -66,7 +66,10 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskRequest> &task_requests
                                              task_requests[i].data_dependencies.end());
   }
   auto list =
-      client->create_tasks_async(session, taskOptions, definitions).get().creation_status_list().creation_statuses();
+      client->create_tasks_async(session, static_cast<armonik::api::grpc::v1::TaskOptions>(task_options), definitions)
+          .get()
+          .creation_status_list()
+          .creation_statuses();
   std::vector<std::string> task_ids;
   task_ids.reserve(task_requests.size());
 
@@ -77,10 +80,18 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskRequest> &task_requests
   return task_ids;
 }
 
-SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties) : taskOptions(properties.taskOptions) {}
+SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties)
+    : taskOptions(properties.taskOptions), channel_pool(properties) {
+  client = std::move(std::make_unique<Api::Client::SubmitterClient>(
+      armonik::api::grpc::v1::submitter::Submitter::NewStub(channel_pool.GetChannel())));
+  results = std::move(armonik::api::grpc::v1::results::Results::NewStub(channel_pool.GetChannel()));
+
+  session = client->create_session(static_cast<armonik::api::grpc::v1::TaskOptions>(properties.taskOptions),
+                                   {properties.taskOptions.partition_id});
+}
 
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskRequest> &task_requests,
-                                                    std::shared_ptr<IServiceInvocationHandler> handler) {
-  return std::move(Submit(task_requests, std::move(handler), taskOptions));
+                                                    const std::shared_ptr<IServiceInvocationHandler> &handler) {
+  return std::move(Submit(task_requests, handler, taskOptions));
 }
 } // namespace SDK_CLIENT_NAMESPACE::Internal

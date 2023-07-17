@@ -27,7 +27,7 @@ public:
   explicit SessionService(const ArmoniK::SDK::Common::Properties &properties);
 
   std::vector<std::string> Submit(const std::vector<Common::TaskRequest> &requests,
-                                  std::shared_ptr<IServiceInvocationHandler> handler,
+                                  const std::shared_ptr<IServiceInvocationHandler> &handler,
                                   const ArmoniK::SDK::Common::TaskOptions &task_options);
 
   [[nodiscard]] std::string_view getSession() const;

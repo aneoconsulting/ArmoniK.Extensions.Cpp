@@ -28,9 +28,9 @@ struct TaskOptions {
               int priority = 2, int maxRetries = 3, const Duration &maxDuration = Duration(300, 0),
               const std::map<std::string, std::string> &options = std::map<std::string, std::string>());
 
-  TaskOptions(const armonik::api::grpc::v1::TaskOptions &raw);
+  explicit TaskOptions(const armonik::api::grpc::v1::TaskOptions &raw);
 
-  operator armonik::api::grpc::v1::TaskOptions();
+  explicit operator armonik::api::grpc::v1::TaskOptions() const;
 };
 } // namespace SDK_COMMON_NAMESPACE
 #endif // ARMONIK_SDK_TASKOPTIONS_H
