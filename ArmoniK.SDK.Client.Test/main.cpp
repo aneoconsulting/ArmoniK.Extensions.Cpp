@@ -1,14 +1,14 @@
-#include "Properties.h"
-#include "SessionService.h"
-#include <armonik/common/utils/JsonConfiguration.h>
-#include <fstream>
-#include <grpc++/grpc++.h>
 #include <iostream>
+
+#include <armonik/sdk/common/Properties.h>
+#include <armonik/sdk/common/IConfiguration.h>
+#include <armonik/sdk/client/SessionService.h>
 
 int main() {
   std::cout << "Hello, World!" << std::endl;
   // Load configuration from file
-  armonik::api::common::utils::JsonConfiguration config("appsettings.json");
+  ArmoniK::SDK::Common::IConfiguration config;
+  config.add_json_configuration("appsettings.json");
   std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
   // Create the properties
   ArmoniK::SDK::Common::Properties properties(

@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.Client.Test)
 set(NAMESPACE ArmoniK::SDK::Client::Test)
-set(version 0.1.0)
 project(${PROJECT_NAME})
 
 set(CMAKE_CXX_STANDARD 17)
@@ -14,10 +13,12 @@ find_package(Protobuf REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 find_package(ArmoniK.Api.Common CONFIG REQUIRED)
 find_package(ArmoniK.Api.Client CONFIG REQUIRED)
+find_package(ArmoniK.SDK.Common CONFIG REQUIRED)
+find_package(ArmoniK.SDK.Client CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common ArmoniK.SDK.Client)
+target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Common ArmoniK.SDK.Client)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NAMESPACE})
 
