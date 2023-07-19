@@ -1,9 +1,12 @@
 @PACKAGE_INIT@
 
-set_and_check(ARMONIK_INSTALL_PREFIX "@PACKAGE_CMAKE_INSTALL_PREFIX@")
+set_and_check(ARMONIK_SDK_COMMON_PREFIX "@PACKAGE_CMAKE_INSTALL_PREFIX@")
 
-include("${ARMONIK_INSTALL_PREFIX}/lib/cmake/ArmoniK.SDK.Common/ArmoniK.SDK.CommonTargets.cmake")
+include(CMakeFindDependencyMacro)
+find_dependency(ArmoniK.Api.Common CONFIG REQUIRED)
+
+include("${ARMONIK_SDK_COMMON_PREFIX}/lib/cmake/ArmoniK.SDK.Common/ArmoniK.SDK.CommonTargets.cmake")
 
 check_required_components(ArmoniK.SDK.Common)
 
-include_directories("${ARMONIK_INSTALL_PREFIX}/include/armonik/sdk/common")
+include_directories("${ARMONIK_SDK_COMMON_PREFIX}/include/armonik/sdk/common")

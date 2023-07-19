@@ -1,9 +1,13 @@
 @PACKAGE_INIT@
 
-set_and_check(ARMONIK_INSTALL_PREFIX "@PACKAGE_CMAKE_INSTALL_PREFIX@")
+set_and_check(ARMONIK_SDK_CLIENT_PREFIX "@PACKAGE_CMAKE_INSTALL_PREFIX@")
 
-include("${ARMONIK_INSTALL_PREFIX}/lib/cmake/ArmoniK.SDK.Client/ArmoniK.SDK.ClientTargets.cmake")
+include(CMakeFindDependencyMacro)
+find_dependency(ArmoniK.SDK.Common CONFIG REQUIRED)
+find_dependency(ArmoniK.Api.Client CONFIG REQUIRED)
+
+include("${ARMONIK_SDK_CLIENT_PREFIX}/lib/cmake/ArmoniK.SDK.Client/ArmoniK.SDK.ClientTargets.cmake")
 
 check_required_components(ArmoniK.SDK.Client)
 
-include_directories("${ARMONIK_INSTALL_PREFIX}/include/armonik/sdk/client")
+include_directories("${ARMONIK_SDK_CLIENT_PREFIX}/include/armonik/sdk/client")

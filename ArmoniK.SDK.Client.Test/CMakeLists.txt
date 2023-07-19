@@ -9,11 +9,6 @@ SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
 
-find_package(Protobuf REQUIRED)
-find_package(gRPC CONFIG REQUIRED)
-find_package(ArmoniK.Api.Common CONFIG REQUIRED)
-find_package(ArmoniK.Api.Client CONFIG REQUIRED)
-find_package(ArmoniK.SDK.Common CONFIG REQUIRED)
 find_package(ArmoniK.SDK.Client CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
