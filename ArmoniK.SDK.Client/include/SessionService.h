@@ -1,7 +1,9 @@
 #ifndef ARMONIK_EXTENSIONS_CPP_SESSIONSERVICE_H
 #define ARMONIK_EXTENSIONS_CPP_SESSIONSERVICE_H
 
+#include "WaitBehavior.h"
 #include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -52,6 +54,19 @@ public:
    */
   std::vector<std::string> Submit(const std::vector<Common::TaskRequest> &requests,
                                   const std::shared_ptr<IServiceInvocationHandler> &handler);
+
+
+  /**
+   * @brief Waits for the completion of the given tasks
+   * @param task_ids Task ids to wait on
+   * @param options Wait options
+   */
+  void WaitResults(std::vector<std::string> task_ids, WaitOptions options = WaitOptions());
+
+  /**
+   * @brief Waits for the completion of all remaining tasks
+   */
+  void WaitResults();
 
   /**
    * @brief Get the session Id associated with this service
