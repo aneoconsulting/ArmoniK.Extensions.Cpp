@@ -1,0 +1,109 @@
+name: DeployTest
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  versionning:
+    name: Versionning
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.genver.outputs.version }}
+      release: ${{ steps.genver.outputs.release }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ github.ref }}
+        fetch-depth: 0
+
+    - name: Generate Version
+      id: genver
+      run: |
+        VERSION=$(docker run --rm -v $(pwd):/repo codacy/git-version /bin/git-version --folder=/repo --release-branch=${{ github.ref_name }}-pre --dev-branch=main)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "VERSION : $VERSION"
+        RELEASE=$(docker run --rm -v $(pwd):/repo codacy/git-version /bin/git-version --folder=/repo --release-branch=${{ github.ref_name }} --dev-branch=main)
+        echo "release=$RELEASE" >> $GITHUB_OUTPUT
+        echo "RELEASE : $RELEASE"
+        echo "Version :" >> $GITHUB_STEP_SUMMARY
+        echo "$VERSION" >> $GITHUB_STEP_SUMMARY
+        echo "Release :" >> $GITHUB_STEP_SUMMARY
+        echo "$RELEASE" >> $GITHUB_STEP_SUMMARY
+
+  format:
+    name: Format C++
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Run clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Check Diff
+        id: check-diff
+        run: |
+          git ls-files *.{c,h,hpp,cpp,cc} | xargs clang-format -style=file:.clang-format -i
+          DIFF="$(git diff --name-only)"
+
+          if [ -z "$DIFF" ]; then
+          echo "OK: Format is clean"
+          else
+            echo "Error: Format was not clean"
+            echo "List of files:"
+            echo "$DIFF"
+            git diff
+            exit 1
+          fi
+
+      - name: Generate patch
+        if: ${{ failure() && steps.check-diff.conclusion == 'failure' }}
+        run: |
+          git diff > patch-cpp.diff
+      - uses: actions/upload-artifact@v3
+        if: ${{ failure() && steps.check-diff.conclusion == 'failure' }}
+        with:
+          name: patch-cpp
+          path: ./patch-cpp.diff
+
+  build-cpp-packages:
+    name: Build C++ Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Checkout API
+        uses: actions/checkout@v3
+        with:
+          repository: aneoconsulting/ArmoniK.Api
+          path: ArmoniK.Api
+          working-directory: ${{ github.workspace }}/ArmoniK.Api
+        
+      - name: Build API C++
+        run: |
+          mv ArmoniK.Api ../
+          cd ../ArmoniK.Api/packages/cpp/tools/
+          ./compile.sh
+          cd ../install
+          echo "ARMONIK_API_DIR =$(pwd)" >> $GITHUB_ENV
+
+      - name: Build SDK C++
+        run: |
+          ./compile.sh
