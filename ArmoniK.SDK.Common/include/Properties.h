@@ -1,8 +1,8 @@
 #ifndef ARMONIK_SDK_PROPERTIES_H
 #define ARMONIK_SDK_PROPERTIES_H
 
-#include "TaskOptions.h"
 #include "IConfiguration.h"
+#include "TaskOptions.h"
 
 namespace SDK_COMMON_NAMESPACE {
 /**

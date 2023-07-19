@@ -1,8 +1,8 @@
 #include <iostream>
 
-#include <armonik/sdk/common/Properties.h>
-#include <armonik/sdk/common/IConfiguration.h>
 #include <armonik/sdk/client/SessionService.h>
+#include <armonik/sdk/common/IConfiguration.h>
+#include <armonik/sdk/common/Properties.h>
 
 int main() {
   std::cout << "Hello, World!" << std::endl;
