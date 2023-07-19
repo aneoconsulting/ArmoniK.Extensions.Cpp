@@ -3,6 +3,7 @@
 
 #include "ChannelPool.h"
 #include "TaskOptions.h"
+#include "WaitBehavior.h"
 #include <armonik/client/submitter/SubmitterClient.h>
 #include <results_service.grpc.pb.h>
 
@@ -36,10 +37,35 @@ private:
    */
   Common::TaskOptions taskOptions;
 
+    /**
+     * @brief Map between taskId and resultId
+     */
+     std::map<std::string, std::string> taskId_resultId;
+
+     /**
+     * @brief Map between result id and task id
+      */
+     std::map<std::string, std::string> resultId_taskId;
+
+     /**
+      * @brief Map between a result_id and it's handler
+      */
+      std::map<std::string, std::shared_ptr<IServiceInvocationHandler>> result_handlers;
+
+     /**
+      * @brief Maps mutex
+      */
+      std::mutex maps_mutex;
+
   /**
    * @brief Client used for submission
    */
   std::unique_ptr<ArmoniK::Api::Client::SubmitterClient> client;
+
+  /**
+   * @brief Submitter stub
+   */
+  std::unique_ptr<armonik::api::grpc::v1::submitter::Submitter::Stub> client_stub;
 
   /**
    * @brief Client used for results handling
@@ -50,6 +76,8 @@ private:
    * @brief Channel pool
    */
   ChannelPool channel_pool;
+
+  void WaitListOfResults(const std::vector<std::string>& resultIds, WaitBehavior behavior, WaitOptions options);
 
 public:
   SessionServiceImpl() = delete;
@@ -86,6 +114,19 @@ public:
    * @return Session Id
    */
   [[nodiscard]] std::string_view getSession() const;
+
+  /**
+   * @brief Waits for the completion of the given tasks
+   * @param task_ids Task ids to wait on
+   * @param options Wait options
+   */
+  void WaitResults(const std::vector<std::string>& task_ids, WaitBehavior waitBehavior = All, const WaitOptions& options = WaitOptions());
+
+  /**
+   * @brief Waits for the completion of all remaining tasks
+   * @param options Wait options
+   */
+  void WaitResults(const WaitOptions& options = WaitOptions());
 };
 } // namespace SDK_CLIENT_NAMESPACE::Internal
 
