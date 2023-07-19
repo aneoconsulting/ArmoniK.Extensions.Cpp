@@ -1,20 +1,20 @@
 #ifndef ARMONIK_SDK_PROPERTIES_H
 #define ARMONIK_SDK_PROPERTIES_H
 
+#include "IConfiguration.h"
 #include "TaskOptions.h"
-#include <armonik/common/utils/IConfiguration.h>
 
 namespace SDK_COMMON_NAMESPACE {
 /**
  * @brief Client properties
  */
 struct Properties {
-  Properties(const armonik::api::common::utils::IConfiguration &configuration, TaskOptions taskOptions);
+  Properties(const IConfiguration &configuration, TaskOptions taskOptions);
 
   /**
    * @brief Configuration
    */
-  armonik::api::common::utils::IConfiguration configuration;
+  IConfiguration configuration;
 
   /**
    * @brief Default task options
