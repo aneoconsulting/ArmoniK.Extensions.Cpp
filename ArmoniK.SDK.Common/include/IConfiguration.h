@@ -9,14 +9,14 @@
  * @brief This file declares proxy objects for the IConfiguration objects
  */
 
-namespace armonik::api::common::utils {
+namespace ArmoniK::Api::Common::utils {
 class IConfiguration;
 }
 
-namespace armonik::api::common::options {
+namespace ArmoniK::Api::Common::options {
 class ComputePlane;
 class ControlPlane;
-} // namespace armonik::api::common::options
+} // namespace ArmoniK::Api::Common::options
 
 namespace SDK_COMMON_NAMESPACE {
 class IConfiguration;
@@ -66,7 +66,7 @@ public:
   [[nodiscard]] bool isSslValidation() const;
 
 private:
-  std::shared_ptr<armonik::api::common::options::ControlPlane> impl;
+  std::shared_ptr<ArmoniK::Api::Common::options::ControlPlane> impl;
 };
 
 class ComputePlane {
@@ -102,7 +102,7 @@ public:
   [[nodiscard]] std::string_view get_agent_address() const;
 
 private:
-  std::shared_ptr<armonik::api::common::options::ComputePlane> impl;
+  std::shared_ptr<ArmoniK::Api::Common::options::ComputePlane> impl;
 };
 
 class IConfiguration {
@@ -169,7 +169,7 @@ public:
   [[nodiscard]] ControlPlane get_control_plane() const;
 
 private:
-  std::shared_ptr<armonik::api::common::utils::IConfiguration> impl;
+  std::shared_ptr<ArmoniK::Api::Common::utils::IConfiguration> impl;
   friend class ComputePlane;
   friend class ControlPlane;
 };

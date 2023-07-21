@@ -55,7 +55,6 @@ public:
   std::vector<std::string> Submit(const std::vector<Common::TaskRequest> &requests,
                                   const std::shared_ptr<IServiceInvocationHandler> &handler);
 
-
   /**
    * @brief Waits for the completion of the given tasks
    * @param task_ids Task ids to wait on
