@@ -2,18 +2,14 @@
 
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <armonik/sdk/client/SessionService.h>
-#include <armonik/sdk/common/TaskRequest.h>
 #include <armonik/sdk/common/IConfiguration.h>
 #include <armonik/sdk/common/Properties.h>
+#include <armonik/sdk/common/TaskRequest.h>
 
-class Handler : public ArmoniK::SDK::Client::IServiceInvocationHandler{
+class Handler : public ArmoniK::SDK::Client::IServiceInvocationHandler {
 public:
-  void HandleResponse(const std::string &result_payload, const std::string &taskId) override {
-
-  }
-  void HandleError(const std::exception &e, const std::string &taskId) override {
-
-  }
+  void HandleResponse(const std::string &result_payload, const std::string &taskId) override {}
+  void HandleError(const std::exception &e, const std::string &taskId) override {}
 };
 
 int main() {
@@ -43,7 +39,7 @@ int main() {
   args[8] = 0;
   args[9] = -128;
   auto handler = std::make_shared<Handler>();
-  auto tasks = service.Submit({ArmoniK::SDK::Common::TaskRequest("TestService", "TestMethod", args, {})},handler);
+  auto tasks = service.Submit({ArmoniK::SDK::Common::TaskRequest("TestService", "TestMethod", args, {})}, handler);
 
   std::cout << "Sent : " << tasks[0] << std::endl;
   return 0;
