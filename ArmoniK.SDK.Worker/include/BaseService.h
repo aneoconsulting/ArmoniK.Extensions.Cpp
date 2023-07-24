@@ -8,7 +8,6 @@
 #include <armonik/worker/Worker/ArmoniKWorker.h>
 #include <armonik/worker/Worker/TaskHandler.h>
 
-
 namespace SDK_WORKER_NAMESPACE
 {
     
@@ -16,6 +15,7 @@ namespace SDK_WORKER_NAMESPACE
     {
     private:
         /* data */
+
     public:
         BaseService(/* args */);
         virtual ~BaseService() = default;
@@ -26,7 +26,7 @@ namespace SDK_WORKER_NAMESPACE
 
         virtual void leave_session(void* session_ctx);
 
-        virtual std::string call(std::string name, std::string input) = 0;
+        virtual std::string call(std::string name, std::string input);
 
         virtual void destroy_service(void* service_ctx);
 
