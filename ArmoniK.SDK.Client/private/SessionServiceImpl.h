@@ -64,11 +64,6 @@ private:
   std::unique_ptr<ArmoniK::Api::Client::SubmitterClient> client;
 
   /**
-   * @brief Submitter stub
-   */
-  std::unique_ptr<armonik::api::grpc::v1::submitter::Submitter::Stub> client_stub;
-
-  /**
    * @brief Client used for results handling
    */
   std::unique_ptr<armonik::api::grpc::v1::results::Results::Stub> results;
