@@ -1,16 +1,17 @@
 #include "SessionServiceImpl.h"
 #include "IServiceInvocationHandler.h"
 #include "Properties.h"
-#include "TaskRequest.h"
+#include "TaskPayload.h"
 #include <armonik/client/results_common.pb.h>
+#include <armonik/common/exceptions/ArmoniKApiException.h>
+#include <armonik/common/exceptions/ArmoniKTaskError.h>
 #include <armonik/common/objects.pb.h>
 #include <armonik/common/utils/GuuId.h>
-#include <grpcpp/channel.h>
 #include <grpcpp/client_context.h>
-#include <objects.pb.h>
 #include <string>
 #include <submitter_common.pb.h>
 #include <submitter_service.grpc.pb.h>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -42,7 +43,7 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
     message << "Error: " << status.error_code() << ": " << status.error_message()
             << ". details : " << status.error_details() << std::endl;
     std::cerr << "Could not create results for submit: " << std::endl;
-    throw std::runtime_error(message.str().c_str());
+    throw ArmoniK::Api::Common::exceptions::ArmoniKApiException(message.str());
   }
   std::vector<std::string> result_ids;
   result_ids.reserve(num);
@@ -55,7 +56,7 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
 std::string_view SessionServiceImpl::getSession() const { return session; }
 
 [[maybe_unused]] std::vector<std::string>
-SessionServiceImpl::Submit(const std::vector<Common::TaskRequest> &task_requests,
+SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
                            const std::shared_ptr<IServiceInvocationHandler> &handler,
                            const Common::TaskOptions &task_options) {
   std::vector<armonik::api::grpc::v1::TaskRequest> definitions;
@@ -115,7 +116,7 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties)
                                    {properties.taskOptions.partition_id});
 }
 
-std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskRequest> &task_requests,
+std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
                                                     const std::shared_ptr<IServiceInvocationHandler> &handler) {
   return std::move(Submit(task_requests, handler, taskOptions));
 }
@@ -128,86 +129,94 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
   bool breakOnError = behavior & WaitBehavior::BreakOnError;
   bool stopOnFirst = behavior & WaitBehavior::Any;
 
-  grpc::ClientContext context;
-  armonik::api::grpc::v1::submitter::GetResultStatusRequest request;
-  armonik::api::grpc::v1::submitter::GetResultStatusReply reply;
-  request.set_session_id(session);
-
   // While either we wait on all tasks, or on the tasks given
   while (!hasWaitList || !task_ids.empty()) {
+    std::vector<std::string> resultIds;
+
     {
       std::shared_lock _(maps_mutex);
-      request.mutable_result_ids()->Reserve(resultId_taskId.size());
+      resultIds.reserve(resultId_taskId.size());
       for (auto &&[rid, tid] : resultId_taskId) {
-        *request.mutable_result_ids()->Add() = rid;
+        resultIds.push_back(rid);
       }
     }
 
     // If there is no task to wait on, return
-    if (request.result_ids().empty()) {
+    if (resultIds.empty()) {
       break;
     }
 
     bool hasError = false;
-
     // Ask for the results statuses
-    auto status = client_stub->GetResultStatus(&context, request, &reply);
-    if (!status.ok()) {
-      throw std::runtime_error("Error while getting result status : " + status.error_message());
-    }
+    auto statuses = client->get_result_status(session, resultIds);
+
+    std::vector<std::pair<std::string, std::string>> done;
 
     // For each status
-    for (auto &&result_status : reply.id_statuses()) {
+    for (auto &&[rid, status] : statuses) {
       std::shared_ptr<IServiceInvocationHandler> handler;
       std::string task_id;
-      if (result_status.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED ||
-          result_status.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
+      if (status == armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED ||
+          status == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
         // Get the handler and taskid information
-        std::shared_lock _(maps_mutex);
-        handler = result_handlers.at(result_status.result_id());
-        task_id = resultId_taskId.at(result_status.result_id());
-      }
-      if (result_status.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED) {
+        {
+          std::shared_lock _(maps_mutex);
+          handler = result_handlers.at(rid);
+          task_id = resultId_taskId.at(rid);
+        }
+
+        armonik::api::grpc::v1::ResultRequest resultRequest;
+        resultRequest.set_session(session);
+        resultRequest.set_result_id(rid);
+
         try {
-          // Get the completed result
-          armonik::api::grpc::v1::ResultRequest resultRequest;
-          resultRequest.set_session(session);
-          resultRequest.set_result_id(result_status.result_id());
-          auto raw_payload = client->get_result_async(resultRequest).get();
-          std::string_view payload(reinterpret_cast<char *>(raw_payload.data()), raw_payload.size());
+          // Get the finished result
+          auto payload = client->get_result_async(resultRequest).get();
+          if (status == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
+            // The above command should have failed !
+            throw ArmoniK::Api::Common::exceptions::ArmoniKApiException(
+                "Result is aborted and shouldn't have been retrieved");
+          }
 
           // Handle the result
           handler->HandleResponse(payload, task_id);
-        } catch (const std::exception &e) {
-          try {
-            std::cerr << "Error while handling completed result of task " << task_id << std::endl;
-            handler->HandleError(e, task_id);
-          } catch (const std::exception &e) {
-            std::cerr << "Error while handling error " << e.what() << std::endl;
-          }
-        }
-      } else if (result_status.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
-        try {
-          /*armonik::api::grpc::v1::results::GetOwnerTaskIdRequest owner_request;
-          owner_request.set_session_id(session);
-          //TODO
-          auto owner_status = results->GetOwnerTaskId(&context, );
-          armonik::api::grpc::v1::TaskOutputRequest outputRequest;
-          armonik::api::grpc::v1::Output output;
-          outputRequest.set_session(session);
-          outputRequest.set_task_id(task_id);
-          client_stub->TryGetTaskOutput(&context, outputRequest, &output);
+        } catch (const ArmoniK::Api::Common::exceptions::ArmoniKTaskError &e) {
+          // Task is in error
+          hasError |= task_ids.find(task_id) != task_ids.end();
+          std::cerr << "Task " << task_id << " is in error : " << e.what() << std::endl;
+          handler->HandleError(e, task_id);
 
-          handler->HandleError()*/
-        } catch (const std::exception &e) {
+        } catch (const ArmoniK::Api::Common::exceptions::ArmoniKApiException &e) {
+          // Internal error
+          hasError |= task_ids.find(task_id) != task_ids.end();
+          std::cerr << "Internal error while handling result " << e.what() << std::endl;
+          handler->HandleError(e, task_id);
         }
+        done.emplace_back(task_id, rid);
       }
+    }
+
+    {
+      // Remove all finished tasks and results from the global lists
+      std::lock_guard _(maps_mutex);
+      for (auto &&[tid, rid] : done) {
+        taskId_resultId.erase(tid);
+        resultId_taskId.erase(rid);
+        result_handlers.erase(rid);
+      }
+    }
+
+    // Remove all finished task_ids from the waiting list
+    for (auto &&[tid, rid] : done) {
+      task_ids.erase(tid);
     }
 
     // If we wait for any and at least one is done, or if we break on error and had an error, then return
     if ((stopOnFirst && task_ids.size() < initialTaskIds_size) || (breakOnError && hasError)) {
       break;
     }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(options.polling_ms));
   }
 }
 

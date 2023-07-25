@@ -10,7 +10,7 @@
 
 namespace ArmoniK::SDK::Common {
 class Properties;
-class TaskRequest;
+class TaskPayload;
 } // namespace ArmoniK::SDK::Common
 
 namespace SDK_CLIENT_NAMESPACE {
@@ -94,7 +94,7 @@ public:
    * @param handler Result handler for this batch of requests
    * @return List of task ids
    */
-  std::vector<std::string> Submit(const std::vector<Common::TaskRequest> &task_requests,
+  std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &task_requests,
                                   const std::shared_ptr<IServiceInvocationHandler> &handler);
 
   /**
@@ -104,7 +104,7 @@ public:
    * @param task_options Task options to use for this batch of requests
    * @return List of task ids
    */
-  std::vector<std::string> Submit(const std::vector<Common::TaskRequest> &task_requests,
+  std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &task_requests,
                                   const std::shared_ptr<IServiceInvocationHandler> &handler,
                                   const Common::TaskOptions &task_options);
 
