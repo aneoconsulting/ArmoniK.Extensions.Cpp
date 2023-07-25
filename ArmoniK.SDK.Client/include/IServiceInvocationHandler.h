@@ -12,7 +12,7 @@ public:
    * @param result_payload Task result
    * @param taskId Task Id
    */
-  virtual void HandleResponse(const std::string_view &result_payload, const std::string &taskId) = 0;
+  virtual void HandleResponse(const std::string &result_payload, const std::string &taskId) = 0;
 
   /**
    * @brief Callback function called when a tasks fails
