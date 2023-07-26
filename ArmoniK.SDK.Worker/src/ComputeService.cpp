@@ -1,6 +1,6 @@
 #include "ComputeService.h"
 #include "TaskRequest.h"
-#include "interfaceDLL.h"
+#include "ArmoniKSDKInterface.h"
 
 SDK_WORKER_NAMESPACE::ComputeService::ComputeService(/* args */)
 {
@@ -8,13 +8,9 @@ SDK_WORKER_NAMESPACE::ComputeService::ComputeService(/* args */)
 
 ArmoniK::Api::Worker::ProcessStatus SDK_WORKER_NAMESPACE::ComputeService::Process(ArmoniK::Api::Worker::TaskHandler &task_handler){
 
-    std::vector<std::byte> payload = task_handler.getPayload();
-    char data_string[payload.size()];
-    std::memcpy(data_string, payload.data(), payload.size());
-    
-    std::string_view str(data_string);
+    std::string payload = task_handler.getPayload();
 
-    auto deserialized = Common::TaskRequest::Deserialize(str);
+    auto deserialized = Common::TaskRequest::Deserialize(payload);
 
     if(!deserialized.service_name.empty()){
         ArmoniK::SDK::Worker::ServiceContext service_context(deserialized);
@@ -25,7 +21,7 @@ ArmoniK::Api::Worker::ProcessStatus SDK_WORKER_NAMESPACE::ComputeService::Proces
         app.Execute(service_context, session_context);
     }
 
-    return ArmoniK::Api::Worker::ProcessStatus::OK;
+    return ArmoniK::Api::Worker::ProcessStatus::PROCESS_OK;
 }
 
 /**
@@ -79,8 +75,10 @@ std::string SDK_WORKER_NAMESPACE::SessionContext::getSessionId(){
  * 
  * @param service_context 
  */
-void SDK_WORKER_NAMESPACE::ApplicationManager::CreateService(ServiceContext service_context){
-    void* ptr = armonik_create_service(service_context.getServiceName().c_str());
+SDK_WORKER_NAMESPACE::ServiceContext* SDK_WORKER_NAMESPACE::ApplicationManager::CreateService(ServiceContext service_context){
+    service_context_ = (SDK_WORKER_NAMESPACE::ServiceContext*) armonik_create_service(service_context.getServiceName().c_str());
+
+    return service_context_;
 }
 
 /**
@@ -88,8 +86,10 @@ void SDK_WORKER_NAMESPACE::ApplicationManager::CreateService(ServiceContext serv
  * 
  * @param session_context 
  */
-void SDK_WORKER_NAMESPACE::ApplicationManager::EnterSession(SessionContext session_context){
-    void* ptr = armonik_enter_session(&session_context, session_context.getSessionId().c_str());
+SDK_WORKER_NAMESPACE::SessionContext* SDK_WORKER_NAMESPACE::ApplicationManager::EnterSession(SessionContext session_context){
+    session_context_ = (SDK_WORKER_NAMESPACE::SessionContext*) armonik_enter_session(&session_context, session_context.getSessionId().c_str());
+
+    return session_context_;
 }
 
 /**
@@ -99,7 +99,7 @@ void SDK_WORKER_NAMESPACE::ApplicationManager::EnterSession(SessionContext sessi
  * @param session_context 
  */
 void SDK_WORKER_NAMESPACE::ApplicationManager::Execute(ServiceContext service_context, SessionContext session_context){
-    armonik_call(&service_context, &session_context, service_context.getApplicationName().c_str(), service_context.getApplicationName().c_str(), service_context.getApplicationName().size(), CallbackFunc);
+    armonik_call(&service_context, &session_context, service_context.getApplicationName().c_str(), service_context.getApplicationName().c_str(), service_context.getApplicationName().size(), SDK_WORKER_NAMESPACE::ApplicationManager::CallbackFunc);
 }
 
 /**
@@ -134,5 +134,7 @@ void SDK_WORKER_NAMESPACE::ApplicationManager::CallbackFunc(status_t status, con
     }else{
         std::cout << "ArmoniK call failed" << output << std::endl;
     }
+    // delete service_context_;
+    // delete session_context_;
 }
 

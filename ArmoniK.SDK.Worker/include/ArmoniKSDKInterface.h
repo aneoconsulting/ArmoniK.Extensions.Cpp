@@ -5,7 +5,7 @@
  */
 
 extern "C" {
-typedef int status_t;
+typedef int armonik_status_t;
 
 /**
  * @brief 
@@ -54,6 +54,5 @@ void armonik_call(
     void* session_context,
     const char* function_name,
     const char* input,
-    size_t input_size,
-    void (*callback)(status_t status, const char* output, size_t output_size));
+    size_t input_size, void (*callback)(armonik_status_t status, const char *output, size_t output_size));
 }

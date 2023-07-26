@@ -12,7 +12,7 @@ elseif (WIN32)
     set(BUILD_DIR "${CMAKE_SOURCE_DIR}/build")
     list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/tools/win64/lib/cmake/grpc")
     list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/tools/win64/cmake")
-    list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/../ArmoniK.Api/packages/cpp/install")
+    list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/../ArmoniK.Api/packages/cpp/out/install/x64-Debug")
     set(Protobuf_USE_STATIC_LIBS ON)
 endif (UNIX)
 

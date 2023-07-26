@@ -3,7 +3,7 @@
 #include <armonik/worker/Worker/ProcessStatus.h>
 #include "TaskOptions.h"
 #include "TaskRequest.h"
-#include "interfaceDLL.h"
+#include "ArmoniKSDKInterface.h"
 
 
 namespace ArmoniK::SDK::Common {
@@ -11,8 +11,6 @@ class Properties;
 class TaskRequest;
 class TaskOptions;
 } // namespace ArmoniK::SDK::Common
-
-ArmoniK::Api::Worker::ProcessStatus Process(Api::Worker::TaskHandler &task_handler);
 
 namespace SDK_WORKER_NAMESPACE{
 class ComputeService
@@ -26,20 +24,22 @@ public:
      */
     ComputeService(/* args */);
 
-    static ArmoniK::Api::Worker::ProcessStatus Process(Api::Worker::TaskHandler task_handler);
+    static ArmoniK::Api::Worker::ProcessStatus Process(ArmoniK::Api::Worker::TaskHandler &task_handler);
 };
 
-class ServiceContext{
+class ServiceManager{
 private:
     std::string application_name_;
     std::string service_name_;
     std::string app_namespace_;
-public:
+    std::string app_version_;
+
+  public:
     /**
      * @brief Construct a new Service Context object
      * 
      */
-    ServiceContext(const ArmoniK::SDK::Common::TaskRequest &task_request);
+    ServiceManager(const ArmoniK::SDK::Common::TaskRequest &task_request);
 
     /**
      * @brief Get the Service Name object
@@ -86,7 +86,8 @@ public:
 class ApplicationManager
 {
 private:
-
+    SessionContext* session_context_;
+    ServiceContext* service_context_;
 
 public:
     /**
@@ -100,14 +101,14 @@ public:
      * 
      * @param service_context 
      */
-    void CreateService(ServiceContext service_context);
+    ServiceContext* CreateService(ServiceContext service_context);
 
     /**
      * @brief 
      * 
      * @param session_context 
      */
-    void EnterSession(SessionContext session_context);
+    SessionContext* EnterSession(SessionContext session_context);
 
     /**
      * @brief 
@@ -139,7 +140,7 @@ public:
      * @param output 
      * @param size 
      */
-    static void CallbackFunc(status_t status, const char* output, size_t size);
+    static void CallbackFunc(armonik_status_t status, const char* output, size_t size);
 };
 
 } // namespace SDK_WORKER_NAMESPACE
