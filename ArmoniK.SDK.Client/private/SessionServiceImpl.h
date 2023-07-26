@@ -3,12 +3,14 @@
 
 #include "ChannelPool.h"
 #include "TaskOptions.h"
+#include "WaitBehavior.h"
 #include <armonik/client/submitter/SubmitterClient.h>
 #include <results_service.grpc.pb.h>
+#include <shared_mutex>
 
 namespace ArmoniK::SDK::Common {
 class Properties;
-class TaskRequest;
+class TaskPayload;
 } // namespace ArmoniK::SDK::Common
 
 namespace SDK_CLIENT_NAMESPACE {
@@ -35,6 +37,26 @@ private:
    * @brief Session task options
    */
   Common::TaskOptions taskOptions;
+
+  /**
+   * @brief Map between taskId and resultId
+   */
+  std::map<std::string, std::string> taskId_resultId;
+
+  /**
+   * @brief Map between result id and task id
+   */
+  std::map<std::string, std::string> resultId_taskId;
+
+  /**
+   * @brief Map between a result_id and it's handler
+   */
+  std::map<std::string, std::shared_ptr<IServiceInvocationHandler>> result_handlers;
+
+  /**
+   * @brief Maps mutex
+   */
+  std::shared_mutex maps_mutex;
 
   /**
    * @brief Client used for submission
@@ -67,7 +89,7 @@ public:
    * @param handler Result handler for this batch of requests
    * @return List of task ids
    */
-  std::vector<std::string> Submit(const std::vector<Common::TaskRequest> &task_requests,
+  std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &task_requests,
                                   const std::shared_ptr<IServiceInvocationHandler> &handler);
 
   /**
@@ -77,7 +99,7 @@ public:
    * @param task_options Task options to use for this batch of requests
    * @return List of task ids
    */
-  std::vector<std::string> Submit(const std::vector<Common::TaskRequest> &task_requests,
+  std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &task_requests,
                                   const std::shared_ptr<IServiceInvocationHandler> &handler,
                                   const Common::TaskOptions &task_options);
 
@@ -86,6 +108,17 @@ public:
    * @return Session Id
    */
   [[nodiscard]] std::string_view getSession() const;
+
+  /**
+   * @brief Waits for the completion of the given tasks
+   * @param task_ids Task ids to wait on. If left empty, will wait for submitted tasks in
+   * @param waitBehavior Wait for all tasks completion, any task completion and/or stop waiting if a result is aborted
+   * @param options Wait options
+   * @note If tasks are being submitted concurrently with the wait, this function may return before the concurrent tasks
+   * submission is complete
+   */
+  void WaitResults(std::set<std::string> task_ids = {}, WaitBehavior waitBehavior = All,
+                   const WaitOptions &options = WaitOptions());
 };
 } // namespace SDK_CLIENT_NAMESPACE::Internal
 

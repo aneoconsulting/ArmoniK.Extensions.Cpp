@@ -12,7 +12,7 @@
 namespace SDK_COMMON_NAMESPACE {
 
 ComputePlane::ComputePlane(const IConfiguration &configuration)
-    : impl(std::make_shared<armonik::api::common::options::ComputePlane>(*configuration.impl)) {}
+    : impl(std::make_shared<ArmoniK::Api::Common::options::ComputePlane>(*configuration.impl)) {}
 std::string_view ComputePlane::get_server_address() const { return impl->get_server_address(); }
 void ComputePlane::set_worker_address(std::string socket_address) {
   impl->set_worker_address(std::move(socket_address));
@@ -21,7 +21,7 @@ void ComputePlane::set_agent_address(std::string agent_address) { impl->set_agen
 std::string_view ComputePlane::get_agent_address() const { return impl->get_agent_address(); }
 
 ControlPlane::ControlPlane(const IConfiguration &config)
-    : impl(std::make_shared<armonik::api::common::options::ControlPlane>(*config.impl)) {}
+    : impl(std::make_shared<ArmoniK::Api::Common::options::ControlPlane>(*config.impl)) {}
 std::string_view ControlPlane::getEndpoint() const { return impl->getEndpoint(); }
 std::string_view ControlPlane::getUserCertPemPath() const { return impl->getUserCertPemPath(); }
 std::string_view ControlPlane::getUserKeyPemPath() const { return impl->getUserKeyPemPath(); }
@@ -29,7 +29,7 @@ std::string_view ControlPlane::getUserP12Path() const { return impl->getUserP12P
 std::string_view ControlPlane::getCaCertPemPath() const { return impl->getCaCertPemPath(); }
 bool ControlPlane::isSslValidation() const { return impl->isSslValidation(); }
 
-IConfiguration::IConfiguration() : impl(std::make_shared<armonik::api::common::utils::IConfiguration>()) {}
+IConfiguration::IConfiguration() : impl(std::make_shared<ArmoniK::Api::Common::utils::IConfiguration>()) {}
 IConfiguration::~IConfiguration() { impl.reset(); }
 std::string IConfiguration::get(const std::string &string) const { return impl->get(string); }
 void IConfiguration::set(const std::string &string, const std::string &value) { impl->set(string, value); }

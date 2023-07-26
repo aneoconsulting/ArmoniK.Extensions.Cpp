@@ -1,4 +1,4 @@
-#include "TaskRequest.h"
+#include "TaskPayload.h"
 #include <charconv>
 #include <iomanip>
 #include <string>
@@ -10,6 +10,14 @@ namespace SDK_COMMON_NAMESPACE {
  */
 typedef uint32_t field_size_t;
 
+template <typename T> struct TypeParseTraits;
+
+#define REGISTER_PARSE_TYPE(X)                                                                                         \
+  template <> struct TypeParseTraits<X> { static const char *name; };                                                  \
+  const char *TypeParseTraits<X>::name = #X
+
+REGISTER_PARSE_TYPE(uint32_t);
+
 /**
  * @brief Converts an integer type to a hex string
  * @tparam T Integer type
@@ -18,7 +26,7 @@ typedef uint32_t field_size_t;
  */
 template <typename T> std::string int_to_hex(T i) {
   std::stringstream stream;
-  stream << "0x" << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << i;
+  stream << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << i;
   return stream.str();
 }
 
@@ -31,50 +39,49 @@ template <typename T> std::string int_to_hex(T i) {
  */
 template <typename T> T hex_to_int(std::string_view str) {
   T value;
-  auto result = std::from_chars(str.data(), str.data() + str.size(), value);
+  auto result = std::from_chars(str.data(), str.data() + str.size(), value, 16);
   if (result.ec == std::errc::invalid_argument) {
-    throw std::runtime_error(std::string(str) + " is not convertible to " + typeid(T).name());
+    throw std::runtime_error(std::string(str) + " is not convertible to " + TypeParseTraits<T>::name);
   }
   if (result.ec == std::errc::result_out_of_range) {
-    throw std::runtime_error(std::string(str) + " is too large for " + typeid(T).name());
+    throw std::runtime_error(std::string(str) + " is too large for " + TypeParseTraits<T>::name);
   }
   return value;
 }
 
-std::string TaskRequest::Serialize() const {
+std::string TaskPayload::Serialize() const {
   std::stringstream ss;
-  ss << int_to_hex((field_size_t)service_name.size()) << service_name << int_to_hex((field_size_t)method_name.size())
-     << method_name << int_to_hex((field_size_t)arguments.size());
+  // Method name
+  ss << int_to_hex((field_size_t)method_name.size()) << method_name << int_to_hex((field_size_t)arguments.size());
 
   // Writing directly to avoid stopping at null character
   ss.write(arguments.data(), arguments.size());
 
+  // Data dependencies
   for (auto &&dd : data_dependencies) {
     ss << int_to_hex((field_size_t)dd.size()) << dd;
   }
   return ss.str();
 }
-TaskRequest TaskRequest::Deserialize(std::string_view serialized) {
-  constexpr uint32_t size_width = sizeof(field_size_t) * 2 + 2;
+TaskPayload TaskPayload::Deserialize(std::string_view serialized) {
+  constexpr uint32_t size_width = sizeof(field_size_t) * 2;
   field_size_t fieldSize;
   uint32_t position = 0;
   std::vector<std::string> data_dependencies;
 
-  fieldSize = hex_to_int<field_size_t>(serialized.substr(position, size_width));
-  position += size_width;
-  std::string service_name(serialized.data() + position, fieldSize);
-  position += fieldSize;
-
+  // Method name
   fieldSize = hex_to_int<field_size_t>(serialized.substr(position, size_width));
   position += size_width;
   std::string method_name(serialized.data() + position, fieldSize);
   position += fieldSize;
 
+  // Method arguments
   fieldSize = hex_to_int<field_size_t>(serialized.substr(position, size_width));
   position += size_width;
   std::string arguments(serialized.data() + position, fieldSize);
   position += fieldSize;
 
+  // Data dependencies
   while (position < serialized.size()) {
     fieldSize = hex_to_int<field_size_t>(serialized.substr(position, size_width));
     position += size_width;
@@ -82,6 +89,6 @@ TaskRequest TaskRequest::Deserialize(std::string_view serialized) {
     position += fieldSize;
   }
 
-  return {service_name, method_name, arguments, data_dependencies};
+  return {method_name, arguments, data_dependencies};
 }
 } // namespace SDK_COMMON_NAMESPACE
