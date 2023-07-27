@@ -28,7 +28,7 @@ SDK_WORKER_NAMESPACE::ApplicationManager::UseSession(const std::string &sessionI
   service_manager->UseSession(sessionId);
   return *this;
 }
-armonik::api::grpc::v1::Output
+ArmoniK::Api::Worker::ProcessStatus
 SDK_WORKER_NAMESPACE::ApplicationManager::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
                                                   const std::string &method_name, const std::string &method_arguments) {
   if (!service_manager) {

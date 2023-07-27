@@ -45,5 +45,6 @@ IConfiguration &IConfiguration::add_env_configuration() {
 }
 ComputePlane IConfiguration::get_compute_plane() const { return *this; }
 ControlPlane IConfiguration::get_control_plane() const { return *this; }
+IConfiguration::operator ArmoniK::Api::Common::utils::IConfiguration() { return *impl; }
 
 } // namespace SDK_COMMON_NAMESPACE

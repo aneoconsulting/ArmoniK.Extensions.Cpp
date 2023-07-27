@@ -1,4 +1,5 @@
 #include "TaskPayload.h"
+#include "ArmoniKSDKException.h"
 #include <charconv>
 #include <iomanip>
 #include <string>
@@ -63,28 +64,43 @@ std::string TaskPayload::Serialize() const {
   }
   return ss.str();
 }
+
+void checkSize(const std::string_view &value, size_t position, size_t size) {
+  if (position + size > value.size()) {
+    std::stringstream ss("Cannot read ");
+    ss << size << " bytes from string at position " << position;
+    throw ArmoniK::SDK::Common::ArmoniKSDKException(ss.str());
+  }
+}
+
 TaskPayload TaskPayload::Deserialize(std::string_view serialized) {
-  constexpr uint32_t size_width = sizeof(field_size_t) * 2;
+  constexpr size_t size_width = sizeof(field_size_t) * 2;
   field_size_t fieldSize;
-  uint32_t position = 0;
+  size_t position = 0;
   std::vector<std::string> data_dependencies;
 
   // Method name
+  checkSize(serialized, position, size_width);
   fieldSize = hex_to_int<field_size_t>(serialized.substr(position, size_width));
   position += size_width;
+  checkSize(serialized, position, fieldSize);
   std::string method_name(serialized.data() + position, fieldSize);
   position += fieldSize;
 
   // Method arguments
+  checkSize(serialized, position, size_width);
   fieldSize = hex_to_int<field_size_t>(serialized.substr(position, size_width));
   position += size_width;
+  checkSize(serialized, position, fieldSize);
   std::string arguments(serialized.data() + position, fieldSize);
   position += fieldSize;
 
   // Data dependencies
   while (position < serialized.size()) {
+    checkSize(serialized, position, size_width);
     fieldSize = hex_to_int<field_size_t>(serialized.substr(position, size_width));
     position += size_width;
+    checkSize(serialized, position, fieldSize);
     data_dependencies.emplace_back(serialized.data() + position, fieldSize);
     position += fieldSize;
   }

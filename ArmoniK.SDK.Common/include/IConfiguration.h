@@ -168,6 +168,8 @@ public:
    */
   [[nodiscard]] ControlPlane get_control_plane() const;
 
+  operator ArmoniK::Api::Common::utils::IConfiguration();
+
 private:
   std::shared_ptr<ArmoniK::Api::Common::utils::IConfiguration> impl;
   friend class ComputePlane;

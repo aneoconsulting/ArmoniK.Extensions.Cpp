@@ -1,11 +1,12 @@
 #include "ServiceManager.h"
 #include "ArmoniKSDKException.h"
 #include "ContextIds.h"
+#include <armonik/worker/Worker/ProcessStatus.h>
 #include <utility>
 
 struct ArmonikContext {
   ArmoniK::Api::Worker::TaskHandler &taskHandler;
-  armonik::api::grpc::v1::Output output;
+  ArmoniK::Api::Worker::ProcessStatus output;
 
   explicit ArmonikContext(ArmoniK::Api::Worker::TaskHandler &taskHandler) : taskHandler(taskHandler) {}
 };
@@ -31,7 +32,7 @@ SDK_WORKER_NAMESPACE::ServiceManager &SDK_WORKER_NAMESPACE::ServiceManager::UseS
   }
   return *this;
 }
-armonik::api::grpc::v1::Output
+ArmoniK::Api::Worker::ProcessStatus
 SDK_WORKER_NAMESPACE::ServiceManager::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
                                               const std::string &method_name, const std::string &method_arguments) {
   ArmonikContext callContext(taskHandler);
@@ -41,11 +42,11 @@ SDK_WORKER_NAMESPACE::ServiceManager::Execute(ArmoniK::Api::Worker::TaskHandler 
   auto status = functionPointers.call(&callContext, service_context, session_context, method_name.c_str(),
                                       method_arguments.data(), method_arguments.size(), ServiceManager::UploadResult);
   if (status != ARMONIK_STATUS_OK) {
-    if (!callContext.output.has_error()) {
-      callContext.output.mutable_error()->set_details("Unknown error in worker, check logs.");
+    if (callContext.output.ok()) {
+      return ArmoniK::Api::Worker::ProcessStatus("Unknown error in worker, check logs.");
     }
   }
-
+  callContext.output.set_ok();
   return callContext.output;
 }
 
@@ -53,9 +54,9 @@ void SDK_WORKER_NAMESPACE::ServiceManager::UploadResult(void *opaque_context, ar
                                                         size_t data_size) {
   auto context = static_cast<ArmonikContext *>(opaque_context);
   if (status != ARMONIK_STATUS_OK) {
-    context->output.mutable_error()->set_details(std::string(data, data_size));
+    context->output.set_error(std::string(data, data_size));
     return;
   }
   context->taskHandler.send_result(context->taskHandler.getExpectedResults()[0], std::string_view(data, data_size));
-  context->output.mutable_ok();
+  context->output.set_ok();
 }

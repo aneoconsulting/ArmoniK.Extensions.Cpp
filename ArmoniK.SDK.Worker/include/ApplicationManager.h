@@ -14,8 +14,8 @@ public:
   ApplicationManager &UseApplication(const AppId &appId);
   ApplicationManager &UseService(const ServiceId &serviceId);
   ApplicationManager &UseSession(const std::string &sessionId);
-  armonik::api::grpc::v1::Output Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler, const std::string &method_name,
-                                         const std::string &method_arguments);
+  ArmoniK::Api::Worker::ProcessStatus Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
+                                              const std::string &method_name, const std::string &method_arguments);
 
 private:
   ArmoniKFunctionPointers functionPointers;

@@ -1,11 +1,28 @@
 #include "SDKWorker.h"
+#include <ArmoniKSDKException.h>
+#include <TaskPayload.h>
 #include <armonik/sdk/worker/ApplicationManager.h>
-grpc::Status SDK_DLLWORKER_NAMESPACE::SDKWorker::Process(
-    ::grpc::ServerContext *context, ::grpc::ServerReader<::armonik::api::grpc::v1::worker::ProcessRequest> *reader,
-    ::armonik::api::grpc::v1::worker::ProcessReply *response) {}
-grpc::Status
-SDK_DLLWORKER_NAMESPACE::SDKWorker::HealthCheck(::grpc::ServerContext *context,
-                                                const ::armonik::api::grpc::v1::Empty *request,
-                                                ::armonik::api::grpc::v1::worker::HealthCheckReply *response) {
-  return Service::HealthCheck(context, request, response);
+
+SDK_DLLWORKER_NAMESPACE::SDKWorker::SDKWorker(std::unique_ptr<armonik::api::grpc::v1::agent::Agent::Stub> agent)
+    : ArmoniKWorker(std::move(agent)), manager() {}
+
+ArmoniK::Api::Worker::ProcessStatus
+
+SDK_DLLWORKER_NAMESPACE::SDKWorker::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler) {
+  try {
+    auto &payload = taskHandler.getPayload();
+    auto taskPayload = ArmoniK::SDK::Common::TaskPayload::Deserialize(payload);
+    ArmoniK::SDK::Worker::AppId appId(taskHandler.getTaskOptions().application_name(),
+                                      taskHandler.getTaskOptions().application_version());
+    ArmoniK::SDK::Worker::ServiceId serviceId(appId, taskHandler.getTaskOptions().application_namespace(),
+                                              taskHandler.getTaskOptions().application_service());
+    manager.UseApplication(appId)
+        .UseService(serviceId)
+        .UseSession(taskHandler.getSessionId())
+        .Execute(taskHandler, taskPayload.method_name, taskPayload.arguments);
+  } catch (const ArmoniK::SDK::Common::ArmoniKSDKException &e) {
+    return ArmoniK::Api::Worker::ProcessStatus(e.what());
+  }
+
+  return ArmoniK::Api::Worker::ProcessStatus::Ok;
 }

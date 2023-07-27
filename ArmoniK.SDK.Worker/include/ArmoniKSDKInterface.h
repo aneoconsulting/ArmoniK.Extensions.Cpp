@@ -1,3 +1,6 @@
+#ifndef ARMONIKSDKINTERFACE_H
+#define ARMONIKSDKINTERFACE_H
+
 #ifdef __cplusplus
 #include <cstddef>
 #else
@@ -73,4 +76,6 @@ typedef armonik_status_t (*armonik_call_t)(void *armonik_context, void *service_
                                            armonik_callback_t callback);
 #ifdef __cplusplus
 }
+#endif
+
 #endif
