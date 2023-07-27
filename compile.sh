@@ -31,4 +31,4 @@ fi
 mkdir -p ${working_dir}/build
 
 # Compile the project source using the Docker image
-docker run -v "${working_dir}:/app/source" -v "${ARMONIK_API_DIR}:/armonik/api" -v "${working_dir}/build:/app/build" --rm "${IMAGE_TAG}"
+docker run -v "${working_dir}:/app/source" -v "${ARMONIK_API_DIR}:/armonik/api" -v "${working_dir}/install:/app/install" -v "${working_dir}/build:/app/build" --rm "${IMAGE_TAG}"
