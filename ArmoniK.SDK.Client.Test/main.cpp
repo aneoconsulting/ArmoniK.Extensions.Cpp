@@ -23,6 +23,16 @@ public:
   }
 };
 
+class EchoServiceHandler : public ArmoniK::SDK::Client::IServiceInvocationHandler {
+public:
+  void HandleResponse(const std::string &result_payload, const std::string &taskId) override {
+    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << std::endl;
+  }
+  void HandleError(const std::exception &e, const std::string &taskId) override {
+    std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
+  }
+};
+
 int main() {
   std::cout << "Hello, World!" << std::endl;
   // Load configuration from file and environment
@@ -30,9 +40,13 @@ int main() {
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
   std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  if (config.get("Worker__Type").empty()) {
+    config.set("Worker__Type", "PythonTestWorker");
+  }
+  std::cout << "Testing worker : " << config.get("Worker__Type") << std::endl;
 
   // Create the task options
-  ArmoniK::SDK::Common::TaskOptions session_task_options("appName", "appVersion", "appNamespace", "appService");
+  ArmoniK::SDK::Common::TaskOptions session_task_options("appName", "appVersion", "End2EndTest", "EchoService");
 
   // Create the properties
   ArmoniK::SDK::Common::Properties properties(config, session_task_options);
@@ -42,6 +56,7 @@ int main() {
 
   // Get the created session id
   std::cout << "Session : " << service.getSession() << std::endl;
+
   std::string args;
   args.resize(10);
   args[0] = 'A';
@@ -56,7 +71,10 @@ int main() {
   args[9] = -128;
 
   // Create the handler
-  auto handler = std::make_shared<PythonTestWorkerHandler>();
+  std::shared_ptr<ArmoniK::SDK::Client::IServiceInvocationHandler> handler(
+      (config.get("Worker__Type") == "PythonTestWorker")
+          ? static_cast<ArmoniK::SDK::Client::IServiceInvocationHandler *>(new PythonTestWorkerHandler)
+          : static_cast<ArmoniK::SDK::Client::IServiceInvocationHandler *>(new EchoServiceHandler));
 
   // Submit a task
   auto tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("TestMethod", args)}, handler);

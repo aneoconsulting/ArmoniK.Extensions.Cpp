@@ -1,7 +1,9 @@
+#include "AdditionService.h"
+#include "EchoService.h"
 #include "ServiceBase.h"
 #include <armonik/sdk/worker/ArmoniKSDKInterface.h>
 #include <cstring>
-#include <string>
+#include <iostream>
 
 /**
  * @brief
@@ -14,8 +16,13 @@ __attribute__((weak))
 #endif
 void *
 armonik_create_service(const char *service_namespace, const char *service_name) {
-  // TODO Create service
-  return nullptr;
+  std::cout << "Creating service < " << service_namespace << "::" << service_name << " >" << std::endl;
+  if (std::strcmp(service_name, "AdditionService") == 0) {
+    return new End2EndTest::AdditionService();
+  } else if (std::strcmp(service_name, "EchoService") == 0) {
+    return new End2EndTest::EchoService();
+  }
+  throw std::runtime_error(std::string("Unknown service <") + service_namespace + "::" + service_name + ">");
 }
 
 /**
@@ -78,7 +85,7 @@ armonik_call(void *armonik_context, void *service_context, void *session_context
              const char *input, size_t input_size, armonik_callback_t callback) {
   try {
     auto output = static_cast<ServiceBase *>(service_context)
-                      ->call(std::string(function_name), std::string_view(input, input_size));
+                      ->call(session_context, std::string(function_name), std::string_view(input, input_size));
     callback(armonik_context, ARMONIK_STATUS_OK, output.data(), output.size());
     return ARMONIK_STATUS_OK;
   } catch (const std::exception &e) {
