@@ -8,15 +8,12 @@ RUN apk update && apk add --no-cache \
     gcc \
     g++ \
     build-base \
-    autoconf \
-    automake \
     libtool \
     curl \
     c-ares \
     c-ares-dev \
     make \
     cmake \
-    unzip \
     linux-headers \
 	grpc \
 	grpc-dev \
@@ -30,21 +27,36 @@ ENV PATH="/app/install/bin:$PATH"
 # Display the updated PATH environment variable
 RUN echo $PATH
 
+# Get and install ArmoniK api into the image
+WORKDIR /tmp
+RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
+    cd ArmoniK.Api/packages/cpp && \
+    git checkout 2af44021885a1a5058f2180a5d021128c558b0e0 && \
+    mkdir -p /app/proto && \
+    mkdir -p /armonik/api && \
+    cp -r ../../Protos/V1/* /app/proto && \
+    mkdir -p build/ && \
+    cd build/ && \
+    cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" "-DBUILD_TEST=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_WORKER=ON" .. && \
+    make -j $(nproc) install 
+    
+
+
 # Copy the application source files into the image
 WORKDIR /app/source
-COPY ./packages/cpp/ArmoniK.Api.Common ./ArmoniK.Api.Common
-COPY ./packages/cpp/ArmoniK.Api.Worker ./ArmoniK.Api.Worker
-COPY ./packages/cpp/ArmoniK.Api.Worker.Tests ./ArmoniK.Api.Worker.Tests
-COPY ./packages/cpp/CMakeLists.txt ./
-
-# Copy the Protocol Buffer definition files into the image
-WORKDIR /app/proto
-COPY ./Protos/V1/ /app/proto
+COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
+COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
+COPY ./ArmoniK.SDK.Interface.DLL ./ArmoniK.SDK.Interface.DLL
+COPY ./ArmoniK.SDK.DLLWorker ./ArmoniK.SDK.DLLWorker
+COPY ./CMakeLists.txt ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/builder
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_TEST=ON" "-DBUILD_CLIENT=OFF" "-DBUILD_WORKER=ON" /app/source/
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_END2END=OFF" /app/source/
 RUN make -j $(nproc) install
+
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_END2END=ON" /app/source/
+RUN make -j $(nproc)
 
 # Start with the latest Alpine base image for the final stage
 FROM alpine
@@ -55,18 +67,15 @@ RUN apk update && apk add --no-cache \
     gcc \
     g++ \
     build-base \
-    autoconf \
-    automake \
     libtool \
     curl \
     c-ares \
     c-ares-dev \
     make \
     cmake \
-    unzip \
     linux-headers \
 	libprotobuf \
-	grpc \ 
+	grpc \
 	grpc-cpp
 	
 # Create a non-root user and group for running the application
@@ -83,8 +92,4 @@ ENV PATH="/app/install/bin:$PATH"
 
 # Set the entrypoint for the application's test executable
 # This is the command that will be executed when the container is run
-ENTRYPOINT ["/app/install/bin/ArmoniK.Api.Worker.Tests"]
-
-# Uncomment the line below if you want to run a shell instead of the application's test executable
-# This can be useful for debugging purposes
-# ENTRYPOINT ["bash"]
+ENTRYPOINT ["/app/builder/ArmoniK.SDK.DLLWorker"]
