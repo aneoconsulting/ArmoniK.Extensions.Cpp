@@ -92,5 +92,4 @@ ENV PATH="/app/install/bin:$PATH"
 
 # Set the entrypoint for the application's test executable
 # This is the command that will be executed when the container is run
-ENTRYPOINT ["/app/install/bin/ArmoniK.SDK.DLLWorker"]
-
+ENTRYPOINT ["/app/builder/ArmoniK.SDK.DLLWorker"]
