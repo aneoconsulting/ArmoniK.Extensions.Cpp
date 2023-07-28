@@ -55,5 +55,13 @@ struct ArmoniKFunctionPointers {
                           armonik_call_t call)
       : create_service(createService), destroy_service(destroyService), enter_session(enterSession),
         leave_session(leaveSession), call(call) {}
+
+  void clear() {
+    create_service = nullptr;
+    destroy_service = nullptr;
+    enter_session = nullptr;
+    leave_session = nullptr;
+    call = nullptr;
+  }
 };
 } // namespace SDK_WORKER_NAMESPACE

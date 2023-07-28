@@ -51,10 +51,10 @@ COPY ./CMakeLists.txt ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/builder/sdk
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DLLWORKER=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install
 
 WORKDIR /app/builder/worker
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DLLWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install
 
 # Start with the latest Alpine base image for the final stage
 FROM alpine AS runner

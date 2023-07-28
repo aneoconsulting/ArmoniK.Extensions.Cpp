@@ -4,7 +4,7 @@
 #include "ServiceBase.h"
 #include <iostream>
 #include <stdexcept>
-namespace End2EndTest {
+namespace SDK_END2END_NAMESPACE {
 
 class AdditionService : ServiceBase {
 public:
@@ -17,7 +17,7 @@ public:
     std::cout << "AdditionService leave session" << *sessionId << std::endl;
     delete sessionId;
   }
-  std::string call(void *session_ctx, const std::string &name, const std::string &input) override {
+  std::string call(void *session_ctx, const std::string &name, const std::string& input) override {
     std::string output;
     output.resize(sizeof(int32_t));
     if (name == "add_ints") {
@@ -37,6 +37,6 @@ public:
   float add_floats(float a, float b) { return a + b; }
 };
 
-} // namespace End2EndTest
+} // namespace SDK_END2END_NAMESPACE
 
 #endif // ARMONIK_SDK_ADDITIONSERVICE_H

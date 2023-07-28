@@ -3,11 +3,11 @@
 
 #include "ServiceBase.h"
 #include <iostream>
-namespace End2EndTest {
+namespace SDK_END2END_NAMESPACE {
 
 class EchoService : ServiceBase {
 public:
-  std::string call(void *session_ctx, const std::string &name, const std::string &input) override {
+  std::string call(void *session_ctx, const std::string &name, const std::string& input) override {
     std::cout << "EchoService method : " << name << std::endl;
     return input;
   }
@@ -26,6 +26,6 @@ public:
   EchoService() : ServiceBase() { std::cout << "Created EchoService" << std::endl; }
 };
 
-} // namespace End2EndTest
+} // namespace SDK_END2END_NAMESPACE
 
 #endif // ARMONIK_SDK_ECHOSERVICE_H

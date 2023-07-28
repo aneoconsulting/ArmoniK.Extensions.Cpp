@@ -1,7 +1,7 @@
 #include "AdditionService.h"
 #include "EchoService.h"
 #include "ServiceBase.h"
-#include <armonik/sdk/worker/ArmoniKSDKInterface.h>
+#include <ArmoniKSDKInterface.h>
 #include <cstring>
 #include <iostream>
 
@@ -18,9 +18,9 @@ void *
 armonik_create_service(const char *service_namespace, const char *service_name) {
   std::cout << "Creating service < " << service_namespace << "::" << service_name << " >" << std::endl;
   if (std::strcmp(service_name, "AdditionService") == 0) {
-    return new End2EndTest::AdditionService();
+    return new SDK_END2END_NAMESPACE::AdditionService();
   } else if (std::strcmp(service_name, "EchoService") == 0) {
-    return new End2EndTest::EchoService();
+    return new SDK_END2END_NAMESPACE::EchoService();
   }
 
   std::cout << "Unknown service < " << service_namespace << "::" << service_name << " >" << std::endl;

@@ -3,8 +3,9 @@
 #include <TaskPayload.h>
 #include <armonik/sdk/worker/ApplicationManager.h>
 
-SDK_DLLWORKER_NAMESPACE::SDKWorker::SDKWorker(std::unique_ptr<armonik::api::grpc::v1::agent::Agent::Stub> agent)
-    : ArmoniKWorker(std::move(agent)), manager() {}
+SDK_DLLWORKER_NAMESPACE::SDKWorker::SDKWorker(std::unique_ptr<armonik::api::grpc::v1::agent::Agent::Stub> agent,
+                                              const ArmoniK::Sdk::Common::IConfiguration &config)
+    : ArmoniKWorker(std::move(agent)), manager(config) {}
 
 ArmoniK::Api::Worker::ProcessStatus
 

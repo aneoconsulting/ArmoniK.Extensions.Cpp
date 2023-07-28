@@ -3,11 +3,15 @@
 #include "ServiceManager.h"
 #include <armonik/worker/Worker/TaskHandler.h>
 
+namespace ArmoniK::Sdk::Common {
+class IConfiguration;
+}
+
 namespace SDK_WORKER_NAMESPACE {
 class ApplicationManager {
 
 public:
-  ApplicationManager() : functionPointers(){};
+  explicit ApplicationManager(const ArmoniK::Sdk::Common::IConfiguration &config);
   ApplicationManager(const ApplicationManager &) = delete;
   void operator=(ApplicationManager const &) = delete;
 
@@ -21,6 +25,7 @@ private:
   ArmoniKFunctionPointers functionPointers;
   AppId currentId;
   std::unique_ptr<ServiceManager> service_manager;
-  // TODO Add dynamic DLL requisites
+  void *applicationHandle = nullptr;
+  std::string applicationsBasePath;
 };
 } // namespace SDK_WORKER_NAMESPACE

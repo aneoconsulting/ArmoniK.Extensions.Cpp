@@ -1,18 +1,48 @@
 #include "ApplicationManager.h"
 #include "ArmoniKSDKException.h"
+#include "IConfiguration.h"
+#include <dlfcn.h>
+#include <sstream>
 SDK_WORKER_NAMESPACE::ApplicationManager &SDK_WORKER_NAMESPACE::ApplicationManager::UseApplication(const AppId &appId) {
   if (appId != currentId) {
     if (service_manager) {
       service_manager.reset();
     }
   }
-  if (!currentId.empty()) {
-    // TODO Destroy application
+  if (!currentId.empty() && applicationHandle) {
+    currentId.application_version.clear();
+    currentId.application_name.clear();
+    functionPointers.clear();
+    dlclose(applicationHandle);
   }
-  // TODO Load application and get function pointers
+  std::string filename(std::string("/data/") + appId.application_name +
+                       (appId.application_version.empty() ? "" : "." + appId.application_version));
+  auto handle = dlopen(filename.c_str(), RTLD_LAZY);
+  if (handle == nullptr) {
+    throw ArmoniK::Sdk::Common::ArmoniKSDKException("Could not load application " + filename);
+  }
+
+  functionPointers = ArmoniKFunctionPointers((armonik_create_service_t)dlsym(handle, "armonik_create_service"),
+                                             (armonik_destroy_service_t)dlsym(handle, "armonik_destroy_service"),
+                                             (armonik_enter_session_t)dlsym(handle, "armonik_enter_session"),
+                                             (armonik_leave_session_t)dlsym(handle, "armonik_leave_session"),
+                                             (armonik_call_t)dlsym(handle, "armonik_call"));
+  if (!(functionPointers.enter_session && functionPointers.leave_session && functionPointers.create_service &&
+        functionPointers.destroy_service && functionPointers.call)) {
+    std::stringstream ss;
+    ss << "Loaded application " << filename << " doesn't implement all the required functions : ";
+    ss << "\n armonik_create_service : " << (functionPointers.create_service ? "Found" : "Not Found");
+    ss << "\n armonik_destroy_service : " << (functionPointers.destroy_service ? "Found" : "Not Found");
+    ss << "\n armonik_enter_session : " << (functionPointers.enter_session ? "Found" : "Not Found");
+    ss << "\n armonik_leave_session : " << (functionPointers.leave_session ? "Found" : "Not Found");
+    ss << "\n armonik_call : " << (functionPointers.call ? "Found" : "Not Found");
+    dlclose(handle);
+    throw ArmoniK::Sdk::Common::ArmoniKSDKException(ss.str());
+  }
   currentId = appId;
-  functionPointers = ArmoniKFunctionPointers(armonik_create_service, armonik_destroy_service, armonik_enter_session,
-                                             armonik_leave_session, armonik_call);
+  applicationHandle = handle;
+  std::cout << "Successfully loaded application " << appId.application_name << " ( " << appId.application_version
+            << " )" << std::endl;
   return *this;
 }
 SDK_WORKER_NAMESPACE::ApplicationManager &
@@ -35,4 +65,11 @@ SDK_WORKER_NAMESPACE::ApplicationManager::Execute(ArmoniK::Api::Worker::TaskHand
     throw ArmoniK::Sdk::Common::ArmoniKSDKException("Service is not initialized");
   }
   return service_manager->Execute(taskHandler, method_name, method_arguments);
+}
+SDK_WORKER_NAMESPACE::ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::IConfiguration &config)
+    : functionPointers() {
+  applicationsBasePath = config.get("Worker__ApplicationBasePath");
+  if (applicationsBasePath.empty()) {
+    applicationsBasePath = "/data";
+  }
 }

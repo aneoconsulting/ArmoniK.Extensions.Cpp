@@ -10,7 +10,7 @@ int main() {
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
   try {
-    ArmoniK::Api::Worker::WorkerServer::create<SDK_DLLWORKER_NAMESPACE::SDKWorker>(config)->run();
+    ArmoniK::Api::Worker::WorkerServer::create<SDK_DLLWORKER_NAMESPACE::SDKWorker>(config, config)->run();
   } catch (const std::exception &e) {
     std::cout << "Error in worker" << e.what() << std::endl;
   }
