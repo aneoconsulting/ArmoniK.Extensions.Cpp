@@ -95,6 +95,7 @@ jobs:
           repository: aneoconsulting/ArmoniK.Api
           path: ArmoniK.Api
           working-directory: ${{ github.workspace }}/ArmoniK.Api
+          ref: c64a5b8465cc2a4a0590b22cec215d8032dd2969
         
       - name: Build API C++
         run: |
