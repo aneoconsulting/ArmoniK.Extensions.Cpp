@@ -31,7 +31,7 @@ RUN echo $PATH
 WORKDIR /tmp
 RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cd ArmoniK.Api/packages/cpp && \
-    git checkout 994efba06a1cb00103dd655aa25f62ba90877ec5 && \
+    git checkout c64a5b8465cc2a4a0590b22cec215d8032dd2969 && \
     mkdir -p /app/proto && \
     mkdir -p /armonik/api && \
     cp -r ../../Protos/V1/* /app/proto && \
@@ -54,25 +54,14 @@ WORKDIR /app/builder/sdk
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install
 
 WORKDIR /app/builder/worker
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_END2END=ON" /app/source/
-RUN make -j $(nproc) && make -j $(nproc) install
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install
 
 # Start with the latest Alpine base image for the final stage
 FROM alpine AS runner
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
 RUN apk update && apk add --no-cache \
-    git \
-    gcc \
-    g++ \
-    build-base \
-    libtool \
-    curl \
     c-ares \
-    c-ares-dev \
-    make \
-    cmake \
-    linux-headers \
 	libprotobuf \
 	grpc \
 	grpc-cpp

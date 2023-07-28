@@ -30,7 +30,7 @@ struct ServiceId {
 
   ServiceId() = default;
 
-  ServiceId(AppId appId, std::string service_name, std::string service_namespace)
+  ServiceId(AppId appId, std::string service_namespace, std::string service_name)
       : appId(std::move(appId)), service_name(std::move(service_name)),
         service_namespace(std::move(service_namespace)) {}
 

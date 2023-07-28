@@ -22,6 +22,8 @@ armonik_create_service(const char *service_namespace, const char *service_name) 
   } else if (std::strcmp(service_name, "EchoService") == 0) {
     return new End2EndTest::EchoService();
   }
+
+  std::cout << "Unknown service < " << service_namespace << "::" << service_name << " >" << std::endl;
   throw std::runtime_error(std::string("Unknown service <") + service_namespace + "::" + service_name + ">");
 }
 
