@@ -74,6 +74,7 @@ USER armonikuser
 # Copy the application files, libraries, and binaries from the builder image to the final image
 COPY --from=builder /app/install/bin /app/install/bin
 COPY --from=builder /app/install/lib /app/install/lib
+COPY --from=builder /app/install/include/armonik/sdk/worker/ArmoniKSDKInterface.h /app/install/ArmoniKSDKInterface.h
 
 # Update the PATH environment variable to include the application libraries and binaries
 ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"

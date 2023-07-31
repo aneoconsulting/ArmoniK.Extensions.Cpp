@@ -4,10 +4,11 @@
 #include <dlfcn.h>
 #include <sstream>
 SDK_WORKER_NAMESPACE::ApplicationManager &SDK_WORKER_NAMESPACE::ApplicationManager::UseApplication(const AppId &appId) {
-  if (appId != currentId) {
-    if (service_manager) {
-      service_manager.reset();
-    }
+  if (appId == currentId) {
+    return *this;
+  }
+  if (service_manager) {
+    service_manager.reset();
   }
   if (!currentId.empty() && applicationHandle) {
     currentId.application_version.clear();
@@ -15,7 +16,7 @@ SDK_WORKER_NAMESPACE::ApplicationManager &SDK_WORKER_NAMESPACE::ApplicationManag
     functionPointers.clear();
     dlclose(applicationHandle);
   }
-  std::string filename(std::string("/data/") + appId.application_name +
+  std::string filename(applicationsBasePath + '/' + appId.application_name +
                        (appId.application_version.empty() ? "" : "." + appId.application_version));
   auto handle = dlopen(filename.c_str(), RTLD_LAZY);
   if (handle == nullptr) {
@@ -47,7 +48,10 @@ SDK_WORKER_NAMESPACE::ApplicationManager &SDK_WORKER_NAMESPACE::ApplicationManag
 }
 SDK_WORKER_NAMESPACE::ApplicationManager &
 SDK_WORKER_NAMESPACE::ApplicationManager::UseService(const ServiceId &serviceId) {
-  service_manager = std::make_unique<ServiceManager>(functionPointers, serviceId);
+  if (!service_manager || !service_manager->matches(serviceId)) {
+    service_manager = std::make_unique<ServiceManager>(functionPointers, serviceId);
+  }
+
   return *this;
 }
 SDK_WORKER_NAMESPACE::ApplicationManager &

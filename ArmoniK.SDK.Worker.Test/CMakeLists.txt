@@ -16,7 +16,9 @@ SET(WORKER_HEADER_DIR "${WORKER_FILES}/include")
 FILE(GLOB_RECURSE SRC_WORKER_FILES ${WORKER_SOURCE_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_WORKER_FILES ${WORKER_HEADER_DIR}/*.h)
 
-find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
+find_file(ARMONIK_SDK_HEADER ArmoniKSDKInterface.h PATHS /app/install PATH_SUFFIXES armonik/sdk/worker include/armonik/sdk/worker REQUIRED NO_CACHE)
+message(STATUS "Found ArmonikSDKInterface.h at location ${ARMONIK_SDK_HEADER}")
+get_filename_component(ARMONIK_SDK_HEADER_DIR ${ARMONIK_SDK_HEADER} DIRECTORY)
 
 add_library(${PROJECT_NAME} SHARED ${SRC_WORKER_FILES} ${HEADER_WORKER_FILES})
 
@@ -25,6 +27,7 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_END2END_NAMESPACE=${NAMESP
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${WORKER_HEADER_DIR}>"
+        "$<BUILD_INTERFACE:${ARMONIK_SDK_HEADER_DIR}>"
         )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})

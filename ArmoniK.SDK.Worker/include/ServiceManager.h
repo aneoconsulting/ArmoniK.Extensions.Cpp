@@ -14,6 +14,8 @@ public:
   ArmoniK::Api::Worker::ProcessStatus Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
                                               const std::string &method_name, const std::string &method_arguments);
 
+  bool matches(const ServiceId &service_id);
+
 private:
   ServiceId serviceId;
   std::string current_session;

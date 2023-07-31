@@ -60,3 +60,6 @@ void SDK_WORKER_NAMESPACE::ServiceManager::UploadResult(void *opaque_context, ar
   context->taskHandler.send_result(context->taskHandler.getExpectedResults()[0], std::string_view(data, data_size));
   context->output.set_ok();
 }
+bool SDK_WORKER_NAMESPACE::ServiceManager::matches(const ArmoniK::Sdk::Worker::ServiceId &service_id) {
+  return service_id == serviceId;
+}
