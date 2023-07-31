@@ -13,7 +13,7 @@ public:
    * @brief Creates a channel pool from the given properties
    * @param properties Properties
    */
-  explicit ChannelPool(ArmoniK::SDK::Common::Properties properties);
+  explicit ChannelPool(ArmoniK::Sdk::Common::Properties properties);
 
   /**
    * @brief Gets or creates a channel from the pool
@@ -22,7 +22,7 @@ public:
   std::shared_ptr<grpc::Channel> GetChannel();
 
 private:
-  ArmoniK::SDK::Common::Properties properties_;
+  ArmoniK::Sdk::Common::Properties properties_;
 };
 
 #endif // ARMONIK_SDK_CHANNELPOOL_H

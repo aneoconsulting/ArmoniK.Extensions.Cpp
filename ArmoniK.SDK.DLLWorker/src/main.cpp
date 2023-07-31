@@ -6,7 +6,7 @@
 int main() {
   std::cout << "Starting ArmoniK SDK worker" << std::endl;
 
-  ArmoniK::SDK::Common::IConfiguration config;
+  ArmoniK::Sdk::Common::IConfiguration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
   try {

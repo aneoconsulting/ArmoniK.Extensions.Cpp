@@ -7,9 +7,9 @@ namespace End2EndTest {
 
 class EchoService : ServiceBase {
 public:
-  std::string call(void *session_ctx, const std::string &name, std::string_view input) override {
+  std::string call(void *session_ctx, const std::string &name, const std::string &input) override {
     std::cout << "EchoService method : " << name << std::endl;
-    return std::string(input);
+    return input;
   }
 
   void *enter_session(const char *session_id) override {

@@ -15,13 +15,13 @@ RUN apk update && apk add --no-cache \
     make \
     cmake \
     linux-headers \
-	grpc \
-	grpc-dev \
-	protobuf \
-	protobuf-dev
+    grpc \
+    grpc-dev \
+    protobuf \
+    protobuf-dev
 
 # Update the PATH environment variable to include the gRPC libraries and binaries
-ENV PATH="/app/install/lib:$PATH"
+ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
 ENV PATH="/app/install/bin:$PATH"
 
 # Display the updated PATH environment variable
@@ -62,9 +62,9 @@ FROM alpine AS runner
 # These include tools and libraries for building and compiling the source code
 RUN apk update && apk add --no-cache \
     c-ares \
-	libprotobuf \
-	grpc \
-	grpc-cpp
+    libprotobuf \
+    grpc \
+    grpc-cpp
 	
 # Create a non-root user and group for running the application
 # This is a security best practice to avoid running applications as the root user
@@ -76,7 +76,7 @@ COPY --from=builder /app/install/bin /app/install/bin
 COPY --from=builder /app/install/lib /app/install/lib
 
 # Update the PATH environment variable to include the application libraries and binaries
-ENV PATH="/app/install/lib:$PATH"
+ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
 ENV PATH="/app/install/bin:$PATH"
 
 # Set the entrypoint for the application's test executable

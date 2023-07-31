@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.Client)
-set(NAMESPACE ArmoniK::SDK::Client)
+set(NAMESPACE ArmoniK::Sdk::Client)
 project(${PROJECT_NAME})
 set(ARMONIK_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/armonik/sdk/client)
 set(PROJECT_BUILD_DIR ${BUILD_DIR}/${PROJECT_NAME})

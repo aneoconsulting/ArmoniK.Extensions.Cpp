@@ -27,19 +27,20 @@ armonik_create_service(const char *service_namespace, const char *service_name) 
   throw std::runtime_error(std::string("Unknown service <") + service_namespace + "::" + service_name + ">");
 }
 
+extern "C" void armonik_destroy_service_default(void *p) {
+  if (p) {
+    delete static_cast<ServiceBase *>(p);
+  }
+}
+
 /**
  * @brief
  *
  * @param service_context
  */
 #ifdef __linux__
-__attribute__((weak))
+__attribute__((weak, alias("armonik_destroy_service_default"))) void armonik_destroy_service(void *p);
 #endif
-void armonik_destroy_service(void* p) {
-  if (p) {
-    delete static_cast<ServiceBase *>(p);
-  }
-}
 
 /**
  * @brief
@@ -87,7 +88,7 @@ armonik_call(void *armonik_context, void *service_context, void *session_context
              const char *input, size_t input_size, armonik_callback_t callback) {
   try {
     auto output = static_cast<ServiceBase *>(service_context)
-                      ->call(session_context, std::string(function_name), std::string_view(input, input_size));
+                      ->call(session_context, std::string(function_name), std::string(input, input_size));
     callback(armonik_context, ARMONIK_STATUS_OK, output.data(), output.size());
     return ARMONIK_STATUS_OK;
   } catch (const std::exception &e) {

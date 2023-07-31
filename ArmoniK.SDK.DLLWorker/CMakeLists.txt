@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.DLLWorker)
-set(NAMESPACE ArmoniK::SDK::DLLWorker)
+set(NAMESPACE ArmoniK::Sdk::DLLWorker)
 set(version 0.1.0)
 
 project(${PROJECT_NAME})

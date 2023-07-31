@@ -3,15 +3,15 @@
 #include <string>
 
 namespace SDK_CLIENT_NAMESPACE {
-SessionService::SessionService(const ArmoniK::SDK::Common::Properties &properties)
+SessionService::SessionService(const ArmoniK::Sdk::Common::Properties &properties)
     : impl(new Internal::SessionServiceImpl(properties)) {}
 
 std::string_view SessionService::getSession() const { return impl->getSession(); }
 
 std::vector<std::string>
-ArmoniK::SDK::Client::SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
+ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
                                              const std::shared_ptr<IServiceInvocationHandler> &handler,
-                                             const ArmoniK::SDK::Common::TaskOptions &task_options) {
+                                             const ArmoniK::Sdk::Common::TaskOptions &task_options) {
   return impl->Submit(requests, handler, task_options);
 }
 std::vector<std::string>

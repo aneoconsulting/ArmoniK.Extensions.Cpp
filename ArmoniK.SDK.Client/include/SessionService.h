@@ -8,11 +8,11 @@
 #include <string_view>
 #include <vector>
 
-namespace ArmoniK::SDK::Common {
+namespace ArmoniK::Sdk::Common {
 class TaskOptions;
 class Properties;
 class TaskPayload;
-} // namespace ArmoniK::SDK::Common
+} // namespace ArmoniK::Sdk::Common
 
 namespace SDK_CLIENT_NAMESPACE::Internal {
 class SessionServiceImpl;
@@ -34,7 +34,7 @@ public:
    * @brief Creates a SessionService from the given Properties
    * @param properties Session properties
    */
-  explicit SessionService(const ArmoniK::SDK::Common::Properties &properties);
+  explicit SessionService(const ArmoniK::Sdk::Common::Properties &properties);
 
   /**
    * @brief Submits the given list of task requests
@@ -45,7 +45,7 @@ public:
    */
   std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &requests,
                                   const std::shared_ptr<IServiceInvocationHandler> &handler,
-                                  const ArmoniK::SDK::Common::TaskOptions &task_options);
+                                  const ArmoniK::Sdk::Common::TaskOptions &task_options);
 
   /**
    * @brief Submits the given list of task requests using the session's task options

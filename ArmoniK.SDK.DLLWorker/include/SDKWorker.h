@@ -11,7 +11,7 @@ public:
   Api::Worker::ProcessStatus Execute(Api::Worker::TaskHandler &taskHandler) override;
 
 private:
-  ArmoniK::SDK::Worker::ApplicationManager manager;
+  ArmoniK::Sdk::Worker::ApplicationManager manager;
 };
 } // namespace SDK_DLLWORKER_NAMESPACE
 

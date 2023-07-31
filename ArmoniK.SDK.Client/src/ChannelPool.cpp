@@ -16,4 +16,4 @@ std::shared_ptr<grpc::Channel> ChannelPool::GetChannel() {
   return grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
 }
 
-ChannelPool::ChannelPool(ArmoniK::SDK::Common::Properties properties) : properties_(std::move(properties)) {}
+ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties) : properties_(std::move(properties)) {}

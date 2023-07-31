@@ -1,6 +1,6 @@
 #include "Properties.h"
 #include <utility>
 
-ArmoniK::SDK::Common::Properties::Properties(const IConfiguration &configuration,
-                                             ArmoniK::SDK::Common::TaskOptions taskOptions)
+ArmoniK::Sdk::Common::Properties::Properties(const IConfiguration &configuration,
+                                             ArmoniK::Sdk::Common::TaskOptions taskOptions)
     : configuration(configuration), taskOptions(std::move(taskOptions)) {}

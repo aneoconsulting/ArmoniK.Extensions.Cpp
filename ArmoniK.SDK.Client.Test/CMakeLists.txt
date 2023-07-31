@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.Client.Test)
-set(NAMESPACE ArmoniK::SDK::Client::Test)
+set(NAMESPACE ArmoniK::Sdk::Client::Test)
 project(${PROJECT_NAME})
 
 set(CMAKE_CXX_STANDARD 17)

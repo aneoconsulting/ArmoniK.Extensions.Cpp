@@ -17,7 +17,7 @@ public:
     std::cout << "AdditionService leave session" << *sessionId << std::endl;
     delete sessionId;
   }
-  std::string call(void *session_ctx, const std::string &name, std::string_view input) override {
+  std::string call(void *session_ctx, const std::string &name, const std::string &input) override {
     std::string output;
     output.resize(sizeof(int32_t));
     if (name == "add_ints") {

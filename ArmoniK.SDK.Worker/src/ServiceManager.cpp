@@ -37,7 +37,7 @@ SDK_WORKER_NAMESPACE::ServiceManager::Execute(ArmoniK::Api::Worker::TaskHandler 
                                               const std::string &method_name, const std::string &method_arguments) {
   ArmonikContext callContext(taskHandler);
   if (current_session.empty()) {
-    throw ArmoniK::SDK::Common::ArmoniKSDKException("Session is not initialized");
+    throw ArmoniK::Sdk::Common::ArmoniKSDKException("Session is not initialized");
   }
   auto status = functionPointers.call(&callContext, service_context, session_context, method_name.c_str(),
                                       method_arguments.data(), method_arguments.size(), ServiceManager::UploadResult);
