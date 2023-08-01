@@ -10,15 +10,15 @@ std::string_view SessionService::getSession() const { return impl->getSession();
 
 std::vector<std::string>
 ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
-                                             const std::shared_ptr<IServiceInvocationHandler> &handler,
+                                             std::shared_ptr<IServiceInvocationHandler> handler,
                                              const ArmoniK::Sdk::Common::TaskOptions &task_options) {
-  return impl->Submit(requests, handler, task_options);
+  return impl->Submit(requests, std::move(handler), task_options);
 }
 std::vector<std::string>
 
 SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
-                       const std::shared_ptr<IServiceInvocationHandler> &handler) {
-  return impl->Submit(requests, handler);
+                       std::shared_ptr<IServiceInvocationHandler> handler) {
+  return impl->Submit(requests, std::move(handler));
 }
 void SessionService::WaitResults(std::set<std::string> task_ids, WaitBehavior waitBehavior,
                                  const WaitOptions &options) {

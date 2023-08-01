@@ -90,7 +90,7 @@ public:
    * @return List of task ids
    */
   std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &task_requests,
-                                  const std::shared_ptr<IServiceInvocationHandler> &handler);
+                                  std::shared_ptr<IServiceInvocationHandler> handler);
 
   /**
    * @brief Submits the given list of task requests
@@ -100,7 +100,7 @@ public:
    * @return List of task ids
    */
   std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &task_requests,
-                                  const std::shared_ptr<IServiceInvocationHandler> &handler,
+                                  std::shared_ptr<IServiceInvocationHandler> handler,
                                   const Common::TaskOptions &task_options);
 
   /**

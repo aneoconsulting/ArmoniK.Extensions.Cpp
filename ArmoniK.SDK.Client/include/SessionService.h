@@ -44,7 +44,7 @@ public:
    * @return List of task ids
    */
   std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &requests,
-                                  const std::shared_ptr<IServiceInvocationHandler> &handler,
+                                  std::shared_ptr<IServiceInvocationHandler> handler,
                                   const ArmoniK::Sdk::Common::TaskOptions &task_options);
 
   /**
@@ -54,7 +54,7 @@ public:
    * @return List of task ids
    */
   std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &requests,
-                                  const std::shared_ptr<IServiceInvocationHandler> &handler);
+                                  std::shared_ptr<IServiceInvocationHandler> handler);
 
   /**
    * @brief Waits for the completion of the given tasks

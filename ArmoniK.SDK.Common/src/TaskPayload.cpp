@@ -90,6 +90,6 @@ TaskPayload TaskPayload::Deserialize(std::string_view serialized) {
     data_dependencies.emplace_back(advance_sv(serialized, fieldSize));
   }
 
-  return {method_name, arguments, data_dependencies};
+  return {std::move(method_name), std::move(arguments), std::move(data_dependencies)};
 }
 } // namespace SDK_COMMON_NAMESPACE

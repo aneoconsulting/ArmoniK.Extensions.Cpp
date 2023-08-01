@@ -29,10 +29,11 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
     armonik::api::grpc::v1::results::CreateResultsMetaDataRequest_ResultCreate result_create;
     // Random name
     *result_create.mutable_name() = ArmoniK::Api::Common::utils::GuuId::generate_uuid();
-    results_create.push_back(result_create);
+    results_create.push_back(std::move(result_create));
   }
 
-  results_request.mutable_results()->Add(results_create.begin(), results_create.end());
+  results_request.mutable_results()->Add(std::make_move_iterator(results_create.begin()),
+                                         std::make_move_iterator(results_create.end()));
   *results_request.mutable_session_id() = session;
 
   // Creates the results
@@ -49,7 +50,7 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
   result_ids.reserve(num);
   // Get the result ids from the response
   std::transform(results_response.results().begin(), results_response.results().end(), std::back_inserter(result_ids),
-                 [](auto res) { return res.result_id(); });
+                 [](auto res) { return std::move(res.result_id()); });
   return result_ids;
 }
 
@@ -57,7 +58,7 @@ std::string_view SessionServiceImpl::getSession() const { return session; }
 
 [[maybe_unused]] std::vector<std::string>
 SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
-                           const std::shared_ptr<IServiceInvocationHandler> &handler,
+                           std::shared_ptr<IServiceInvocationHandler> handler,
                            const Common::TaskOptions &task_options) {
   std::vector<armonik::api::grpc::v1::TaskRequest> definitions;
   definitions.reserve(task_requests.size());
@@ -70,37 +71,29 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
     // Serialize the request in an ArmoniK format
     *request.mutable_payload() = task_requests[i].Serialize();
     // One result per task
-    request.add_expected_output_keys(result_ids[i]);
+    request.add_expected_output_keys(std::move(result_ids[i]));
     // Set the data dependencies
     request.mutable_data_dependencies()->Add(task_requests[i].data_dependencies.begin(),
                                              task_requests[i].data_dependencies.end());
 
-    definitions.push_back(request);
+    definitions.push_back(std::move(request));
   }
   // Submit the tasks
-  auto list =
+  auto reply =
       client->create_tasks_async(session, static_cast<armonik::api::grpc::v1::TaskOptions>(task_options), definitions)
-          .get()
-          .creation_status_list()
-          .creation_statuses();
+          .get();
+  auto &list = *reply.mutable_creation_status_list()->mutable_creation_statuses();
   std::vector<std::string> task_ids;
   task_ids.reserve(task_requests.size());
-
   {
     std::lock_guard lock(maps_mutex);
     for (auto &&t : list) {
       task_ids.push_back(t.task_info().task_id());
       taskId_resultId[t.task_info().task_id()] = t.task_info().expected_output_keys(0);
-      resultId_taskId[t.task_info().expected_output_keys(0)] = t.task_info().task_id();
-      result_handlers[t.task_info().expected_output_keys(0)] = handler;
+      resultId_taskId[t.task_info().expected_output_keys(0)] = std::move(*t.mutable_task_info()->mutable_task_id());
+      result_handlers[t.task_info().expected_output_keys(0)] = std::move(handler);
     }
   }
-
-  // Get the list of task ids
-  std::transform(list.begin(), list.end(), std::back_inserter(task_ids),
-                 [](const armonik::api::grpc::v1::submitter::CreateTaskReply_CreationStatus &status) {
-                   return status.task_info().task_id();
-                 });
   return task_ids;
 }
 
@@ -116,8 +109,8 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties)
 }
 
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
-                                                    const std::shared_ptr<IServiceInvocationHandler> &handler) {
-  return std::move(Submit(task_requests, handler, taskOptions));
+                                                    std::shared_ptr<IServiceInvocationHandler> handler) {
+  return Submit(task_requests, std::move(handler), taskOptions);
 }
 
 void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavior behavior,
