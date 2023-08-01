@@ -1,16 +1,16 @@
-#ifndef ARMONIK_SDK_ICONFIGURATION_H
-#define ARMONIK_SDK_ICONFIGURATION_H
+#ifndef ARMONIK_SDK_CONFIGURATION_H
+#define ARMONIK_SDK_CONFIGURATION_H
 
 #include <map>
 #include <memory>
 #include <string>
 
 /**
- * @brief This file declares proxy objects for the IConfiguration objects
+ * @brief This file declares proxy objects for the Configuration objects
  */
 
 namespace ArmoniK::Api::Common::utils {
-class IConfiguration;
+class Configuration;
 }
 
 namespace ArmoniK::Api::Common::options {
@@ -19,15 +19,15 @@ class ControlPlane;
 } // namespace ArmoniK::Api::Common::options
 
 namespace SDK_COMMON_NAMESPACE {
-class IConfiguration;
+class Configuration;
 
 class ControlPlane {
 public:
   /**
    * @brief Constructs a ControlPlane object with the given configuration.
-   * @param configuration The IConfiguration object containing address information.
+   * @param configuration The Configuration object containing address information.
    */
-  ControlPlane(const IConfiguration &config);
+  ControlPlane(const Configuration &config);
 
   /**
    * @brief ArmoniK control plane endpoint
@@ -73,9 +73,9 @@ class ComputePlane {
 public:
   /**
    * @brief Constructs a ComputePlane object with the given configuration.
-   * @param configuration The IConfiguration object containing address information.
+   * @param configuration The Configuration object containing address information.
    */
-  ComputePlane(const IConfiguration &configuration);
+  ComputePlane(const Configuration &configuration);
 
   /**
    * @brief Returns the server address.
@@ -105,17 +105,17 @@ private:
   std::shared_ptr<ArmoniK::Api::Common::options::ComputePlane> impl;
 };
 
-class IConfiguration {
+class Configuration {
 public:
   /**
    * @brief Default constructor.
    */
-  IConfiguration();
+  Configuration();
 
   /**
    * @brief Default virtual destructor.
    */
-  virtual ~IConfiguration();
+  virtual ~Configuration();
 
   /**
    * @brief Get the value associated with the given key.
@@ -132,10 +132,10 @@ public:
   void set(const std::string &string, const std::string &value);
 
   /**
-   * @brief Set the values from another IConfiguration object.
-   * @param other IConfiguration object to copy values from.
+   * @brief Set the values from another Configuration object.
+   * @param other Configuration object to copy values from.
    */
-  void set(const IConfiguration &other);
+  void set(const Configuration &other);
 
   /**
    * @brief List defined values of this configuration.
@@ -146,15 +146,15 @@ public:
   /**
    * @brief Add JSON configuration from a file.
    * @param file_path Path to the JSON file.
-   * @return Reference to the current IConfiguration object.
+   * @return Reference to the current Configuration object.
    */
-  IConfiguration &add_json_configuration(std::string_view file_path);
+  Configuration &add_json_configuration(std::string_view file_path);
 
   /**
    * @brief Add environment variable configuration.
-   * @return Reference to the current IConfiguration object.
+   * @return Reference to the current Configuration object.
    */
-  IConfiguration &add_env_configuration();
+  Configuration &add_env_configuration();
 
   /**
    * @brief Get the current ComputePlane configuration.
@@ -168,13 +168,13 @@ public:
    */
   [[nodiscard]] ControlPlane get_control_plane() const;
 
-  operator ArmoniK::Api::Common::utils::IConfiguration();
+  explicit operator ArmoniK::Api::Common::utils::Configuration();
 
 private:
-  std::shared_ptr<ArmoniK::Api::Common::utils::IConfiguration> impl;
+  std::shared_ptr<ArmoniK::Api::Common::utils::Configuration> impl;
   friend class ComputePlane;
   friend class ControlPlane;
 };
 } // namespace SDK_COMMON_NAMESPACE
 
-#endif // ARMONIK_SDK_ICONFIGURATION_H
+#endif // ARMONIK_SDK_CONFIGURATION_H

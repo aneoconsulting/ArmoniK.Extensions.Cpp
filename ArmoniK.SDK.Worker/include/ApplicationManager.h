@@ -4,14 +4,14 @@
 #include <armonik/worker/Worker/TaskHandler.h>
 
 namespace ArmoniK::Sdk::Common {
-class IConfiguration;
+class Configuration;
 }
 
 namespace SDK_WORKER_NAMESPACE {
 class ApplicationManager {
 
 public:
-  explicit ApplicationManager(const ArmoniK::Sdk::Common::IConfiguration &config);
+  explicit ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config);
   ApplicationManager(const ApplicationManager &) = delete;
   void operator=(ApplicationManager const &) = delete;
 

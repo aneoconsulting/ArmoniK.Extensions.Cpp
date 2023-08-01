@@ -1,6 +1,6 @@
 #include "ApplicationManager.h"
 #include "ArmoniKSDKException.h"
-#include "IConfiguration.h"
+#include "Configuration.h"
 #include <dlfcn.h>
 #include <sstream>
 SDK_WORKER_NAMESPACE::ApplicationManager &SDK_WORKER_NAMESPACE::ApplicationManager::UseApplication(const AppId &appId) {
@@ -70,7 +70,7 @@ SDK_WORKER_NAMESPACE::ApplicationManager::Execute(ArmoniK::Api::Worker::TaskHand
   }
   return service_manager->Execute(taskHandler, method_name, method_arguments);
 }
-SDK_WORKER_NAMESPACE::ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::IConfiguration &config)
+SDK_WORKER_NAMESPACE::ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config)
     : functionPointers() {
   applicationsBasePath = config.get("Worker__ApplicationBasePath");
   if (applicationsBasePath.empty()) {
