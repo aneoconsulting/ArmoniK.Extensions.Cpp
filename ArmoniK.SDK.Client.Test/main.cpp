@@ -2,7 +2,7 @@
 
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <armonik/sdk/client/SessionService.h>
-#include <armonik/sdk/common/IConfiguration.h>
+#include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskPayload.h>
 
@@ -36,7 +36,7 @@ public:
 int main() {
   std::cout << "Hello, World!" << std::endl;
   // Load configuration from file and environment
-  ArmoniK::Sdk::Common::IConfiguration config;
+  ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
   std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
