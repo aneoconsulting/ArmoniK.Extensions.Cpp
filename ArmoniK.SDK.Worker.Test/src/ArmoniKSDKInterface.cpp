@@ -5,13 +5,15 @@
 #include <cstring>
 #include <iostream>
 
+extern "C" {
+
 /**
  * @brief
  *
  * @param name
  * @return void*
  */
-extern "C" void *armonik_create_service_default(const char *service_namespace, const char *service_name) {
+void *armonik_create_service_default(const char *service_namespace, const char *service_name) {
   std::cout << "Creating service < " << service_namespace << "::" << service_name << " >" << std::endl;
   if (std::strcmp(service_name, "AdditionService") == 0) {
     return new SDK_END2END_NAMESPACE::AdditionService();
@@ -26,7 +28,7 @@ extern "C" void *armonik_create_service_default(const char *service_namespace, c
 __attribute__((weak, alias("armonik_create_service_default"))) void *
 armonik_create_service(const char *service_namespace, const char *service_name);
 
-extern "C" void armonik_destroy_service_default(void *p) {
+void armonik_destroy_service_default(void *p) {
   if (p) {
     delete static_cast<ServiceBase *>(p);
   }
@@ -46,7 +48,7 @@ __attribute__((weak, alias("armonik_destroy_service_default"))) void armonik_des
  * @param session_id
  * @return void*
  */
-extern "C" void *armonik_enter_session_default(void *service_context, const char *session_id) {
+void *armonik_enter_session_default(void *service_context, const char *session_id) {
   return static_cast<ServiceBase *>(service_context)->enter_session(session_id);
 }
 
@@ -59,7 +61,7 @@ __attribute__((weak, alias("armonik_enter_session_default"))) void *armonik_ente
  * @param service_context
  * @param session_context
  */
-extern "C" void armonik_leave_session_default(void *service_context, void *session_context) {
+void armonik_leave_session_default(void *service_context, void *session_context) {
   static_cast<ServiceBase *>(service_context)->leave_session(session_context);
 }
 
@@ -76,9 +78,9 @@ __attribute__((weak, alias("armonik_leave_session_default"))) void armonik_leave
  * @param input_size
  * @param callback
  */
-extern "C" armonik_status_t armonik_call_default(void *armonik_context, void *service_context, void *session_context,
-                                                 const char *function_name, const char *input, size_t input_size,
-                                                 armonik_callback_t callback) {
+armonik_status_t armonik_call_default(void *armonik_context, void *service_context, void *session_context,
+                                      const char *function_name, const char *input, size_t input_size,
+                                      armonik_callback_t callback) {
   try {
     auto output = static_cast<ServiceBase *>(service_context)
                       ->call(session_context, std::string(function_name), std::string(input, input_size));
@@ -94,3 +96,4 @@ extern "C" armonik_status_t armonik_call_default(void *armonik_context, void *se
 __attribute__((weak, alias("armonik_call_default"))) armonik_status_t
 armonik_call(void *armonik_context, void *service_context, void *session_context, const char *function_name,
              const char *input, size_t input_size, armonik_callback_t callback);
+}

@@ -1,5 +1,5 @@
 #include "ApplicationManager.h"
-#include "ArmoniKSDKException.h"
+#include "ArmoniKSdkException.h"
 #include "Configuration.h"
 #include <dlfcn.h>
 #include <sstream>
@@ -8,9 +8,7 @@ SDK_WORKER_NAMESPACE::ApplicationManager::UseApplication(const AppId &appId) & {
   if (appId == currentId) {
     return *this;
   }
-  if (service_manager) {
-    service_manager.reset();
-  }
+  service_manager.reset();
   if (!currentId.empty() && applicationHandle) {
     currentId.application_version.clear();
     currentId.application_name.clear();
@@ -21,14 +19,14 @@ SDK_WORKER_NAMESPACE::ApplicationManager::UseApplication(const AppId &appId) & {
                        (appId.application_version.empty() ? "" : "." + appId.application_version));
   auto handle = dlopen(filename.c_str(), RTLD_LAZY);
   if (handle == nullptr) {
-    throw ArmoniK::Sdk::Common::ArmoniKSDKException("Could not load application " + filename);
+    throw ArmoniK::Sdk::Common::ArmoniKSdkException("Could not load application " + filename);
   }
 
-  functionPointers = ArmoniKFunctionPointers((armonik_create_service_t)dlsym(handle, "armonik_create_service"),
+  functionPointers = ArmoniKFunctionPointers{(armonik_create_service_t)dlsym(handle, "armonik_create_service"),
                                              (armonik_destroy_service_t)dlsym(handle, "armonik_destroy_service"),
                                              (armonik_enter_session_t)dlsym(handle, "armonik_enter_session"),
                                              (armonik_leave_session_t)dlsym(handle, "armonik_leave_session"),
-                                             (armonik_call_t)dlsym(handle, "armonik_call"));
+                                             (armonik_call_t)dlsym(handle, "armonik_call")};
   if (!(functionPointers.enter_session && functionPointers.leave_session && functionPointers.create_service &&
         functionPointers.destroy_service && functionPointers.call)) {
     std::stringstream ss;
@@ -39,7 +37,7 @@ SDK_WORKER_NAMESPACE::ApplicationManager::UseApplication(const AppId &appId) & {
     ss << "\n armonik_leave_session : " << (functionPointers.leave_session ? "Found" : "Not Found");
     ss << "\n armonik_call : " << (functionPointers.call ? "Found" : "Not Found");
     dlclose(handle);
-    throw ArmoniK::Sdk::Common::ArmoniKSDKException(ss.str());
+    throw ArmoniK::Sdk::Common::ArmoniKSdkException(ss.str());
   }
   currentId = appId;
   applicationHandle = handle;
@@ -58,7 +56,7 @@ SDK_WORKER_NAMESPACE::ApplicationManager::UseService(const ServiceId &serviceId)
 SDK_WORKER_NAMESPACE::ApplicationManager &
 SDK_WORKER_NAMESPACE::ApplicationManager::UseSession(const std::string &sessionId) & {
   if (!service_manager) {
-    throw ArmoniK::Sdk::Common::ArmoniKSDKException("Service is not initialized");
+    throw ArmoniK::Sdk::Common::ArmoniKSdkException("Service is not initialized");
   }
   service_manager->UseSession(sessionId);
   return *this;
@@ -68,7 +66,7 @@ SDK_WORKER_NAMESPACE::ApplicationManager::Execute(ArmoniK::Api::Worker::TaskHand
                                                   const std::string &method_name,
                                                   const std::string &method_arguments) & {
   if (!service_manager) {
-    throw ArmoniK::Sdk::Common::ArmoniKSDKException("Service is not initialized");
+    throw ArmoniK::Sdk::Common::ArmoniKSdkException("Service is not initialized");
   }
   return service_manager->Execute(taskHandler, method_name, method_arguments);
 }

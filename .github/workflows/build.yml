@@ -107,4 +107,4 @@ jobs:
 
       - name: Build SDK C++
         run: |
-          ./compile.sh
+          ./compile-end2end-worker.sh
