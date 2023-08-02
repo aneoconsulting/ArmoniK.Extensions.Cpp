@@ -185,6 +185,10 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           handler->HandleError(e, task_id);
         }
         done.emplace_back(task_id, rid);
+      } else if (status == armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND) {
+        std::cout << "Result " << rid << " not found" << std::endl;
+        ;
+        done.emplace_back("", rid);
       }
     }
 

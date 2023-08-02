@@ -31,7 +31,6 @@ RUN echo $PATH
 WORKDIR /tmp
 RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cd ArmoniK.Api/packages/cpp && \
-    git checkout 9b53e9ff265641b609818c7d7e34029f6125da73 && \
     mkdir -p /app/proto && \
     mkdir -p /armonik/api && \
     cp -r ../../Protos/V1/* /app/proto && \
