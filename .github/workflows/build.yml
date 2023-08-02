@@ -101,10 +101,10 @@ jobs:
         run: |
           mv ArmoniK.Api ../
           cd ../ArmoniK.Api/packages/cpp/tools/
-          ./compile-end2end-worker.sh
+          ./compile.sh
           cd ../install
           echo "ARMONIK_API_DIR =$(pwd)" >> $GITHUB_ENV
 
       - name: Build SDK C++
         run: |
-          ./compile.sh
+          ./compile-end2end-worker.sh
