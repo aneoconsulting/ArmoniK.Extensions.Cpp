@@ -95,13 +95,13 @@ jobs:
           repository: aneoconsulting/ArmoniK.Api
           path: ArmoniK.Api
           working-directory: ${{ github.workspace }}/ArmoniK.Api
-          ref: 42ec5a9835ddca03f9c3a53ddff1023c1ec13dd5 # branch : db/changesWorker
+          ref: main # branch : db/changesWorker
         
       - name: Build API C++
         run: |
           mv ArmoniK.Api ../
           cd ../ArmoniK.Api/packages/cpp/tools/
-          ./compile.sh
+          ./compile-end2end-worker.sh
           cd ../install
           echo "ARMONIK_API_DIR =$(pwd)" >> $GITHUB_ENV
 
