@@ -8,11 +8,11 @@
 #include <string_view>
 #include <vector>
 
-namespace ArmoniK::SDK::Common {
+namespace ArmoniK::Sdk::Common {
 class TaskOptions;
 class Properties;
 class TaskPayload;
-} // namespace ArmoniK::SDK::Common
+} // namespace ArmoniK::Sdk::Common
 
 namespace SDK_CLIENT_NAMESPACE::Internal {
 class SessionServiceImpl;
@@ -26,15 +26,20 @@ class IServiceInvocationHandler;
  */
 class SessionService {
 private:
-  std::shared_ptr<SDK_CLIENT_NAMESPACE::Internal::SessionServiceImpl> impl;
+  std::unique_ptr<SDK_CLIENT_NAMESPACE::Internal::SessionServiceImpl> impl;
+  void ensure_valid() const;
 
 public:
-  SessionService() = delete;
   /**
    * @brief Creates a SessionService from the given Properties
    * @param properties Session properties
    */
-  explicit SessionService(const ArmoniK::SDK::Common::Properties &properties);
+  explicit SessionService(const ArmoniK::Sdk::Common::Properties &properties);
+  SessionService(const SessionService &) = delete;
+  SessionService(SessionService &&) noexcept;
+  SessionService &operator=(const SessionService &) = delete;
+  SessionService &operator=(SessionService &&) noexcept;
+  ~SessionService();
 
   /**
    * @brief Submits the given list of task requests
@@ -45,7 +50,7 @@ public:
    */
   std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &requests,
                                   const std::shared_ptr<IServiceInvocationHandler> &handler,
-                                  const ArmoniK::SDK::Common::TaskOptions &task_options);
+                                  const ArmoniK::Sdk::Common::TaskOptions &task_options);
 
   /**
    * @brief Submits the given list of task requests using the session's task options
@@ -71,7 +76,7 @@ public:
    * @brief Get the session Id associated with this service
    * @return Session Id
    */
-  [[nodiscard]] std::string_view getSession() const;
+  [[nodiscard]] const std::string &getSession() const;
 };
 } // namespace SDK_CLIENT_NAMESPACE
 #endif // ARMONIK_EXTENSIONS_CPP_SESSIONSERVICE_H

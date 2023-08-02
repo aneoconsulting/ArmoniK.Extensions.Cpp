@@ -8,10 +8,10 @@
 #include <results_service.grpc.pb.h>
 #include <shared_mutex>
 
-namespace ArmoniK::SDK::Common {
+namespace ArmoniK::Sdk::Common {
 class Properties;
 class TaskPayload;
-} // namespace ArmoniK::SDK::Common
+} // namespace ArmoniK::Sdk::Common
 
 namespace SDK_CLIENT_NAMESPACE {
 class IServiceInvocationHandler;
@@ -81,7 +81,7 @@ public:
    * @brief Creates a SessionService from the given Properties
    * @param properties Session properties
    */
-  explicit SessionServiceImpl(const ArmoniK::SDK::Common::Properties &properties);
+  explicit SessionServiceImpl(const ArmoniK::Sdk::Common::Properties &properties);
 
   /**
    * @brief Submits the given list of task requests using the session's task options
@@ -107,7 +107,7 @@ public:
    * @brief Get the session Id associated with this service
    * @return Session Id
    */
-  [[nodiscard]] std::string_view getSession() const;
+  [[nodiscard]] const std::string &getSession() const;
 
   /**
    * @brief Waits for the completion of the given tasks

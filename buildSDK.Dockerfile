@@ -24,4 +24,4 @@ RUN echo $PATH
 WORKDIR /app/build
 
 # Set the default command to build the client using CMake and make
-CMD ["bash", "-c", "cmake -DCMAKE_BUILD_TYPE=Debug /app/source/ && make -j $(nproc)"]
+CMD ["bash", "-c", "cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/app/install -DBUILD_END2END=OFF /app/source/ && make install -j $(nproc)"]

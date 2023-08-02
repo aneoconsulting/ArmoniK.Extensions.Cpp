@@ -7,6 +7,7 @@
 namespace SDK_COMMON_NAMESPACE {
 
 struct TaskPayload {
+  TaskPayload() = default;
   TaskPayload(std::string method_name_, std::string arguments_,
               std::vector<std::string> data_dependencies_ = std::vector<std::string>())
       : method_name(std::move(method_name_)), arguments(std::move(arguments_)),

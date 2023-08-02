@@ -1,7 +1,7 @@
 #ifndef ARMONIK_SDK_PROPERTIES_H
 #define ARMONIK_SDK_PROPERTIES_H
 
-#include "IConfiguration.h"
+#include "Configuration.h"
 #include "TaskOptions.h"
 
 namespace SDK_COMMON_NAMESPACE {
@@ -9,12 +9,13 @@ namespace SDK_COMMON_NAMESPACE {
  * @brief Client properties
  */
 struct Properties {
-  Properties(const IConfiguration &configuration, TaskOptions taskOptions);
+  Properties(Configuration configuration, TaskOptions taskOptions)
+      : configuration(std::move(configuration)), taskOptions(std::move(taskOptions)){};
 
   /**
    * @brief Configuration
    */
-  IConfiguration configuration;
+  Configuration configuration;
 
   /**
    * @brief Default task options

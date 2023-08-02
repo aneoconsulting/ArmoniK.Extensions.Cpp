@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
-set(PROJECT_NAME ArmoniK.SDK.Client)
-set(NAMESPACE ArmoniK::Sdk::Client)
+set(PROJECT_NAME ArmoniK.SDK.Worker)
+set(NAMESPACE ArmoniK::Sdk::Worker)
 project(${PROJECT_NAME})
-set(ARMONIK_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/armonik/sdk/client)
+set(ARMONIK_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/armonik/sdk/worker)
 set(PROJECT_BUILD_DIR ${BUILD_DIR}/${PROJECT_NAME})
 
 set(CMAKE_CXX_STANDARD 17)
@@ -15,13 +15,13 @@ FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_CLIENT_FILES ${HEADER_FILES_DIR}/*.h)
 FILE(GLOB_RECURSE PRIVATE_HEADERS_FILES ${PRIVATE_HEADERS_DIR}/*.h)
 
-find_package(ArmoniK.Api.Client CONFIG REQUIRED)
+find_package(ArmoniK.Api.Worker CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES} ${PRIVATE_HEADERS_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Worker ArmoniK.SDK.Common)
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_NAMESPACE=${NAMESPACE})
+target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_WORKER_NAMESPACE=${NAMESPACE})
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC

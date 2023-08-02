@@ -1,4 +1,5 @@
 #include "TaskPayload.h"
+#include "ArmoniKSdkException.h"
 #include <charconv>
 #include <iomanip>
 #include <string>
@@ -10,6 +11,7 @@ namespace SDK_COMMON_NAMESPACE {
  */
 typedef uint32_t field_size_t;
 
+namespace {
 template <typename T> struct TypeParseTraits;
 
 #define REGISTER_PARSE_TYPE(X)                                                                                         \
@@ -49,6 +51,14 @@ template <typename T> T hex_to_int(std::string_view str) {
   return value;
 }
 
+std::string_view advance_sv(std::string_view &sv, size_t offset) {
+  std::string_view extracted = sv.substr(0, offset);
+  sv = sv.substr(offset);
+  return extracted;
+}
+
+} // namespace
+
 std::string TaskPayload::Serialize() const {
   std::stringstream ss;
   // Method name
@@ -63,30 +73,24 @@ std::string TaskPayload::Serialize() const {
   }
   return ss.str();
 }
+
 TaskPayload TaskPayload::Deserialize(std::string_view serialized) {
-  constexpr uint32_t size_width = sizeof(field_size_t) * 2;
+  constexpr size_t size_width = sizeof(field_size_t) * 2;
   field_size_t fieldSize;
-  uint32_t position = 0;
   std::vector<std::string> data_dependencies;
 
   // Method name
-  fieldSize = hex_to_int<field_size_t>(serialized.substr(position, size_width));
-  position += size_width;
-  std::string method_name(serialized.data() + position, fieldSize);
-  position += fieldSize;
+  fieldSize = hex_to_int<field_size_t>(advance_sv(serialized, size_width));
+  std::string method_name(advance_sv(serialized, fieldSize));
 
   // Method arguments
-  fieldSize = hex_to_int<field_size_t>(serialized.substr(position, size_width));
-  position += size_width;
-  std::string arguments(serialized.data() + position, fieldSize);
-  position += fieldSize;
+  fieldSize = hex_to_int<field_size_t>(advance_sv(serialized, size_width));
+  std::string arguments(advance_sv(serialized, fieldSize));
 
   // Data dependencies
-  while (position < serialized.size()) {
-    fieldSize = hex_to_int<field_size_t>(serialized.substr(position, size_width));
-    position += size_width;
-    data_dependencies.emplace_back(serialized.data() + position, fieldSize);
-    position += fieldSize;
+  while (!serialized.empty()) {
+    fieldSize = hex_to_int<field_size_t>(advance_sv(serialized, size_width));
+    data_dependencies.emplace_back(advance_sv(serialized, fieldSize));
   }
 
   return {method_name, arguments, data_dependencies};

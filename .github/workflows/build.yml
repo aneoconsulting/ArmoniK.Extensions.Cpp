@@ -95,6 +95,7 @@ jobs:
           repository: aneoconsulting/ArmoniK.Api
           path: ArmoniK.Api
           working-directory: ${{ github.workspace }}/ArmoniK.Api
+          ref: main # branch : db/changesWorker
         
       - name: Build API C++
         run: |
@@ -106,4 +107,4 @@ jobs:
 
       - name: Build SDK C++
         run: |
-          ./compile.sh
+          ./compile-end2end-worker.sh
