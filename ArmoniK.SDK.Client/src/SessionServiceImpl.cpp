@@ -54,7 +54,7 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
   return result_ids;
 }
 
-std::string_view SessionServiceImpl::getSession() const { return session; }
+const std::string &SessionServiceImpl::getSession() const { return session; }
 
 [[maybe_unused]] std::vector<std::string>
 SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,

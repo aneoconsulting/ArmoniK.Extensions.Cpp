@@ -9,8 +9,8 @@ namespace SDK_COMMON_NAMESPACE {
  * @brief Client properties
  */
 struct Properties {
-  Properties(const Configuration &configuration, TaskOptions taskOptions)
-      : configuration(configuration), taskOptions(std::move(taskOptions)){};
+  Properties(Configuration configuration, TaskOptions taskOptions)
+      : configuration(std::move(configuration)), taskOptions(std::move(taskOptions)){};
 
   /**
    * @brief Configuration

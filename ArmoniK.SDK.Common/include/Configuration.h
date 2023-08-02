@@ -28,6 +28,11 @@ public:
    * @param configuration The Configuration object containing address information.
    */
   ControlPlane(const Configuration &config);
+  ControlPlane(const ControlPlane &);
+  ControlPlane(ControlPlane &&) noexcept;
+
+  ControlPlane &operator=(const ControlPlane &);
+  ControlPlane &operator=(ControlPlane &&) noexcept;
 
   /**
    * @brief ArmoniK control plane endpoint
@@ -66,7 +71,9 @@ public:
   [[nodiscard]] bool isSslValidation() const;
 
 private:
-  std::shared_ptr<ArmoniK::Api::Common::options::ControlPlane> impl;
+  std::unique_ptr<ArmoniK::Api::Common::options::ControlPlane> impl;
+  [[nodiscard]] const ArmoniK::Api::Common::options::ControlPlane &get_impl() const;
+  ArmoniK::Api::Common::options::ControlPlane &set_impl();
 };
 
 class ComputePlane {
@@ -76,6 +83,11 @@ public:
    * @param configuration The Configuration object containing address information.
    */
   ComputePlane(const Configuration &configuration);
+  ComputePlane(const ComputePlane &);
+  ComputePlane(ComputePlane &&) noexcept;
+
+  ComputePlane &operator=(const ComputePlane &);
+  ComputePlane &operator=(ComputePlane &&) noexcept;
 
   /**
    * @brief Returns the server address.
@@ -102,7 +114,9 @@ public:
   [[nodiscard]] std::string_view get_agent_address() const;
 
 private:
-  std::shared_ptr<ArmoniK::Api::Common::options::ComputePlane> impl;
+  std::unique_ptr<ArmoniK::Api::Common::options::ComputePlane> impl;
+  [[nodiscard]] const ArmoniK::Api::Common::options::ComputePlane &get_impl() const;
+  ArmoniK::Api::Common::options::ComputePlane &set_impl();
 };
 
 class Configuration {
@@ -117,6 +131,12 @@ public:
    */
   ~Configuration();
 
+  Configuration(const Configuration &);
+  Configuration(Configuration &&) noexcept;
+
+  Configuration &operator=(const Configuration &);
+  Configuration &operator=(Configuration &&) noexcept;
+
   /**
    * @brief Get the value associated with the given key.
    * @param string Key to look up.
@@ -130,12 +150,6 @@ public:
    * @param value Value to set for the key.
    */
   void set(const std::string &string, const std::string &value);
-
-  /**
-   * @brief Set the values from another Configuration object.
-   * @param other Configuration object to copy values from.
-   */
-  void set(const Configuration &other);
 
   /**
    * @brief List defined values of this configuration.
@@ -171,9 +185,11 @@ public:
   explicit operator ArmoniK::Api::Common::utils::Configuration();
 
 private:
-  std::shared_ptr<ArmoniK::Api::Common::utils::Configuration> impl;
+  std::unique_ptr<ArmoniK::Api::Common::utils::Configuration> impl;
   friend class ComputePlane;
   friend class ControlPlane;
+  [[nodiscard]] const ArmoniK::Api::Common::utils::Configuration &get_impl() const;
+  ArmoniK::Api::Common::utils::Configuration &set_impl();
 };
 } // namespace SDK_COMMON_NAMESPACE
 

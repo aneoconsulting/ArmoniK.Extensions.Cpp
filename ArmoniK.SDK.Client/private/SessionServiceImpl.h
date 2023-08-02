@@ -107,7 +107,7 @@ public:
    * @brief Get the session Id associated with this service
    * @return Session Id
    */
-  [[nodiscard]] std::string_view getSession() const;
+  [[nodiscard]] const std::string &getSession() const;
 
   /**
    * @brief Waits for the completion of the given tasks
