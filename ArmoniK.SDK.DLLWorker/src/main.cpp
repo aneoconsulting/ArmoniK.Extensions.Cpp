@@ -1,4 +1,4 @@
-#include "SDKWorker.h"
+#include "DynamicWorker.h"
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/TaskPayload.h>
 #include <armonik/worker/utils/WorkerServer.h>
@@ -10,7 +10,7 @@ int main() {
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
   try {
-    ArmoniK::Api::Worker::WorkerServer::create<SDK_DLLWORKER_NAMESPACE::SDKWorker>(
+    ArmoniK::Api::Worker::WorkerServer::create<SDK_DLLWORKER_NAMESPACE::DynamicWorker>(
         static_cast<ArmoniK::Api::Common::utils::Configuration>(config), config)
         ->run();
   } catch (const std::exception &e) {

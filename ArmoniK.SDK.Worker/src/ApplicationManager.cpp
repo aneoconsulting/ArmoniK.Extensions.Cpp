@@ -3,7 +3,8 @@
 #include "Configuration.h"
 #include <dlfcn.h>
 #include <sstream>
-SDK_WORKER_NAMESPACE::ApplicationManager &SDK_WORKER_NAMESPACE::ApplicationManager::UseApplication(const AppId &appId) {
+SDK_WORKER_NAMESPACE::ApplicationManager &
+SDK_WORKER_NAMESPACE::ApplicationManager::UseApplication(const AppId &appId) & {
   if (appId == currentId) {
     return *this;
   }
@@ -47,7 +48,7 @@ SDK_WORKER_NAMESPACE::ApplicationManager &SDK_WORKER_NAMESPACE::ApplicationManag
   return *this;
 }
 SDK_WORKER_NAMESPACE::ApplicationManager &
-SDK_WORKER_NAMESPACE::ApplicationManager::UseService(const ServiceId &serviceId) {
+SDK_WORKER_NAMESPACE::ApplicationManager::UseService(const ServiceId &serviceId) & {
   if (!service_manager || !service_manager->matches(serviceId)) {
     service_manager = std::make_unique<ServiceManager>(functionPointers, serviceId);
   }
@@ -55,7 +56,7 @@ SDK_WORKER_NAMESPACE::ApplicationManager::UseService(const ServiceId &serviceId)
   return *this;
 }
 SDK_WORKER_NAMESPACE::ApplicationManager &
-SDK_WORKER_NAMESPACE::ApplicationManager::UseSession(const std::string &sessionId) {
+SDK_WORKER_NAMESPACE::ApplicationManager::UseSession(const std::string &sessionId) & {
   if (!service_manager) {
     throw ArmoniK::Sdk::Common::ArmoniKSDKException("Service is not initialized");
   }
@@ -64,7 +65,8 @@ SDK_WORKER_NAMESPACE::ApplicationManager::UseSession(const std::string &sessionI
 }
 ArmoniK::Api::Worker::ProcessStatus
 SDK_WORKER_NAMESPACE::ApplicationManager::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
-                                                  const std::string &method_name, const std::string &method_arguments) {
+                                                  const std::string &method_name,
+                                                  const std::string &method_arguments) & {
   if (!service_manager) {
     throw ArmoniK::Sdk::Common::ArmoniKSDKException("Service is not initialized");
   }

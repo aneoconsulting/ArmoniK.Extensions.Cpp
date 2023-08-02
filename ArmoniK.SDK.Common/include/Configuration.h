@@ -115,7 +115,7 @@ public:
   /**
    * @brief Default virtual destructor.
    */
-  virtual ~Configuration();
+  ~Configuration();
 
   /**
    * @brief Get the value associated with the given key.

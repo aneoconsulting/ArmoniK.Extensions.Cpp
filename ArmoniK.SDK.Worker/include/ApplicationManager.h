@@ -12,14 +12,12 @@ class ApplicationManager {
 
 public:
   explicit ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config);
-  ApplicationManager(const ApplicationManager &) = delete;
-  void operator=(ApplicationManager const &) = delete;
 
-  ApplicationManager &UseApplication(const AppId &appId);
-  ApplicationManager &UseService(const ServiceId &serviceId);
-  ApplicationManager &UseSession(const std::string &sessionId);
+  ApplicationManager &UseApplication(const AppId &appId) &;
+  ApplicationManager &UseService(const ServiceId &serviceId) &;
+  ApplicationManager &UseSession(const std::string &sessionId) &;
   ArmoniK::Api::Worker::ProcessStatus Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
-                                              const std::string &method_name, const std::string &method_arguments);
+                                              const std::string &method_name, const std::string &method_arguments) &;
 
 private:
   ArmoniKFunctionPointers functionPointers;
