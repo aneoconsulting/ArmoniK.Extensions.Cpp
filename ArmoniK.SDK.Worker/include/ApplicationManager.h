@@ -8,8 +8,6 @@ class ApplicationManager {
 
 public:
   ApplicationManager() : functionPointers(){};
-  ApplicationManager(const ApplicationManager &) = delete;
-  void operator=(ApplicationManager const &) = delete;
 
   ApplicationManager &UseApplication(const AppId &appId);
   ApplicationManager &UseService(const ServiceId &serviceId);

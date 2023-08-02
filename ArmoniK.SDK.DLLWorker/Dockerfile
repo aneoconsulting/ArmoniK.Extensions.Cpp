@@ -38,7 +38,8 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     mkdir -p build/ && \
     cd build/ && \
     cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" "-DBUILD_TEST=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_WORKER=ON" .. && \
-    make -j $(nproc) install 
+    make -j $(nproc) install && \
+    make clean
     
 
 
@@ -51,10 +52,10 @@ COPY ./CMakeLists.txt ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/builder/sdk
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
 
 WORKDIR /app/builder/worker
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install && make clean
 
 # Start with the latest Alpine base image for the final stage
 FROM alpine AS runner
