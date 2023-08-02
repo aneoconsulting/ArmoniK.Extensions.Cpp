@@ -1,5 +1,5 @@
 #include "DynamicWorker.h"
-#include <ArmoniKSDKException.h>
+#include <ArmoniKSdkException.h>
 #include <TaskPayload.h>
 #include <armonik/sdk/worker/ApplicationManager.h>
 
@@ -20,7 +20,7 @@ SDK_DLLWORKER_NAMESPACE::DynamicWorker::Execute(ArmoniK::Api::Worker::TaskHandle
         .UseService(serviceId)
         .UseSession(taskHandler.getSessionId())
         .Execute(taskHandler, taskPayload.method_name, taskPayload.arguments);
-  } catch (const ArmoniK::Sdk::Common::ArmoniKSDKException &e) {
+  } catch (const ArmoniK::Sdk::Common::ArmoniKSdkException &e) {
     return ArmoniK::Api::Worker::ProcessStatus(e.what());
   }
 

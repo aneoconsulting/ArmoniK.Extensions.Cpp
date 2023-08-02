@@ -1,5 +1,5 @@
 #include "TaskPayload.h"
-#include "ArmoniKSDKException.h"
+#include "ArmoniKSdkException.h"
 #include <charconv>
 #include <iomanip>
 #include <string>
@@ -11,6 +11,7 @@ namespace SDK_COMMON_NAMESPACE {
  */
 typedef uint32_t field_size_t;
 
+namespace {
 template <typename T> struct TypeParseTraits;
 
 #define REGISTER_PARSE_TYPE(X)                                                                                         \
@@ -50,6 +51,14 @@ template <typename T> T hex_to_int(std::string_view str) {
   return value;
 }
 
+std::string_view advance_sv(std::string_view &sv, size_t offset) {
+  std::string_view extracted = sv.substr(0, offset);
+  sv = sv.substr(offset);
+  return extracted;
+}
+
+} // namespace
+
 std::string TaskPayload::Serialize() const {
   std::stringstream ss;
   // Method name
@@ -63,12 +72,6 @@ std::string TaskPayload::Serialize() const {
     ss << int_to_hex((field_size_t)dd.size()) << dd;
   }
   return ss.str();
-}
-
-std::string_view advance_sv(std::string_view &sv, size_t offset) {
-  std::string_view extracted = sv.substr(0, offset);
-  sv = sv.substr(offset);
-  return extracted;
 }
 
 TaskPayload TaskPayload::Deserialize(std::string_view serialized) {

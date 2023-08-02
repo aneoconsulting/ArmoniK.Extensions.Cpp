@@ -47,13 +47,5 @@ struct ArmoniKFunctionPointers {
   armonik_enter_session_t enter_session;
   armonik_leave_session_t leave_session;
   armonik_call_t call;
-
-  ArmoniKFunctionPointers() = default;
-
-  ArmoniKFunctionPointers(armonik_create_service_t createService, armonik_destroy_service_t destroyService,
-                          armonik_enter_session_t enterSession, armonik_leave_session_t leaveSession,
-                          armonik_call_t call)
-      : create_service(createService), destroy_service(destroyService), enter_session(enterSession),
-        leave_session(leaveSession), call(call) {}
 };
 } // namespace SDK_WORKER_NAMESPACE

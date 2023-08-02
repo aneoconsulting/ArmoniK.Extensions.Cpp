@@ -21,6 +21,9 @@ class ControlPlane;
 namespace SDK_COMMON_NAMESPACE {
 class Configuration;
 
+/**
+ * @brief Control plane connectivity configuration
+ */
 class ControlPlane {
 public:
   /**
@@ -76,6 +79,9 @@ private:
   ArmoniK::Api::Common::options::ControlPlane &set_impl();
 };
 
+/**
+ * @brief Compute plane connectivity configuration
+ */
 class ComputePlane {
 public:
   /**
@@ -119,6 +125,9 @@ private:
   ArmoniK::Api::Common::options::ComputePlane &set_impl();
 };
 
+/**
+ * @brief Configuration
+ */
 class Configuration {
 public:
   /**
@@ -126,9 +135,6 @@ public:
    */
   Configuration();
 
-  /**
-   * @brief Default virtual destructor.
-   */
   ~Configuration();
 
   Configuration(const Configuration &);
