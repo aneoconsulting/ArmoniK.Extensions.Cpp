@@ -18,7 +18,7 @@ SDK_DLLWORKER_NAMESPACE::ServiceManager::ServiceManager(ArmoniKFunctionPointers 
 }
 SDK_DLLWORKER_NAMESPACE::ServiceManager::~ServiceManager() { clear(); }
 SDK_DLLWORKER_NAMESPACE::ServiceManager &
-SDK_DLLWORKER_NAMESPACE::ServiceManager::UseSession(const std::string &sessionId) {
+SDK_DLLWORKER_NAMESPACE::ServiceManager::UseSession(const std::string &sessionId) & {
   if (sessionId != current_session) {
     if (!current_session.empty()) {
       functionPointers.leave_session(service_context, session_context);

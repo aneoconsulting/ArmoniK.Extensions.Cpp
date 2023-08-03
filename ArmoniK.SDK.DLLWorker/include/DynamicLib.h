@@ -15,7 +15,7 @@ public:
   /**
    * @brief Default constructor
    *
-   * DynamicLib poits to no library
+   * DynamicLib points to no library
    */
   DynamicLib() noexcept = default;
 

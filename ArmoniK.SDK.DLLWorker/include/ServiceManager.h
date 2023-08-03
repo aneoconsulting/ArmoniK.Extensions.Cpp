@@ -32,7 +32,7 @@ public:
     return *this;
   }
 
-  ServiceManager &UseSession(const std::string &sessionId);
+  ServiceManager &UseSession(const std::string &sessionId) &;
   ArmoniK::Api::Worker::ProcessStatus Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
                                               const std::string &method_name, const std::string &method_arguments);
 
