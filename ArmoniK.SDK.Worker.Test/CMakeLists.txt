@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
-set(PROJECT_NAME ArmoniK.SDK.DLLWorker.Test)
-set(NAMESPACE ArmoniK::SDK::DLLWorker::Test)
+set(PROJECT_NAME ArmoniK.SDK.Worker.Test)
+set(NAMESPACE ArmoniK::Sdk::Worker::Test)
 set(version 0.1.0)
 
 project(${PROJECT_NAME})
@@ -16,18 +16,23 @@ SET(WORKER_HEADER_DIR "${WORKER_FILES}/include")
 FILE(GLOB_RECURSE SRC_WORKER_FILES ${WORKER_SOURCE_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_WORKER_FILES ${WORKER_HEADER_DIR}/*.h)
 
-find_file(ARMONIK_SDK_HEADER ArmoniKSDKInterface.h PATHS /app/install PATH_SUFFIXES armonik/sdk/worker include/armonik/sdk/worker REQUIRED NO_CACHE)
-message(STATUS "Found ArmonikSDKInterface.h at location ${ARMONIK_SDK_HEADER}")
-get_filename_component(ARMONIK_SDK_HEADER_DIR ${ARMONIK_SDK_HEADER} DIRECTORY)
+find_package(ArmoniK.SDK.Worker REQUIRED CONFIG)
 
 add_library(${PROJECT_NAME} SHARED ${SRC_WORKER_FILES} ${HEADER_WORKER_FILES})
+
+target_link_libraries(${PROJECT_NAME} PUBLIC "-Wl,--whole-archive" ArmoniK.SDK.Worker "-Wl,--no-whole-archive")
+
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_END2END_NAMESPACE=${NAMESPACE})
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${WORKER_HEADER_DIR}>"
-        "$<BUILD_INTERFACE:${ARMONIK_SDK_HEADER_DIR}>"
         )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})

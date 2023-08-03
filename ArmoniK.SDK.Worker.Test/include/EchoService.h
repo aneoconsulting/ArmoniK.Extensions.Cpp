@@ -1,13 +1,14 @@
 #ifndef ARMONIK_SDK_ECHOSERVICE_H
 #define ARMONIK_SDK_ECHOSERVICE_H
 
-#include "ServiceBase.h"
+#include <ServiceBase.h>
 #include <iostream>
 namespace SDK_END2END_NAMESPACE {
 
 class EchoService : ServiceBase {
 public:
   std::string call(void *session_ctx, const std::string &name, const std::string &input) override {
+    (void)session_ctx;
     std::cout << "EchoService method : " << name << std::endl;
     return input;
   }

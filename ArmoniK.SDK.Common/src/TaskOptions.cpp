@@ -26,7 +26,7 @@ TaskOptions::operator armonik::api::grpc::v1::TaskOptions() const {
   raw.set_max_retries(max_retries);
   raw.mutable_options()->insert(options.begin(), options.end());
 
-  return std::move(raw);
+  return raw;
 }
 
 TaskOptions::TaskOptions(const armonik::api::grpc::v1::TaskOptions &raw)

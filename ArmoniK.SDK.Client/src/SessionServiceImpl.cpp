@@ -25,7 +25,7 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
   // Creates the result creation requests
   std::vector<armonik::api::grpc::v1::results::CreateResultsMetaDataRequest_ResultCreate> results_create;
   results_create.reserve(num);
-  for (int i = 0; i < num; i++) {
+  for (size_t i = 0; i < num; i++) {
     armonik::api::grpc::v1::results::CreateResultsMetaDataRequest_ResultCreate result_create;
     // Random name
     *result_create.mutable_name() = ArmoniK::Api::Common::utils::GuuId::generate_uuid();
@@ -66,7 +66,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   // Creates the needed result ids
   auto result_ids = generate_result_ids(task_requests.size());
 
-  for (int i = 0; i < task_requests.size(); i++) {
+  for (size_t i = 0; i < task_requests.size(); i++) {
     armonik::api::grpc::v1::TaskRequest request;
     // Serialize the request in an ArmoniK format
     *request.mutable_payload() = task_requests[i].Serialize();

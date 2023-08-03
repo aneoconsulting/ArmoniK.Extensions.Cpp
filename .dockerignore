@@ -11,9 +11,7 @@
 **/*.log
 **/*.obj
 **/obj
-**/bin
 **/*.o
-**/*.a
 **/*.so
 **/*.lib
 **/build*
@@ -24,7 +22,6 @@
 **/.github
 **/.vs
 **/.vscode
-**/Api
 **/.docs
 **/out
 **/grpc

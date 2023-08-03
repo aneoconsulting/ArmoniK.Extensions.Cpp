@@ -1,24 +1,29 @@
 # Start with the latest Alpine base image for the build stage
-FROM alpine AS builder
+FROM ubuntu:23.04 AS builder
 
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
-RUN apk update && apk add --no-cache \
-    git \
+RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
+    ssh \
     gcc \
     g++ \
-    build-base \
-    libtool \
-    curl \
-    c-ares \
-    c-ares-dev \
+    gdb \
+    clang \
     make \
+    ninja-build \
     cmake \
-    linux-headers \
-    grpc \
-    grpc-dev \
-    protobuf \
-    protobuf-dev
+    autoconf \
+    automake \
+    locales-all \
+    build-essential \
+    libc-ares-dev \
+    protobuf-compiler-grpc \
+    grpc-proto \
+    libgrpc-dev \
+    libgrpc++-dev \
+    libprotobuf-dev \
+    git \
+	&& apt-get clean
 
 # Update the PATH environment variable to include the gRPC libraries and binaries
 ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
@@ -29,17 +34,17 @@ RUN echo $PATH
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
-RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
-    cd ArmoniK.Api/packages/cpp && \
-    git checkout f8a33cb60d81d3a328ae99eef3a852e411276ec1 && \
-    mkdir -p /app/proto && \
-    mkdir -p /armonik/api && \
-    cp -r ../../Protos/V1/* /app/proto && \
-    mkdir -p build/ && \
-    cd build/ && \
-    cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" "-DBUILD_TEST=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_WORKER=ON" .. && \
-    make -j $(nproc) install && \
-    make clean
+COPY ./Api/. /armonik/api/.
+#RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
+#    cd ArmoniK.Api/packages/cpp && \
+#    mkdir -p /app/proto && \
+#    mkdir -p /armonik/api && \
+#    cp -r ../../Protos/V1/* /app/proto && \
+#    mkdir -p build/ && \
+#    cd build/ && \
+#    cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" "-DBUILD_TEST=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_WORKER=ON" .. && \
+#    make -j $(nproc) install && \
+#    make clean
 
 
 # Copy the application source files into the image
@@ -57,18 +62,33 @@ WORKDIR /app/builder/worker
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DLLWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
 
 # Start with the latest Alpine base image for the final stage
-FROM alpine AS runner
+FROM ubuntu:23.04 AS runner
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
-RUN apk update && apk add --no-cache \
-    c-ares \
-    libprotobuf \
-    grpc \
-    grpc-cpp
+RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
+    ssh \
+    gcc \
+    g++ \
+    gdb \
+    clang \
+    make \
+    ninja-build \
+    cmake \
+    autoconf \
+    automake \
+    locales-all \
+    build-essential \
+    libc-ares-dev \
+    protobuf-compiler-grpc \
+    grpc-proto \
+    libgrpc-dev \
+    libgrpc++-dev \
+    libprotobuf-dev \
+	&& apt-get clean
 	
 # Create a non-root user and group for running the application
 # This is a security best practice to avoid running applications as the root user
-RUN addgroup -g 5000 -S armonikuser && adduser -D -h /home/armonikuser  -u 5000 -G armonikuser --shell /bin/sh armonikuser && mkdir /cache && chown armonikuser: /cache
+RUN groupadd --gid 5000 armonikuser && useradd --home-dir /home/armonikuser --create-home --uid 5000 --gid 5000 --shell /bin/sh --skel /dev/null armonikuser && mkdir /cache && chown armonikuser: /cache
 USER armonikuser
 
 # Copy the application files, libraries, and binaries from the builder image to the final image

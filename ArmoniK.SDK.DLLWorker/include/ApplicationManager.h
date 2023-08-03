@@ -1,13 +1,15 @@
 #pragma once
 #include "ContextIds.h"
+#include "DynamicLib.h"
 #include "ServiceManager.h"
+#include <Worker/ProcessStatus.h>
 #include <armonik/worker/Worker/TaskHandler.h>
 
 namespace ArmoniK::Sdk::Common {
 class Configuration;
 }
 
-namespace SDK_WORKER_NAMESPACE {
+namespace SDK_DLLWORKER_NAMESPACE {
 class ApplicationManager {
 
 public:
@@ -22,8 +24,8 @@ public:
 private:
   ArmoniKFunctionPointers functionPointers;
   AppId currentId;
-  std::unique_ptr<ServiceManager> service_manager;
-  void *applicationHandle = nullptr;
+  ServiceManager service_manager;
+  DynamicLib currentLibrary;
   std::string applicationsBasePath;
 };
-} // namespace SDK_WORKER_NAMESPACE
+} // namespace SDK_DLLWORKER_NAMESPACE

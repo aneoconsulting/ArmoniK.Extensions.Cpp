@@ -13,17 +13,24 @@ SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 FILE(GLOB_RECURSE SRC_DLLWORKER_FILES ${SOURCES_FILES_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_DLLWORKER_FILES ${HEADER_FILES_DIR}/*.h)
 
-find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
+find_package(ArmoniK.SDK.Common REQUIRED CONFIG)
+find_package(ArmoniK.Api.Worker REQUIRED CONFIG)
+
+find_file(ARMONIK_SDK_HEADER ArmoniKSDKInterface.h PATHS /app/install PATH_SUFFIXES armonik/sdk/worker include/armonik/sdk/worker REQUIRED NO_CACHE)
+message(STATUS "Found ArmonikSDKInterface.h at location ${ARMONIK_SDK_HEADER}")
+get_filename_component(ARMONIK_SDK_HEADER_DIR ${ARMONIK_SDK_HEADER} DIRECTORY)
 
 add_executable(${PROJECT_NAME} ${SRC_DLLWORKER_FILES} ${HEADER_DLLWORKER_FILES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Worker)
-
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_DLLWORKER_NAMESPACE=${NAMESPACE})
+setup_options(${PROJECT_NAME})
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Common ArmoniK.Api.Worker ArmoniK.Api.Common)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
+        "$<BUILD_INTERFACE:${ARMONIK_SDK_HEADER_DIR}>"
         )
 
 add_custom_command(
@@ -40,5 +47,3 @@ set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install(FILES appsettings.json DESTINATION ${CMAKE_INSTALL_BINDIR})

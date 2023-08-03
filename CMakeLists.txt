@@ -26,7 +26,37 @@ option(BUILD_END2END "Build End2End test" OFF)
 option(BUILD_TESTS "Build Unit Tests" OFF)
 option(BUILD_WORKER "Build Worker" ON)
 option(BUILD_CLIENT "Build Client" ON)
-option(BUILD_DLLWORKER "Build DLLWorker" OFF)
+option(BUILD_DLLWORKER "Build DynamicWorker" OFF)
+
+function(setup_options project_name_param)
+
+    file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
+    string(FIND "${${project_name_param}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
+
+    if(${ARGC} GREATER 1)
+        set(extra_param ${ARGV1})
+    endif()
+
+    if(MSVC)
+        target_compile_options(${project_name_param} PRIVATE /W4)
+    else()
+        if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
+            target_compile_options(${project_name_param} PRIVATE -Wall -Wextra -Wpedantic -fsanitize=undefined,address ${extra_param})
+        else ()
+            target_compile_options(${project_name_param} PRIVATE -Wall -Wextra -Wpedantic ${extra_param})
+        endif()
+    endif()
+
+    if(IS_ALPINE EQUAL -1)
+        message(STATUS "Not found Alpine distribution " ${IS_ALPINE})
+    else()
+        message(STATUS "Found Alpine distribution " ${IS_ALPINE})
+    endif()
+
+    if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
+        target_link_options(${project_name_param} PRIVATE -fsanitize=undefined,address ${extra_param})
+    endif()
+endfunction()
 
 if(BUILD_DLLWORKER)
     # TODO Move to normal worker build when End2End separated (needs ExternalProject_Add)

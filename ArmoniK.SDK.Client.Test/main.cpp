@@ -46,7 +46,7 @@ int main() {
   std::cout << "Testing worker : " << config.get("Worker__Type") << std::endl;
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.DLLWorker.Test.so", "0.1.0", "End2EndTest",
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so", "0.1.0", "End2EndTest",
                                                          "EchoService");
 
   // Create the properties

@@ -1,8 +1,8 @@
 #ifndef ARMONIK_SDK_DYNAMICWORKER_H
 #define ARMONIK_SDK_DYNAMICWORKER_H
 
+#include "ApplicationManager.h"
 #include <armonik/sdk/common/Configuration.h>
-#include <armonik/sdk/worker/ApplicationManager.h>
 #include <armonik/worker/Worker/ArmoniKWorker.h>
 
 namespace SDK_DLLWORKER_NAMESPACE {
@@ -13,7 +13,7 @@ public:
   Api::Worker::ProcessStatus Execute(Api::Worker::TaskHandler &taskHandler) override;
 
 private:
-  ArmoniK::Sdk::Worker::ApplicationManager manager;
+  SDK_DLLWORKER_NAMESPACE::ApplicationManager manager;
 };
 } // namespace SDK_DLLWORKER_NAMESPACE
 

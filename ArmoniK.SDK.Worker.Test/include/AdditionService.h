@@ -1,7 +1,7 @@
 #ifndef ARMONIK_SDK_ADDITIONSERVICE_H
 #define ARMONIK_SDK_ADDITIONSERVICE_H
 
-#include "ServiceBase.h"
+#include <ServiceBase.h>
 #include <iostream>
 #include <stdexcept>
 namespace SDK_END2END_NAMESPACE {
@@ -18,23 +18,35 @@ public:
     delete sessionId;
   }
   std::string call(void *session_ctx, const std::string &name, const std::string &input) override {
+    (void)session_ctx;
     std::string output;
-    output.resize(sizeof(int32_t));
     if (name == "add_ints") {
-      *reinterpret_cast<int32_t *>(output.data()) =
-          add_ints(*reinterpret_cast<const int32_t *>(input.data()),
-                   *reinterpret_cast<const int32_t *>(input.data() + sizeof(int32_t)));
+      output.resize(sizeof(int32_t));
+      int32_t a, b, c;
+      std::memcpy(&a, input.data(), sizeof(int32_t));
+      std::memcpy(&b, input.data() + sizeof(int32_t), sizeof(int32_t));
+      c = add_ints(a, b);
+      std::memcpy(output.data(), &c, sizeof(int32_t));
       return output;
     } else if (name == "add_floats") {
-      *reinterpret_cast<float *>(output.data()) =
-          add_floats(*reinterpret_cast<const float *>(input.data()),
-                     *reinterpret_cast<const float *>(input.data() + sizeof(float)));
+      output.resize(sizeof(float));
+      float a, b, c;
+      std::memcpy(&a, input.data(), sizeof(float));
+      std::memcpy(&b, input.data() + sizeof(float), sizeof(float));
+      c = add_floats(a, b);
+      std::memcpy(output.data(), &c, sizeof(float));
       return output;
     }
     throw std::runtime_error("Unknown method name" + name);
   }
-  int32_t add_ints(int32_t a, int32_t b) { return a + b; }
-  float add_floats(float a, float b) { return a + b; }
+  int32_t add_ints(int32_t a, int32_t b) {
+    (void)this;
+    return a + b;
+  }
+  float add_floats(float a, float b) {
+    (void)this;
+    return a + b;
+  }
 };
 
 } // namespace SDK_END2END_NAMESPACE

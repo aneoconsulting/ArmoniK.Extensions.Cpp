@@ -1,18 +1,20 @@
 #!/bin/sh
 
-cd ArmoniK.SDK.DLLWorker
-./build.sh
-cd -
+set -ex
 
-docker build --build-arg DLLWorkerImage=armonik-sdk-cpp-workerdll:0.1.0 -f ArmoniK.SDK.Worker.Test/Dockerfile -t armonik.sdk.worker.test:build .
+#mkdir -p Api
+#(cd ../ArmoniK.Api/packages/cpp/tools && ./compile.sh)
+#cp -r ../ArmoniK.Api/packages/cpp/install/. Api/.
 
-if [ "$ARMONIK_SHARED_HOST_PATH" = "" ]
+(cd ArmoniK.SDK.DLLWorker && ./build.sh)
+
+docker build --build-arg DLLWorkerImage=armonik-sdk-cpp-workerdll:0.1.0 -f ArmoniK.SDK.Worker.Test/Dockerfile --progress plain -t armonik.sdk.worker.test:build .
+
+if [ -z "$ARMONIK_SHARED_HOST_PATH" ]
 then
-  export ARMONIK_SHARED_HOST_PATH=$(kubectl get secret -n armonik shared-storage -o jsonpath="{.data.host_path}" 2>/dev/null | base64 -d)
-else
-  export ARMONIK_SHARED_HOST_PATH="$ARMONIK_SHARED_HOST_PATH"
+  ARMONIK_SHARED_HOST_PATH=$(kubectl get secret -n armonik shared-storage -o jsonpath="{.data.host_path}" 2>/dev/null | base64 -d)
 fi
-export ARMONIK_SHARED_HOST_PATH=${ARMONIK_SHARED_HOST_PATH:="${HOME}/data"}
+export ARMONIK_SHARED_HOST_PATH=${ARMONIK_SHARED_HOST_PATH:-"${HOME}/data"}
 
 container="$(docker create "armonik.sdk.worker.test:build")"
 mkdir -p "$ARMONIK_SHARED_HOST_PATH"
