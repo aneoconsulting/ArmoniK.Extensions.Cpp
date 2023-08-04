@@ -48,8 +48,8 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
   std::vector<std::string> result_ids;
   result_ids.reserve(num);
   // Get the result ids from the response
-  std::transform(results_response.results().begin(), results_response.results().end(), std::back_inserter(result_ids),
-                 [](auto res) { return std::move(res.result_id()); });
+  std::transform(results_response.mutable_results()->begin(), results_response.mutable_results()->end(),
+                 std::back_inserter(result_ids), [](auto &res) { return std::move(*res.mutable_result_id()); });
   return result_ids;
 }
 
@@ -98,9 +98,10 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties)
     : taskOptions(properties.taskOptions), channel_pool(properties) {
-  client = std::make_unique<Api::Client::SubmitterClient>(
-      armonik::api::grpc::v1::submitter::Submitter::NewStub(channel_pool.GetChannel()));
-  results = armonik::api::grpc::v1::results::Results::NewStub(channel_pool.GetChannel());
+  auto channel = channel_pool.GetChannel();
+  client =
+      std::make_unique<Api::Client::SubmitterClient>(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel));
+  results = armonik::api::grpc::v1::results::Results::NewStub(channel);
 
   // Creates a new session
   session = client->create_session(static_cast<armonik::api::grpc::v1::TaskOptions>(properties.taskOptions),

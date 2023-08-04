@@ -9,7 +9,7 @@
 class PythonTestWorkerHandler : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   void HandleResponse(const std::string &result_payload, const std::string &taskId) override {
-    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << "for taskId " << taskId
+    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
               << std::endl;
     auto tr = ArmoniK::Sdk::Common::TaskPayload::Deserialize(result_payload);
     std::cout << "Received : "
@@ -27,8 +27,13 @@ public:
 class EchoServiceHandler : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   void HandleResponse(const std::string &result_payload, const std::string &taskId) override {
-    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << "for taskId " << taskId
-              << std::endl;
+    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
+              << "\nContent : ";
+    std::cout.write(result_payload.data(), result_payload.size()) << "\nRaw : ";
+    for (char c : result_payload) {
+      std::cout << static_cast<int>(c) << ' ';
+    }
+    std::cout << std::endl;
   }
   void HandleError(const std::exception &e, const std::string &taskId) override {
     std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;

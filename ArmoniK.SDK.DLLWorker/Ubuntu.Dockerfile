@@ -4,11 +4,9 @@ FROM ubuntu:23.04 AS builder
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
-    ssh \
     gcc \
     g++ \
     gdb \
-    clang \
     make \
     ninja-build \
     cmake \
@@ -67,20 +65,7 @@ FROM ubuntu:23.04 AS runner
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
-    ssh \
-    gcc \
-    g++ \
-    gdb \
-    clang \
-    make \
-    ninja-build \
-    cmake \
-    autoconf \
-    automake \
-    locales-all \
-    build-essential \
     libc-ares-dev \
-    protobuf-compiler-grpc \
     grpc-proto \
     libgrpc-dev \
     libgrpc++-dev \

@@ -37,7 +37,7 @@ ApplicationManager &ApplicationManager::UseSession(const std::string &sessionId)
 }
 ArmoniK::Api::Worker::ProcessStatus ApplicationManager::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
                                                                 const std::string &method_name,
-                                                                const std::string &method_arguments) & {
+                                                                const std::string &method_arguments) {
   return service_manager.Execute(taskHandler, method_name, method_arguments);
 }
 ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config) : functionPointers() {

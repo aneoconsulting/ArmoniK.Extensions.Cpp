@@ -57,7 +57,7 @@ void ServiceManager::UploadResult(void *opaque_context, armonik_status_t status,
   context->taskHandler.send_result(context->taskHandler.getExpectedResults()[0], std::string_view(data, data_size));
   context->output.set_ok();
 }
-bool ServiceManager::matches(const ServiceId &service_id) { return service_id == serviceId; }
+bool ServiceManager::matches(const ServiceId &other) { return other == serviceId; }
 void ServiceManager::clear() {
   if (serviceId.empty()) {
     return;
