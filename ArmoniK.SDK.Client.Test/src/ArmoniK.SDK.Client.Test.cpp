@@ -3,15 +3,15 @@
 
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <armonik/sdk/client/SessionService.h>
-#include <armonik/sdk/common/IConfiguration.h>
+#include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskPayload.h>
 
-class PythonTestWorkerHandler : public ArmoniK::SDK::Client::IServiceInvocationHandler {
+class PythonTestWorkerHandler : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   void HandleResponse(const std::string &result_payload, const std::string &taskId) override {
     std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << std::endl;
-    auto tr = ArmoniK::SDK::Common::TaskPayload::Deserialize(result_payload);
+    auto tr = ArmoniK::Sdk::Common::TaskPayload::Deserialize(result_payload);
     std::cout << "Received : "
               << "\n Method name : " << tr.method_name << "\n Data dependencies : \n";
     for (auto &&dd : tr.data_dependencies) {
@@ -25,7 +25,7 @@ public:
   }
 };
 
-class AddServiceHandler : public ArmoniK::SDK::Client::IServiceInvocationHandler {
+class AddServiceHandler : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   void HandleResponse(const std::string &result_payload, const std::string &taskId) override {
     std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << std::endl;
@@ -54,7 +54,7 @@ public:
   float check_float_result(const float &val) { return (val + val + sizeof(float)); }
 };
 
-class EchoServiceHandler : public ArmoniK::SDK::Client::IServiceInvocationHandler {
+class EchoServiceHandler : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   void HandleResponse(const std::string &result_payload, const std::string &taskId) override {
     std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << std::endl;
@@ -67,7 +67,7 @@ public:
 TEST(testSDK, testEcho) {
   std::cout << "Hello, World!" << std::endl;
   // Load configuration from file and environment
-  ArmoniK::SDK::Common::IConfiguration config;
+  ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
   std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
@@ -76,14 +76,14 @@ TEST(testSDK, testEcho) {
   }
 
   // Create the task options
-  ArmoniK::SDK::Common::TaskOptions session_task_options("libArmoniK.SDK.DLLWorker.Test.so", "0.1.0", "End2EndTest",
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.DLLWorker.Test.so", "0.1.0", "End2EndTest",
                                                          "EchoService");
 
   // Create the properties
-  ArmoniK::SDK::Common::Properties properties(config, session_task_options);
+  ArmoniK::Sdk::Common::Properties properties(config, session_task_options);
 
   // Create the session service
-  ArmoniK::SDK::Client::SessionService service(properties);
+  ArmoniK::Sdk::Client::SessionService service(properties);
 
   // Get the created session id
   std::cout << "Session : " << service.getSession() << std::endl;
@@ -104,13 +104,13 @@ TEST(testSDK, testEcho) {
 
   // Create the handler
   // auto handler = std::make_shared<PythonTestWorkerHandler>();
-  std::shared_ptr<ArmoniK::SDK::Client::IServiceInvocationHandler> handler(
-      (config.get("Worker__Type").c_str() == "PythonTestWorker")
-          ? static_cast<ArmoniK::SDK::Client::IServiceInvocationHandler *>(new PythonTestWorkerHandler)
-          : static_cast<ArmoniK::SDK::Client::IServiceInvocationHandler *>(new EchoServiceHandler));
+  std::shared_ptr<ArmoniK::Sdk::Client::IServiceInvocationHandler> handler(
+      (config.get("Worker__Type") == "PythonTestWorker")
+          ? static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new PythonTestWorkerHandler)
+          : static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new EchoServiceHandler));
 
   // Submit a task
-  auto tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("EchoService", args)}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("EchoService", args)}, handler);
 
   std::cout << "Sent : " << tasks[0] << std::endl;
 
@@ -125,7 +125,7 @@ TEST(testSDK, testEcho) {
 TEST(testSDK, testAddInt) {
   std::cout << "Doing some computation!" << std::endl;
   // Load configuration from file and environment
-  ArmoniK::SDK::Common::IConfiguration config;
+  ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
   std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
@@ -134,14 +134,14 @@ TEST(testSDK, testAddInt) {
   }
 
   // Create the task options
-  ArmoniK::SDK::Common::TaskOptions session_task_options("libArmoniK.SDK.DLLWorker.Test.so", "0.1.0", "End2EndTest",
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.DLLWorker.Test.so", "0.1.0", "End2EndTest",
                                                          "AdditionService");
 
   // Create the properties
-  ArmoniK::SDK::Common::Properties properties(config, session_task_options);
+  ArmoniK::Sdk::Common::Properties properties(config, session_task_options);
 
   // Create the session service
-  ArmoniK::SDK::Client::SessionService service(properties);
+  ArmoniK::Sdk::Client::SessionService service(properties);
 
   // Get the created session id
   std::cout << "Session : " << service.getSession() << std::endl;
@@ -152,19 +152,19 @@ TEST(testSDK, testAddInt) {
 
   // Create the handler
   auto handler = std::make_shared<AddServiceHandler>();
-  /*std::shared_ptr<ArmoniK::SDK::Client::IServiceInvocationHandler> handler(
+  /*std::shared_ptr<ArmoniK::Sdk::Client::IServiceInvocationHandler> handler(
       (config.get("Worker__Type").c_str() == "PythonTestWorker")
-          ? static_cast<ArmoniK::SDK::Client::IServiceInvocationHandler *>(new PythonTestWorkerHandler)
+          ? static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new PythonTestWorkerHandler)
           : (session_task_options.application_service == "EchoService")
-          ? static_cast<ArmoniK::SDK::Client::IServiceInvocationHandler *>(new EchoServiceHandler)
-      : static_cast<ArmoniK::SDK::Client::IServiceInvocationHandler *>(new AddServiceHandler));*/
+          ? static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new EchoServiceHandler)
+      : static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new AddServiceHandler));*/
 
   handler->is_int = true;
   // Submit a task
   std::vector<std::string> task_ids;
   size_t n = 0;
   // for (auto &&arg : args) {
-  auto tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("add_ints", args[n])}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", args[n])}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -177,7 +177,7 @@ TEST(testSDK, testAddInt) {
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("add_ints", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", args[n])}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -188,7 +188,7 @@ TEST(testSDK, testAddInt) {
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("add_ints", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", args[n])}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -199,7 +199,7 @@ TEST(testSDK, testAddInt) {
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("add_ints", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", args[n])}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -210,7 +210,7 @@ TEST(testSDK, testAddInt) {
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("add_ints", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", args[n])}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -230,7 +230,7 @@ TEST(testSDK, testAddInt) {
 TEST(testSDK, testAddFloat) {
   std::cout << "Doing some computation!" << std::endl;
   // Load configuration from file and environment
-  ArmoniK::SDK::Common::IConfiguration config;
+  ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
   std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
@@ -239,14 +239,14 @@ TEST(testSDK, testAddFloat) {
   }
 
   // Create the task options
-  ArmoniK::SDK::Common::TaskOptions session_task_options("libArmoniK.SDK.DLLWorker.Test.so", "0.1.0", "End2EndTest",
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.DLLWorker.Test.so", "0.1.0", "End2EndTest",
                                                          "AdditionService");
 
   // Create the properties
-  ArmoniK::SDK::Common::Properties properties(config, session_task_options);
+  ArmoniK::Sdk::Common::Properties properties(config, session_task_options);
 
   // Create the session service
-  ArmoniK::SDK::Client::SessionService service(properties);
+  ArmoniK::Sdk::Client::SessionService service(properties);
 
   // Get the created session id
   std::cout << "Session : " << service.getSession() << std::endl;
@@ -255,19 +255,19 @@ TEST(testSDK, testAddFloat) {
 
   // Create the handler
   auto handler = std::make_shared<AddServiceHandler>();
-  /*std::shared_ptr<ArmoniK::SDK::Client::IServiceInvocationHandler> handler(
+  /*std::shared_ptr<ArmoniK::Sdk::Client::IServiceInvocationHandler> handler(
       (config.get("Worker__Type").c_str() == "PythonTestWorker")
-          ? static_cast<ArmoniK::SDK::Client::IServiceInvocationHandler *>(new PythonTestWorkerHandler)
+          ? static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new PythonTestWorkerHandler)
           : (session_task_options.application_service == "EchoService")
-          ? static_cast<ArmoniK::SDK::Client::IServiceInvocationHandler *>(new EchoServiceHandler)
-      : static_cast<ArmoniK::SDK::Client::IServiceInvocationHandler *>(new AddServiceHandler));*/
+          ? static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new EchoServiceHandler)
+      : static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new AddServiceHandler));*/
 
   handler->is_int = false;
   // Submit a task
   std::vector<std::string> task_ids;
   size_t n = 0;
   // for (auto &&arg : args) {
-  auto tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("add_floats", args[n])}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", args[n])}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -282,7 +282,7 @@ TEST(testSDK, testAddFloat) {
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("add_floats", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", args[n])}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -293,7 +293,7 @@ TEST(testSDK, testAddFloat) {
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("add_floats", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", args[n])}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -304,7 +304,7 @@ TEST(testSDK, testAddFloat) {
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("add_floats", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", args[n])}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -315,7 +315,7 @@ TEST(testSDK, testAddFloat) {
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::SDK::Common::TaskPayload("add_floats", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", args[n])}, handler);
 
   ASSERT_FALSE(tasks.empty());
 

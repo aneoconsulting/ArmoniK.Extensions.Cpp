@@ -1,0 +1,58 @@
+{
+  "configurations": [
+    {
+      "name": "x64-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "variables": [
+        {
+          "name": "BUILD_END2END",
+          "value": "True",
+          "type": "BOOL"
+        }
+      ]
+    },
+    {
+      "name": "Linux-GCC-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "cmakeExecutable": "cmake",
+      "remoteCopySourcesExclusionList": [ ".vs", ".git", "out" ],
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "linux_x64" ],
+      "remoteMachineName": "1002453685;localhost (username=root, port=5001, authentication=Password)",
+      "remoteCMakeListsRoot": "/app/source",
+      "remoteBuildRoot": "/app/build",
+      "remoteInstallRoot": "/app/install",
+      "remoteCopySources": false,
+      "rsyncCommandArgs": "-t --delete --delete-excluded",
+      "remoteCopyBuildOutput": false,
+      "remoteCopySourcesMethod": "rsync",
+      "variables": [
+        {
+          "name": "BUILD_END2END",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "BUILD_DLLWORKER",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "BUILD_GMOCK",
+          "value": "False",
+          "type": "BOOL"
+        }
+      ]
+    }
+  ]
+}
