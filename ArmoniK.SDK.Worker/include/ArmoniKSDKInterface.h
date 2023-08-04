@@ -23,7 +23,7 @@ typedef enum armonik_status_t { ARMONIK_STATUS_OK = 0, ARMONIK_STATUS_ERROR = 1 
  * @param service_name
  * @return void*
  */
-void *armonik_create_service(const char *service_namespace, const char *service_name);
+extern void *armonik_create_service(const char *service_namespace, const char *service_name);
 typedef void *(*armonik_create_service_t)(const char *service_namespace, const char *service_name);
 
 /**

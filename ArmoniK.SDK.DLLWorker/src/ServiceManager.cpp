@@ -4,25 +4,23 @@
 #include <armonik/worker/Worker/ProcessStatus.h>
 #include <utility>
 
+namespace SDK_DLLWORKER_NAMESPACE {
+namespace {
 struct ArmonikContext {
   ArmoniK::Api::Worker::TaskHandler &taskHandler;
   ArmoniK::Api::Worker::ProcessStatus output;
 
   explicit ArmonikContext(ArmoniK::Api::Worker::TaskHandler &taskHandler) : taskHandler(taskHandler) {}
 };
+} // namespace
 
-SDK_WORKER_NAMESPACE::ServiceManager::ServiceManager(ArmoniKFunctionPointers functionsPointers, ServiceId serviceId)
-    : functionPointers(functionsPointers), serviceId(std::move(serviceId)) {
+ServiceManager::ServiceManager(ArmoniKFunctionPointers functionsPointers, ServiceId serviceId)
+    : serviceId(std::move(serviceId)), functionPointers(functionsPointers) {
   service_context = this->functionPointers.create_service(this->serviceId.service_namespace.c_str(),
                                                           this->serviceId.service_name.c_str());
 }
-SDK_WORKER_NAMESPACE::ServiceManager::~ServiceManager() {
-  if (!current_session.empty()) {
-    functionPointers.leave_session(service_context, session_context);
-  }
-  functionPointers.destroy_service(service_context);
-}
-SDK_WORKER_NAMESPACE::ServiceManager &SDK_WORKER_NAMESPACE::ServiceManager::UseSession(const std::string &sessionId) {
+ServiceManager::~ServiceManager() { clear(); }
+ServiceManager &ServiceManager::UseSession(const std::string &sessionId) & {
   if (sessionId != current_session) {
     if (!current_session.empty()) {
       functionPointers.leave_session(service_context, session_context);
@@ -32,9 +30,9 @@ SDK_WORKER_NAMESPACE::ServiceManager &SDK_WORKER_NAMESPACE::ServiceManager::UseS
   }
   return *this;
 }
-ArmoniK::Api::Worker::ProcessStatus
-SDK_WORKER_NAMESPACE::ServiceManager::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
-                                              const std::string &method_name, const std::string &method_arguments) {
+ArmoniK::Api::Worker::ProcessStatus ServiceManager::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
+                                                            const std::string &method_name,
+                                                            const std::string &method_arguments) {
   ArmonikContext callContext(taskHandler);
   if (current_session.empty()) {
     throw ArmoniK::Sdk::Common::ArmoniKSdkException("Session is not initialized");
@@ -50,8 +48,7 @@ SDK_WORKER_NAMESPACE::ServiceManager::Execute(ArmoniK::Api::Worker::TaskHandler 
   return callContext.output;
 }
 
-void SDK_WORKER_NAMESPACE::ServiceManager::UploadResult(void *opaque_context, armonik_status_t status, const char *data,
-                                                        size_t data_size) {
+void ServiceManager::UploadResult(void *opaque_context, armonik_status_t status, const char *data, size_t data_size) {
   auto context = static_cast<ArmonikContext *>(opaque_context);
   if (status != ARMONIK_STATUS_OK) {
     context->output.set_error(std::string(data, data_size));
@@ -60,3 +57,16 @@ void SDK_WORKER_NAMESPACE::ServiceManager::UploadResult(void *opaque_context, ar
   context->taskHandler.send_result(context->taskHandler.getExpectedResults()[0], std::string_view(data, data_size));
   context->output.set_ok();
 }
+bool ServiceManager::matches(const ServiceId &other) { return other == serviceId; }
+void ServiceManager::clear() {
+  if (serviceId.empty()) {
+    return;
+  }
+  if (!current_session.empty()) {
+    functionPointers.leave_session(service_context, session_context);
+    current_session.clear();
+  }
+  functionPointers.destroy_service(service_context);
+  serviceId.clear();
+}
+} // namespace SDK_DLLWORKER_NAMESPACE

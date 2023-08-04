@@ -14,17 +14,17 @@ const std::string &SessionService::getSession() const {
 
 std::vector<std::string>
 ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
-                                             const std::shared_ptr<IServiceInvocationHandler> &handler,
+                                             std::shared_ptr<IServiceInvocationHandler> handler,
                                              const ArmoniK::Sdk::Common::TaskOptions &task_options) {
   ensure_valid();
-  return impl->Submit(requests, handler, task_options);
+  return impl->Submit(requests, std::move(handler), task_options);
 }
 std::vector<std::string>
 
 SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
-                       const std::shared_ptr<IServiceInvocationHandler> &handler) {
+                       std::shared_ptr<IServiceInvocationHandler> handler) {
   ensure_valid();
-  return impl->Submit(requests, handler);
+  return impl->Submit(requests, std::move(handler));
 }
 void SessionService::WaitResults(std::set<std::string> task_ids, WaitBehavior waitBehavior,
                                  const WaitOptions &options) {

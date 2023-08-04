@@ -17,6 +17,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Common ArmoniK.SDK.Cli
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NAMESPACE})
 
+setup_options(${PROJECT_NAME})
+
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "${SOURCES_FILES_DIR}"

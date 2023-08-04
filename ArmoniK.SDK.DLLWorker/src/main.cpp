@@ -11,7 +11,7 @@ int main() {
 
   try {
     ArmoniK::Api::Worker::WorkerServer::create<SDK_DLLWORKER_NAMESPACE::DynamicWorker>(
-        ArmoniK::Api::Common::utils::Configuration(config))
+        ArmoniK::Api::Common::utils::Configuration(config), config)
         ->run();
   } catch (const std::exception &e) {
     std::cout << "Error in worker" << e.what() << std::endl;

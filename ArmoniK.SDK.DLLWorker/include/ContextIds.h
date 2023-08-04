@@ -1,18 +1,13 @@
 #pragma once
-#include "ArmoniKSDKInterface.h"
+#include <ArmoniKSDKInterface.h>
 #include <functional>
 #include <string>
 #include <utility>
 
-namespace SDK_WORKER_NAMESPACE {
+namespace SDK_DLLWORKER_NAMESPACE {
 struct AppId {
   std::string application_name;
   std::string application_version;
-
-  AppId() = default;
-
-  AppId(std::string application_name, std::string application_version)
-      : application_name(std::move(application_name)), application_version(std::move(application_version)) {}
 
   bool operator==(const AppId &other) const {
     return other.application_name == application_name && other.application_version == application_version;
@@ -20,7 +15,12 @@ struct AppId {
 
   bool operator!=(const AppId &other) const { return !(other == *this); }
 
-  [[nodiscard]] bool empty() const { return application_version.empty() && application_name.empty(); }
+  [[nodiscard]] bool empty() const { return application_name.empty(); }
+
+  void clear() {
+    application_name.clear();
+    application_version.clear();
+  }
 };
 
 struct ServiceId {
@@ -39,6 +39,14 @@ struct ServiceId {
   }
 
   bool operator!=(const ServiceId &other) const { return !(other == *this); }
+
+  [[nodiscard]] bool empty() const { return appId.empty(); }
+
+  void clear() {
+    service_name.clear();
+    service_namespace.clear();
+    appId.clear();
+  }
 };
 
 struct ArmoniKFunctionPointers {
@@ -47,5 +55,13 @@ struct ArmoniKFunctionPointers {
   armonik_enter_session_t enter_session;
   armonik_leave_session_t leave_session;
   armonik_call_t call;
+
+  void clear() {
+    create_service = nullptr;
+    destroy_service = nullptr;
+    enter_session = nullptr;
+    leave_session = nullptr;
+    call = nullptr;
+  }
 };
-} // namespace SDK_WORKER_NAMESPACE
+} // namespace SDK_DLLWORKER_NAMESPACE
