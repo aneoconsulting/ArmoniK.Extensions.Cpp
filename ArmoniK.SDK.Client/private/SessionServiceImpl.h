@@ -9,7 +9,7 @@
 #include <shared_mutex>
 
 namespace ArmoniK::Sdk::Common {
-class Properties;
+struct Properties;
 class TaskPayload;
 } // namespace ArmoniK::Sdk::Common
 

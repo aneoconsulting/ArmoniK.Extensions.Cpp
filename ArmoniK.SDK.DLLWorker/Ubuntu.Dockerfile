@@ -23,7 +23,7 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-ge
     libgrpc++-dev \
     libprotobuf-dev \
     git \
-	&& apt-get clean
+    && apt-get clean
 
 # Update the PATH environment variable to include the gRPC libraries and binaries
 ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
@@ -34,17 +34,18 @@ RUN echo $PATH
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
-COPY ./Api/. /armonik/api/.
-#RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
-#    cd ArmoniK.Api/packages/cpp && \
-#    mkdir -p /app/proto && \
-#    mkdir -p /armonik/api && \
-#    cp -r ../../Protos/V1/* /app/proto && \
-#    mkdir -p build/ && \
-#    cd build/ && \
-#    cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" "-DBUILD_TEST=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_WORKER=ON" .. && \
-#    make -j $(nproc) install && \
-#    make clean
+ARG API_VERSION=main
+RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
+    cd ArmoniK.Api/packages/cpp && \
+    git checkout "${API_VERSION}" && \
+    mkdir -p /app/proto && \
+    mkdir -p /armonik/api && \
+    cp -r ../../Protos/V1/* /app/proto && \
+    mkdir -p build/ && \
+    cd build/ && \
+    cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" "-DBUILD_TEST=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_WORKER=ON" .. && \
+    make -j $(nproc) install && \
+    make clean
 
 
 # Copy the application source files into the image
@@ -84,7 +85,7 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-ge
     libgrpc-dev \
     libgrpc++-dev \
     libprotobuf-dev \
-	&& apt-get clean
+    && apt-get clean
 	
 # Create a non-root user and group for running the application
 # This is a security best practice to avoid running applications as the root user

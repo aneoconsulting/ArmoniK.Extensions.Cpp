@@ -67,7 +67,7 @@ public:
   /**
    * @brief Retrieve symbol from lib
    */
-  template <class T> T get(const char *symbol_name) const { return (T)(get(symbol_name)); }
+  template <class T> T get(const char *symbol_name) const { return (T)get(symbol_name); }
 
   /**
    * @brief Test whether a library is loaded or not

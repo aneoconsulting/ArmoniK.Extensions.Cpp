@@ -2,8 +2,10 @@
 #include "ArmoniKSdkException.h"
 #include "Configuration.h"
 #include <sstream>
-SDK_DLLWORKER_NAMESPACE::ApplicationManager &
-SDK_DLLWORKER_NAMESPACE::ApplicationManager::UseApplication(const AppId &appId) & {
+
+namespace SDK_DLLWORKER_NAMESPACE {
+
+ApplicationManager &ApplicationManager::UseApplication(const AppId &appId) & {
   if (appId == currentId) {
     return *this;
   }
@@ -22,29 +24,26 @@ SDK_DLLWORKER_NAMESPACE::ApplicationManager::UseApplication(const AppId &appId) 
             << " )" << std::endl;
   return *this;
 }
-SDK_DLLWORKER_NAMESPACE::ApplicationManager &
-SDK_DLLWORKER_NAMESPACE::ApplicationManager::UseService(const ServiceId &serviceId) & {
+ApplicationManager &ApplicationManager::UseService(const ServiceId &serviceId) & {
   if (!service_manager.matches(serviceId)) {
     service_manager = ServiceManager(functionPointers, serviceId);
   }
 
   return *this;
 }
-SDK_DLLWORKER_NAMESPACE::ApplicationManager &
-SDK_DLLWORKER_NAMESPACE::ApplicationManager::UseSession(const std::string &sessionId) & {
+ApplicationManager &ApplicationManager::UseSession(const std::string &sessionId) & {
   service_manager.UseSession(sessionId);
   return *this;
 }
-ArmoniK::Api::Worker::ProcessStatus
-SDK_DLLWORKER_NAMESPACE::ApplicationManager::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
-                                                     const std::string &method_name,
-                                                     const std::string &method_arguments) & {
+ArmoniK::Api::Worker::ProcessStatus ApplicationManager::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
+                                                                const std::string &method_name,
+                                                                const std::string &method_arguments) & {
   return service_manager.Execute(taskHandler, method_name, method_arguments);
 }
-SDK_DLLWORKER_NAMESPACE::ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config)
-    : functionPointers() {
+ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config) : functionPointers() {
   applicationsBasePath = config.get("Worker__ApplicationBasePath");
   if (applicationsBasePath.empty()) {
     applicationsBasePath = "/data";
   }
 }
+} // namespace SDK_DLLWORKER_NAMESPACE

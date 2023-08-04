@@ -9,7 +9,6 @@
 #include <armonik/common/utils/GuuId.h>
 #include <grpcpp/client_context.h>
 #include <string>
-#include <submitter_common.pb.h>
 #include <submitter_service.grpc.pb.h>
 #include <thread>
 #include <utility>
@@ -99,9 +98,9 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties)
     : taskOptions(properties.taskOptions), channel_pool(properties) {
-  client = std::move(std::make_unique<Api::Client::SubmitterClient>(
-      armonik::api::grpc::v1::submitter::Submitter::NewStub(channel_pool.GetChannel())));
-  results = std::move(armonik::api::grpc::v1::results::Results::NewStub(channel_pool.GetChannel()));
+  client = std::make_unique<Api::Client::SubmitterClient>(
+      armonik::api::grpc::v1::submitter::Submitter::NewStub(channel_pool.GetChannel()));
+  results = armonik::api::grpc::v1::results::Results::NewStub(channel_pool.GetChannel());
 
   // Creates a new session
   session = client->create_session(static_cast<armonik::api::grpc::v1::TaskOptions>(properties.taskOptions),
@@ -187,7 +186,6 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
         done.emplace_back(task_id, rid);
       } else if (status == armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND) {
         std::cout << "Result " << rid << " not found" << std::endl;
-        ;
         done.emplace_back("", rid);
       }
     }
