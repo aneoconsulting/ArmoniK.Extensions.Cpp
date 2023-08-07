@@ -77,8 +77,8 @@ jobs:
         if: ${{ failure() && steps.check-diff.conclusion == 'failure' }}
         with:
           name: patch-cpp
-          path: ./patch-cpp.diff
-
+          path: ./patch-cpp.diff 
+      
   build-cpp-packages:
     name: Build C++ Packages
     runs-on: ubuntu-latest
@@ -88,6 +88,27 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.ref }}
+
+      - name: Install ArmoniK Dependencies
+        uses: aneoconsulting/ArmoniK.Action.Deploy/dependencies@main
+        with:
+           docker: true
+           terraform: true
+           k3s: true
+           aws: true
+
+      - name: Checkout Infra
+        uses: actions/checkout@v3
+        with:
+          repository: aneoconsulting/ArmoniK
+          path: infra
+
+      - id: deploy
+        name: Deploy
+        uses: aneoconsulting/ArmoniK.Action.Deploy/deploy@main
+        with:
+          working-directory: ${{ github.workspace }}/infra
+          type: localhost
 
       - name: Checkout API
         uses: actions/checkout@v3
@@ -108,3 +129,10 @@ jobs:
       - name: Build SDK C++
         run: |
           ./build-deploy-end2end.sh
+
+      - name: Run Client tests
+        run: |
+          set -ex
+          kubectl get svc -n armonik -o wide
+          export CPPort=$(kubectl get svc ingress -n armonik -o custom-columns="PORT:.spec.ports[1].port" --no-headers=true)
+          ./build-client.sh http://armonik.local:$CPPort
