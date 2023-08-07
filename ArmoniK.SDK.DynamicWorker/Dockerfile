@@ -47,15 +47,15 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
 WORKDIR /app/source
 COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
 COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
-COPY ./ArmoniK.SDK.DLLWorker ./ArmoniK.SDK.DLLWorker
+COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/builder/sdk
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DLLWORKER=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
 
 WORKDIR /app/builder/worker
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DLLWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
 
 # Start with the latest Alpine base image for the final stage
 FROM alpine AS runner
@@ -83,4 +83,4 @@ ENV PATH="/app/install/bin:$PATH"
 
 # Set the entrypoint for the application's test executable
 # This is the command that will be executed when the container is run
-ENTRYPOINT ["/app/install/bin/ArmoniK.SDK.DLLWorker"]
+ENTRYPOINT ["/app/install/bin/ArmoniK.SDK.DynamicWorker"]

@@ -9,7 +9,7 @@ namespace ArmoniK::Sdk::Common {
 class Configuration;
 }
 
-namespace SDK_DLLWORKER_NAMESPACE {
+namespace SDK_DYNAMICWORKER_NAMESPACE {
 class ApplicationManager {
 
 public:
@@ -28,4 +28,4 @@ private:
   DynamicLib currentLibrary;
   std::string applicationsBasePath;
 };
-} // namespace SDK_DLLWORKER_NAMESPACE
+} // namespace SDK_DYNAMICWORKER_NAMESPACE

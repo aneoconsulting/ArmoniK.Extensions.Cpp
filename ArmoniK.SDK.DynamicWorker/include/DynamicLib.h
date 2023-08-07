@@ -1,6 +1,6 @@
 #pragma once
 #include <utility>
-namespace SDK_DLLWORKER_NAMESPACE {
+namespace SDK_DYNAMICWORKER_NAMESPACE {
 /**
  * @brief Manage external dynamic library
  */
@@ -74,4 +74,4 @@ public:
    */
   explicit operator bool() const noexcept { return handle; }
 };
-} // namespace SDK_DLLWORKER_NAMESPACE
+} // namespace SDK_DYNAMICWORKER_NAMESPACE
