@@ -77,12 +77,12 @@ jobs:
         if: ${{ failure() && steps.check-diff.conclusion == 'failure' }}
         with:
           name: patch-cpp
-          path: ./patch-cpp.diff 
-      
+          path: ./patch-cpp.diff
+
   build-cpp-packages:
     name: Build C++ Packages
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -102,6 +102,11 @@ jobs:
         with:
           repository: aneoconsulting/ArmoniK
           path: infra
+          
+      - name: Override parameters tfvars
+        run: |
+          pwd
+          cp parameters.tfvars infra/infrastructure/quick-deploy/localhost/all/parameters.tfvars
 
       - id: deploy
         name: Deploy
@@ -133,6 +138,7 @@ jobs:
       - name: Run Client tests
         run: |
           set -ex
-          kubectl get svc -n armonik -o wide
-          export CPPort=$(kubectl get svc ingress -n armonik -o custom-columns="PORT:.spec.ports[1].port" --no-headers=true)
-          ./build-client.sh http://armonik.local:$CPPort
+          export CPIP=$(kubectl get svc control-plane -n armonik -o custom-columns="IP:.spec.clusterIP" --no-headers=true)
+          export CPPort=$(kubectl get svc control-plane -n armonik -o custom-columns="PORT:.spec.ports[*].port" --no-headers=true)
+          ./build-client.sh
+          docker run --rm -t --network host -e Grpc__EndPoint=http://$CPIP:$CPPort armonik_sdk_client_test:0.1.0
