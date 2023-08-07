@@ -392,3 +392,4 @@ packages/web/LICENSE
 gen
 
 build/
+.doxygen-warnings

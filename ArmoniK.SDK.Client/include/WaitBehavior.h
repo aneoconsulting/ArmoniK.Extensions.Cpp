@@ -2,7 +2,13 @@
 #define ARMONIK_SDK_WAITBEHAVIOR_H
 
 namespace SDK_CLIENT_NAMESPACE {
+/**
+ * @brief Options for result waiting
+ */
 struct WaitOptions {
+  /**
+   * @brief Time in milliseconds for result status polling
+   */
   unsigned int polling_ms = 500;
 };
 

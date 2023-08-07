@@ -5,6 +5,13 @@
 #include <iostream>
 namespace SDK_END2END_NAMESPACE {
 
+/**
+ * @brief Example implementation of a ArmoniK::Sdk::Worker::ServiceBase
+ */
+
+/**
+ * @brief Example implementation of a ArmoniK::Sdk::Worker::ServiceBase
+ */
 class EchoService : ServiceBase {
 public:
   std::string call(void *, const std::string &name, const std::string &input) override {

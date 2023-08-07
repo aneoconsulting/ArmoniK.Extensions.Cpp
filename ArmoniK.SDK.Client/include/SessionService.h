@@ -36,9 +36,18 @@ public:
    */
   explicit SessionService(const ArmoniK::Sdk::Common::Properties &properties);
   SessionService(const SessionService &) = delete;
-  SessionService(SessionService &&) noexcept;
+  /**
+   * @brief Move constructor
+   * @param other Other session service
+   */
+  SessionService(SessionService &&other) noexcept;
   SessionService &operator=(const SessionService &) = delete;
-  SessionService &operator=(SessionService &&) noexcept;
+  /**
+   * @brief Move assignment operator
+   * @param other Other session service
+   * @return this
+   */
+  SessionService &operator=(SessionService &&other) noexcept;
   ~SessionService();
 
   /**

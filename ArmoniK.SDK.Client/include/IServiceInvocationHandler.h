@@ -5,6 +5,9 @@
 
 namespace SDK_CLIENT_NAMESPACE {
 
+/**
+ * @brief Task result handler interface class
+ */
 class IServiceInvocationHandler {
 public:
   /**

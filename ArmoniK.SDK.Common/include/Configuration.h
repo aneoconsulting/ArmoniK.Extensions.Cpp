@@ -28,14 +28,35 @@ class ControlPlane {
 public:
   /**
    * @brief Constructs a ControlPlane object with the given configuration.
-   * @param configuration The Configuration object containing address information.
+   * @param config The Configuration object containing address information.
    */
   ControlPlane(const Configuration &config);
-  ControlPlane(const ControlPlane &);
-  ControlPlane(ControlPlane &&) noexcept;
 
-  ControlPlane &operator=(const ControlPlane &);
-  ControlPlane &operator=(ControlPlane &&) noexcept;
+  /**
+   * @brief Copy constructor
+   * @param other Other Control Plane
+   */
+  ControlPlane(const ControlPlane &other);
+
+  /**
+   * @brief Move constructor
+   * @param other Other Control Plane
+   */
+  ControlPlane(ControlPlane &&other) noexcept;
+
+  /**
+   * @brief Copy assignment operator
+   * @param other Other Control Plane
+   * @return this
+   */
+  ControlPlane &operator=(const ControlPlane &other);
+
+  /**
+   * @brief Move assignment operator
+   * @param other Other Control Plane
+   * @return this
+   */
+  ControlPlane &operator=(ControlPlane &&other) noexcept;
 
   /**
    * @brief ArmoniK control plane endpoint
@@ -89,11 +110,32 @@ public:
    * @param configuration The Configuration object containing address information.
    */
   ComputePlane(const Configuration &configuration);
-  ComputePlane(const ComputePlane &);
-  ComputePlane(ComputePlane &&) noexcept;
 
-  ComputePlane &operator=(const ComputePlane &);
-  ComputePlane &operator=(ComputePlane &&) noexcept;
+  /**
+   * @brief Copy constructor
+   * @param other Other compute plane
+   */
+  ComputePlane(const ComputePlane &other);
+
+  /**
+   * @brief Move constructor
+   * @param other Other compute plane
+   */
+  ComputePlane(ComputePlane &&other) noexcept;
+
+  /**
+   * @brief Copy assignment operator
+   * @param other Other compute plane
+   * @return this
+   */
+  ComputePlane &operator=(const ComputePlane &other);
+
+  /**
+   * @brief Move assignment operator
+   * @param other Other compute plane
+   * @return this
+   */
+  ComputePlane &operator=(ComputePlane &&other) noexcept;
 
   /**
    * @brief Returns the server address.
@@ -137,11 +179,30 @@ public:
 
   ~Configuration();
 
-  Configuration(const Configuration &);
-  Configuration(Configuration &&) noexcept;
+  /**
+   * @brief Copy constructor
+   * @param other Other configuration
+   */
+  Configuration(const Configuration &other);
 
-  Configuration &operator=(const Configuration &);
-  Configuration &operator=(Configuration &&) noexcept;
+  /**
+   * @brief Move constructor
+   * @param other Other configuration
+   */
+  Configuration(Configuration &&other) noexcept;
+
+  /**
+   * @brief Copy assignment operator
+   * @param other Other configuration
+   * @return this
+   */
+  Configuration &operator=(const Configuration &other);
+  /**
+   * @brief Move assignment operator
+   * @param other Other configuration
+   * @return this
+   */
+  Configuration &operator=(Configuration &&other) noexcept;
 
   /**
    * @brief Get the value associated with the given key.
@@ -159,6 +220,7 @@ public:
 
   /**
    * @brief List defined values of this configuration.
+   * @return Map representation of this configuration
    * @note Does not include environment variables
    */
   [[nodiscard]] const std::map<std::string, std::string> &list() const;
@@ -188,6 +250,10 @@ public:
    */
   [[nodiscard]] ControlPlane get_control_plane() const;
 
+  /**
+   * @brief Casts this configuration to its Api equivalent
+   * @return Api Configuration equivalent to this
+   */
   explicit operator ArmoniK::Api::Common::utils::Configuration();
 
 private:

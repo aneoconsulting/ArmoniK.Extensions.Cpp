@@ -4,7 +4,7 @@
 #include <grpcpp/create_channel.h>
 #include <utility>
 
-namespace SDK_CLIENT_NAMESPACE {
+namespace SDK_CLIENT_NAMESPACE::Internal {
 
 std::shared_ptr<grpc::Channel> ChannelPool::GetChannel() {
   // TODO Setup TLS / mTLS support
@@ -18,4 +18,4 @@ std::shared_ptr<grpc::Channel> ChannelPool::GetChannel() {
 }
 
 ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties) : properties_(std::move(properties)) {}
-} // namespace SDK_CLIENT_NAMESPACE
+} // namespace SDK_CLIENT_NAMESPACE::Internal

@@ -38,11 +38,14 @@ public:
 
   /**
    * @brief Move constructor
+   * @param other Other DynamicLib
    */
   DynamicLib(DynamicLib &&other) noexcept : handle(other.handle) { other.handle = nullptr; }
 
   /**
    * @brief Move assignment operator
+   * @param other Other DyncmicLib
+   * @return this
    */
   DynamicLib &operator=(DynamicLib &&other) noexcept {
     std::swap(handle, other.handle);
@@ -61,16 +64,22 @@ public:
 
   /**
    * @brief Retrieve symbol from lib
+   * @param symbol_name Name of the symbol
+   * @return Function pointer for the requested symbol
    */
   void *get(const char *symbol_name) const;
 
   /**
    * @brief Retrieve symbol from lib
+   * @tparam T Function pointer type
+   * @param symbol_name Name of the symbol
+   * @return Function pointer for the requested symbol
    */
   template <class T> T get(const char *symbol_name) const { return (T)get(symbol_name); }
 
   /**
    * @brief Test whether a library is loaded or not
+   * @return true if a library is loaded
    */
   explicit operator bool() const noexcept { return handle; }
 };
