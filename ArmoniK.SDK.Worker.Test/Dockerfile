@@ -1,5 +1,5 @@
-ARG DLLWorkerImage
-FROM $DLLWorkerImage as source
+ARG DynamicWorkerImage
+FROM $DynamicWorkerImage as source
 
 FROM alpine AS builder
 # Install all the necessary dependencies required for the build process
@@ -16,4 +16,4 @@ COPY --from=source /app/install/include/armonik/sdk/worker/ /app/install/include
 WORKDIR /app/source
 COPY ./ArmoniK.SDK.Worker.Test ./ArmoniK.SDK.Worker.Test
 COPY ./CMakeLists.txt ./CMakeLists.txt
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/build" "-DBUILD_CLIENT=OFF" "-DBUILD_DLLWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/build" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install

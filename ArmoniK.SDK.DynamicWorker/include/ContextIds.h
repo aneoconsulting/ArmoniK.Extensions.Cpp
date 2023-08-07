@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 
-namespace SDK_DLLWORKER_NAMESPACE {
+namespace SDK_DYNAMICWORKER_NAMESPACE {
 struct AppId {
   std::string application_name;
   std::string application_version;
@@ -64,4 +64,4 @@ struct ArmoniKFunctionPointers {
     call = nullptr;
   }
 };
-} // namespace SDK_DLLWORKER_NAMESPACE
+} // namespace SDK_DYNAMICWORKER_NAMESPACE

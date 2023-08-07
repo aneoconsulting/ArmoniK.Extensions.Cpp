@@ -2,9 +2,9 @@
 
 set -ex
 
-(cd ArmoniK.SDK.DLLWorker && ./build.sh)
+(cd ArmoniK.SDK.DynamicWorker && ./build.sh)
 
-docker build --build-arg DLLWorkerImage=armonik-sdk-cpp-workerdll:0.1.0 -f ArmoniK.SDK.Worker.Test/Dockerfile --progress plain -t armonik.sdk.worker.test:build .
+docker build --build-arg DynamicWorkerImage=armonik-sdk-cpp-dynamicworker:0.1.0 -f ArmoniK.SDK.Worker.Test/Dockerfile --progress plain -t armonik.sdk.worker.test:build .
 
 if [ -z "$ARMONIK_SHARED_HOST_PATH" ]
 then

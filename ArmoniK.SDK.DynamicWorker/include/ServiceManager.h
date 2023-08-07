@@ -4,7 +4,7 @@
 #include <armonik/worker/Worker/ProcessStatus.h>
 #include <armonik/worker/Worker/TaskHandler.h>
 
-namespace SDK_DLLWORKER_NAMESPACE {
+namespace SDK_DYNAMICWORKER_NAMESPACE {
 class ServiceManager {
 public:
   ServiceManager() = default;
@@ -48,4 +48,4 @@ private:
 
   static void UploadResult(void *opaque_task_handler, armonik_status_t status, const char *data, size_t data_size);
 };
-} // namespace SDK_DLLWORKER_NAMESPACE
+} // namespace SDK_DYNAMICWORKER_NAMESPACE

@@ -3,7 +3,7 @@
 #include "Configuration.h"
 #include <sstream>
 
-namespace SDK_DLLWORKER_NAMESPACE {
+namespace SDK_DYNAMICWORKER_NAMESPACE {
 
 ApplicationManager &ApplicationManager::UseApplication(const AppId &appId) & {
   if (appId == currentId) {
@@ -46,4 +46,4 @@ ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration
     applicationsBasePath = "/data";
   }
 }
-} // namespace SDK_DLLWORKER_NAMESPACE
+} // namespace SDK_DYNAMICWORKER_NAMESPACE
