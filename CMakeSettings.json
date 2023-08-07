@@ -1,24 +1,6 @@
 {
   "configurations": [
     {
-      "name": "x64-Debug",
-      "generator": "Ninja",
-      "configurationType": "Debug",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "buildRoot": "${projectDir}\\out\\build\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "variables": [
-        {
-          "name": "BUILD_END2END",
-          "value": "True",
-          "type": "BOOL"
-        }
-      ]
-    },
-    {
       "name": "Linux-GCC-Debug",
       "generator": "Ninja",
       "configurationType": "Debug",
@@ -44,7 +26,7 @@
         },
         {
           "name": "BUILD_DLLWORKER",
-          "value": "True",
+          "value": "False",
           "type": "BOOL"
         },
         {

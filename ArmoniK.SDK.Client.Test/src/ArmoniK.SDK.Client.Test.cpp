@@ -1,3 +1,4 @@
+#include <cstring>
 #include <gtest/gtest.h>
 #include <iostream>
 
@@ -10,7 +11,8 @@
 class PythonTestWorkerHandler : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   void HandleResponse(const std::string &result_payload, const std::string &taskId) override {
-    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << std::endl;
+    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
+              << std::endl;
     auto tr = ArmoniK::Sdk::Common::TaskPayload::Deserialize(result_payload);
     std::cout << "Received : "
               << "\n Method name : " << tr.method_name << "\n Data dependencies : \n";
@@ -28,41 +30,65 @@ public:
 class AddServiceHandler : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   void HandleResponse(const std::string &result_payload, const std::string &taskId) override {
-    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << std::endl;
-    std::cout << "HANDLE RESPONSE : Received result data string of " << result_payload.data() << std::endl;
+    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
+              << "\nContent : ";
+    std::cout.write(result_payload.data(), result_payload.size()) << "\nRaw : ";
+    std::cout << std::endl;
+
+    for (char c : result_payload) {
+      std::cout << static_cast<int>(c) << ' ';
+    }
+    std::cout << std::endl;
 
     str = result_payload.data();
     if (is_int) {
-      int_result = std::stoi(result_payload.data());
-      std::cout << "HANDLE RESPONSE : Received result data value of " << std::stoi(result_payload.data()) << std::endl;
+      std::memcpy(&int_result, result_payload.data(), sizeof(int32_t));
+      std::cout << "HANDLE RESPONSE : Received result data value of " << int_result << std::endl;
     } else {
-      float_result = std::stof(result_payload.data());
-      std::cout << "HANDLE RESPONSE : Received result data value of " << std::stof(result_payload.data()) << std::endl;
+      std::memcpy(&float_result, result_payload.data(), sizeof(float));
+      std::cout << "HANDLE RESPONSE : Received result data value of " << float_result << std::endl;
     }
   }
   void HandleError(const std::exception &e, const std::string &taskId) override {
     std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
   }
 
-  size_t int_result;
-  float float_result;
+  size_t int_result = 0;
+  float float_result = 0.0f;
   std::string str;
   bool is_int = true;
 
-  int check_int_result(const int &val) { return (val + val + sizeof(int)); }
+  int check_int_result(const int &a, const int &b) { return (a + b); }
 
-  float check_float_result(const float &val) { return (val + val + sizeof(float)); }
+  float check_float_result(const float &a, const float &b) { return (a + b); }
 };
 
 class EchoServiceHandler : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   void HandleResponse(const std::string &result_payload, const std::string &taskId) override {
-    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << std::endl;
+    std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
+              << "\nContent : ";
+    std::cout.write(result_payload.data(), result_payload.size()) << "\nRaw : ";
+    for (char c : result_payload) {
+      std::cout << static_cast<int>(c) << ' ';
+    }
+    std::cout << std::endl;
   }
   void HandleError(const std::exception &e, const std::string &taskId) override {
     std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
   }
 };
+
+template <typename T> std::string StrSerialize(T a, T b) {
+  std::string payload_val;
+
+  payload_val.resize(sizeof(int32_t) * 2);
+
+  std::memcpy(payload_val.data(), &a, sizeof(T));
+  std::memcpy(payload_val.data() + sizeof(T), &b, sizeof(T));
+
+  return payload_val;
+}
 
 TEST(testSDK, testEcho) {
   std::cout << "Hello, World!" << std::endl;
@@ -76,7 +102,7 @@ TEST(testSDK, testEcho) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.DLLWorker.Test.so", "0.1.0", "End2EndTest",
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so", "0.1.0", "End2EndTest",
                                                          "EchoService");
 
   // Create the properties
@@ -115,7 +141,7 @@ TEST(testSDK, testEcho) {
   std::cout << "Sent : " << tasks[0] << std::endl;
 
   // Wait for task completion
-  // service.WaitResults();
+  service.WaitResults();
 
   ASSERT_TRUE(!args.empty());
 
@@ -134,7 +160,7 @@ TEST(testSDK, testAddInt) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.DLLWorker.Test.so", "0.1.0", "End2EndTest",
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so", "0.1.0", "End2EndTest",
                                                          "AdditionService");
 
   // Create the properties
@@ -145,8 +171,6 @@ TEST(testSDK, testAddInt) {
 
   // Get the created session id
   std::cout << "Session : " << service.getSession() << std::endl;
-
-  std::vector<std::string> args = {"5", "2", "6", "90", "455"};
 
   // ASSERT_EQ(args[0], "1");
 
@@ -160,11 +184,14 @@ TEST(testSDK, testAddInt) {
       : static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new AddServiceHandler));*/
 
   handler->is_int = true;
+
+  std::string payload_val = StrSerialize<int>(52, 72);
+
   // Submit a task
   std::vector<std::string> task_ids;
-  size_t n = 0;
   // for (auto &&arg : args) {
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", args[n])}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", payload_val)}, handler);
+  service.WaitResults();
 
   ASSERT_FALSE(tasks.empty());
 
@@ -172,55 +199,54 @@ TEST(testSDK, testAddInt) {
   // auto result_payload =
   service.WaitResults();
 
-  auto ans = handler->check_int_result(std::stoi(args[n++]));
+  auto ans = handler->check_int_result(52, 72);
   // std::cout << "ans: " << ans << std::endl;
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(23, 45))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_int_result(std::stoi(args[n++]));
+  ans = handler->check_int_result(23, 45);
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(76, 34))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_int_result(std::stoi(args[n++]));
+  ans = handler->check_int_result(76, 34);
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(82, 1))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_int_result(std::stoi(args[n++]));
+  ans = handler->check_int_result(82, 1);
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(4, 6))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_int_result(std::stoi(args[n]));
+  ans = handler->check_int_result(4, 6);
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
-  //}
 
   ASSERT_EQ((2 + 2), 4);
 
@@ -239,7 +265,7 @@ TEST(testSDK, testAddFloat) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.DLLWorker.Test.so", "0.1.0", "End2EndTest",
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so", "0.1.0", "End2EndTest",
                                                          "AdditionService");
 
   // Create the properties
@@ -250,8 +276,6 @@ TEST(testSDK, testAddFloat) {
 
   // Get the created session id
   std::cout << "Session : " << service.getSession() << std::endl;
-
-  std::vector<std::string> args = {"5.12", "241.23", "0.6", "1.290", "45.75"};
 
   // Create the handler
   auto handler = std::make_shared<AddServiceHandler>();
@@ -265,9 +289,9 @@ TEST(testSDK, testAddFloat) {
   handler->is_int = false;
   // Submit a task
   std::vector<std::string> task_ids;
-  size_t n = 0;
-  // for (auto &&arg : args) {
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", args[n])}, handler);
+
+  auto tasks =
+      service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(32.3, 21.2))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -275,59 +299,60 @@ TEST(testSDK, testAddFloat) {
   // auto result_payload =
   service.WaitResults();
 
-  auto ans = handler->check_float_result(std::stof(args[n++]));
+  auto ans = handler->check_float_result(32.3, 21.2);
 
   auto error = 0.000000001;
-  // std::cout << "ans: " << ans << std::endl;
-  EXPECT_NEAR(handler->float_result, ans, error);
-  ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", args[n])}, handler);
+  EXPECT_NEAR(handler->float_result, ans, error);
+
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(32.5, 54.7))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_float_result(std::stof(args[n++]));
+  ans = handler->check_float_result(32.5, 54.7);
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
+  ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(2.9, 1.07))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_float_result(std::stof(args[n++]));
+  ans = handler->check_float_result(2.9, 1.07);
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
+  ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(64.2, 54.0))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_float_result(std::stof(args[n++]));
+  ans = handler->check_float_result(64.2, 54.0);
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
+  ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", args[n])}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(7.6, 8.5))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_float_result(std::stof(args[n]));
+  ans = handler->check_float_result(7.6, 8.5);
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
+  ASSERT_EQ(handler->str.size(), sizeof(float));
   //}
-
-  ASSERT_EQ((2 + 2), 4);
 
   std::cout << "Done" << std::endl;
 }
