@@ -20,4 +20,4 @@ cd "${working_dir}"
 docker build -t "${IMAGE_TAG}" -f client.Dockerfile --progress plain .
 
 # Compile the project source using the Docker image
-docker run --rm -it -e Grpc__EndPoint="$1" "${IMAGE_TAG}"
+docker run --rm -t -e Grpc__EndPoint="$1" "${IMAGE_TAG}"
