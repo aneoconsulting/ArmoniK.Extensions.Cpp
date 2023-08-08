@@ -100,7 +100,7 @@ compute_plane = {
     # ArmoniK workers
     worker = [
       {
-        image = "armonik-sdk-cpp-workerdll"
+        image = "armonik-sdk-cpp-dynamicworker"
         tag   = "0.1.0"
         limits = {
           cpu    = "1000m"
