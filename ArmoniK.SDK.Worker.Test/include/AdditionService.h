@@ -6,6 +6,14 @@
 #include <stdexcept>
 namespace SDK_END2END_NAMESPACE {
 
+/**
+ * \example AdditionService.h
+ * Example implementation of a ArmoniK::Sdk::Worker::ServiceBase
+ */
+
+/**
+ * @brief Example implementation of a ArmoniK::Sdk::Worker::ServiceBase
+ */
 class AdditionService : ServiceBase {
 public:
   void *enter_session(const char *session_id) override {
@@ -38,10 +46,24 @@ public:
     }
     throw std::runtime_error("Unknown method name" + name);
   }
+
+  /**
+   * @brief Adds 2 ints
+   * @param a A
+   * @param b B
+   * @return A+B
+   */
   int32_t add_ints(int32_t a, int32_t b) {
     (void)this;
     return a + b;
   }
+
+  /**
+   * @brief Add 2 floats
+   * @param a A
+   * @param b B
+   * @return A+B
+   */
   float add_floats(float a, float b) {
     (void)this;
     return a + b;

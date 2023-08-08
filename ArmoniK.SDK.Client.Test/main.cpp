@@ -57,7 +57,7 @@ int main() {
                                                          "EchoService");
 
   // Create the properties
-  ArmoniK::Sdk::Common::Properties properties(config, session_task_options);
+  ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties);

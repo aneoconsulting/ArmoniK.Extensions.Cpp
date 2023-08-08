@@ -4,7 +4,7 @@
 #include "Properties.h"
 #include <grpcpp/channel.h>
 
-namespace SDK_CLIENT_NAMESPACE {
+namespace SDK_CLIENT_NAMESPACE::Internal {
 
 /**
  * @brief A pool for Grpc channels
@@ -27,6 +27,6 @@ private:
   ArmoniK::Sdk::Common::Properties properties_;
 };
 
-} // namespace SDK_CLIENT_NAMESPACE
+} // namespace SDK_CLIENT_NAMESPACE::Internal
 
 #endif // ARMONIK_SDK_CHANNELPOOL_H

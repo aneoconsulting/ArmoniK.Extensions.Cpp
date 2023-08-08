@@ -33,5 +33,5 @@ TaskOptions::TaskOptions(const armonik::api::grpc::v1::TaskOptions &raw)
     : application_name(raw.application_name()), application_version(raw.application_version()),
       application_namespace(raw.application_namespace()), application_service(raw.application_service()),
       partition_id(raw.partition_id()), engine_type(raw.engine_type()), priority(raw.priority()),
-      max_retries(raw.max_retries()), max_duration(raw.max_duration().seconds(), raw.max_duration().nanos()),
+      max_retries(raw.max_retries()), max_duration{raw.max_duration().seconds(), raw.max_duration().nanos()},
       options(raw.options().begin(), raw.options().end()) {}

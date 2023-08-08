@@ -11,13 +11,11 @@ struct Duration {
   /**
    * @brief Seconds
    */
-  int64_t seconds;
+  int64_t seconds = 0;
   /**
    * @brief Nanoseconds
    */
-  int32_t nanos;
-
-  Duration(int64_t seconds, int32_t nanos) : seconds(seconds), nanos(nanos) {}
+  int32_t nanos = 0;
 };
 } // namespace SDK_COMMON_NAMESPACE
 

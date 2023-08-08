@@ -6,8 +6,17 @@
 
 namespace SDK_COMMON_NAMESPACE {
 
+/**
+ * @brief Task definition to submit
+ */
 struct TaskPayload {
   TaskPayload() = default;
+  /**
+   * @brief Constructs a task payload
+   * @param method_name_ Method name
+   * @param arguments_ Serialized arguments for the method
+   * @param data_dependencies_ Data dependencies for the task. Empty by default
+   */
   TaskPayload(std::string method_name_, std::string arguments_,
               std::vector<std::string> data_dependencies_ = std::vector<std::string>())
       : method_name(std::move(method_name_)), arguments(std::move(arguments_)),
