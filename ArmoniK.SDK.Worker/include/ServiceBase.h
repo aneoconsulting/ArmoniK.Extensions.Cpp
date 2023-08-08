@@ -26,8 +26,8 @@ public:
 
   /**
    * @brief Method called when leaving a session
-   * @param session_ctx User provided session context.
-   * @warning This function should free all resources contained in the session context.
+   * @param session_ctx User provided session context
+   * @warning This function should free all resources contained in the session context
    */
   virtual void leave_session(void *session_ctx) { (void)session_ctx; }
 

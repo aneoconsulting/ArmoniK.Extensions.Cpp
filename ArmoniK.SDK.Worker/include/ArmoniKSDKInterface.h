@@ -101,7 +101,7 @@ typedef void (*armonik_callback_t)(void *armonik_context, armonik_status_t statu
 
 /**
  * @brief Function called when requesting the execution of a method
- * @param armonik_context Opaque ArmoniK context, should be passed to the callback as-is without modification.
+ * @param armonik_context Opaque ArmoniK context, should be passed to the callback as-is without modification
  * @param service_context User defined service context
  * @param session_context User defined session context
  * @param function_name Name of the function to call

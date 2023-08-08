@@ -17,7 +17,7 @@ class ApplicationManager {
 
 public:
   /**
-   * @brief Creates and application manager
+   * @brief Creates an application manager
    * @param config Configuration
    */
   explicit ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config);
