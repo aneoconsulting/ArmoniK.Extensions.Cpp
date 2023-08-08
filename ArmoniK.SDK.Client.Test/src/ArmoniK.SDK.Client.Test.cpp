@@ -106,7 +106,7 @@ TEST(testSDK, testEcho) {
                                                          "EchoService");
 
   // Create the properties
-  ArmoniK::Sdk::Common::Properties properties(config, session_task_options);
+  ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties);
@@ -164,7 +164,7 @@ TEST(testSDK, testAddInt) {
                                                          "AdditionService");
 
   // Create the properties
-  ArmoniK::Sdk::Common::Properties properties(config, session_task_options);
+  ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties);
@@ -269,7 +269,7 @@ TEST(testSDK, testAddFloat) {
                                                          "AdditionService");
 
   // Create the properties
-  ArmoniK::Sdk::Common::Properties properties(config, session_task_options);
+  ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties);

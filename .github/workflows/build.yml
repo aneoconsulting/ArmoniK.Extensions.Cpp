@@ -82,7 +82,7 @@ jobs:
   build-cpp-packages:
     name: Build C++ Packages
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -126,7 +126,7 @@ jobs:
       - name: Override parameters tfvars
         run: |
           pwd
-          cp parameters.tfvars infra/infrastructure/quick-deploy/localhost/all/parameters.tfvars
+          cp parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all/parameters.tfvars
 
       - id: deploy
         name: Deploy
