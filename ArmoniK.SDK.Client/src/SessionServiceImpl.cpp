@@ -120,7 +120,6 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
   size_t initialTaskIds_size = task_ids.size();
   bool breakOnError = behavior & WaitBehavior::BreakOnError;
   bool stopOnFirst = behavior & WaitBehavior::Any;
-  std::string payload;
 
   // While either we wait on all tasks, or on the tasks given
   while (!hasWaitList || !task_ids.empty()) {
@@ -164,7 +163,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
 
         try {
           // Get the finished result
-          payload = client->get_result_async(resultRequest).get();
+          auto payload = client->get_result_async(resultRequest).get();
           if (status == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
             // The above command should have failed !
             throw ArmoniK::Api::Common::exceptions::ArmoniKApiException(

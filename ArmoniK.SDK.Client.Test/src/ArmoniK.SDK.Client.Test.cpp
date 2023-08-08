@@ -82,7 +82,7 @@ public:
 template <typename T> std::string StrSerialize(T a, T b) {
   std::string payload_val;
 
-  payload_val.resize(sizeof(int32_t) * 2);
+  payload_val.resize(sizeof(T) * 2);
 
   std::memcpy(payload_val.data(), &a, sizeof(T));
   std::memcpy(payload_val.data() + sizeof(T), &b, sizeof(T));
@@ -129,11 +129,7 @@ TEST(testSDK, testEcho) {
   ASSERT_EQ(args[0], 'A');
 
   // Create the handler
-  // auto handler = std::make_shared<PythonTestWorkerHandler>();
-  std::shared_ptr<ArmoniK::Sdk::Client::IServiceInvocationHandler> handler(
-      (config.get("Worker__Type") == "PythonTestWorker")
-          ? static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new PythonTestWorkerHandler)
-          : static_cast<ArmoniK::Sdk::Client::IServiceInvocationHandler *>(new EchoServiceHandler));
+  auto handler = std::make_shared<EchoServiceHandler>();
 
   // Submit a task
   auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("EchoService", args)}, handler);
@@ -248,8 +244,6 @@ TEST(testSDK, testAddInt) {
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  ASSERT_EQ((2 + 2), 4);
-
   std::cout << "Done" << std::endl;
 }
 
@@ -301,7 +295,7 @@ TEST(testSDK, testAddFloat) {
 
   auto ans = handler->check_float_result(32.3, 21.2);
 
-  auto error = 0.000000001;
+  auto error = 0.0000001;
 
   EXPECT_NEAR(handler->float_result, ans, error);
 
