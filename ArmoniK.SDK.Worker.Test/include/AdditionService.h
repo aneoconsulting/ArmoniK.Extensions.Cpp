@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_ADDITIONSERVICE_H
-#define ARMONIK_SDK_ADDITIONSERVICE_H
+#pragma once
 
 #include <ServiceBase.h>
 #include <iostream>
@@ -71,5 +70,3 @@ public:
 };
 
 } // namespace SDK_END2END_NAMESPACE
-
-#endif // ARMONIK_SDK_ADDITIONSERVICE_H

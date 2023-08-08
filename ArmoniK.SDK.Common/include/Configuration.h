@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_CONFIGURATION_H
-#define ARMONIK_SDK_CONFIGURATION_H
+#pragma once
 
 #include <map>
 #include <memory>
@@ -264,5 +263,3 @@ private:
   ArmoniK::Api::Common::utils::Configuration &set_impl();
 };
 } // namespace SDK_COMMON_NAMESPACE
-
-#endif // ARMONIK_SDK_CONFIGURATION_H

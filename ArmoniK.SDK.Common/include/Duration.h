@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_DURATION_H
-#define ARMONIK_SDK_DURATION_H
+#pragma once
 
 #include <cstdint>
 
@@ -18,5 +17,3 @@ struct Duration {
   int32_t nanos = 0;
 };
 } // namespace SDK_COMMON_NAMESPACE
-
-#endif // ARMONIK_SDK_DURATION_H

@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_DYNAMICWORKER_H
-#define ARMONIK_SDK_DYNAMICWORKER_H
+#pragma once
 
 #include "ApplicationManager.h"
 #include <armonik/sdk/common/Configuration.h>
@@ -33,5 +32,3 @@ private:
   SDK_DYNAMICWORKER_NAMESPACE::ApplicationManager manager;
 };
 } // namespace SDK_DYNAMICWORKER_NAMESPACE
-
-#endif // ARMONIK_SDK_DYNAMICWORKER_H

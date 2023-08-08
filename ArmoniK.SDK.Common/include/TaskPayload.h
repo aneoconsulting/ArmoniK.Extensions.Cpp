@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_TASKPAYLOAD_H
-#define ARMONIK_SDK_TASKPAYLOAD_H
+#pragma once
 
 #include <sstream>
 #include <vector>
@@ -51,5 +50,3 @@ struct TaskPayload {
 };
 
 } // namespace SDK_COMMON_NAMESPACE
-
-#endif // ARMONIK_SDK_TASKPAYLOAD_H

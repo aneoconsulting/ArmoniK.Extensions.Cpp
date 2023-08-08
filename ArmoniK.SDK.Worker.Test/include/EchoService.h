@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_ECHOSERVICE_H
-#define ARMONIK_SDK_ECHOSERVICE_H
+#pragma once
 
 #include <ServiceBase.h>
 #include <iostream>
@@ -34,5 +33,3 @@ public:
 };
 
 } // namespace SDK_END2END_NAMESPACE
-
-#endif // ARMONIK_SDK_ECHOSERVICE_H

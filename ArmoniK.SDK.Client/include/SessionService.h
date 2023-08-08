@@ -1,5 +1,4 @@
-#ifndef ARMONIK_EXTENSIONS_CPP_SESSIONSERVICE_H
-#define ARMONIK_EXTENSIONS_CPP_SESSIONSERVICE_H
+#pragma once
 
 #include "WaitBehavior.h"
 #include <memory>
@@ -88,4 +87,3 @@ public:
   [[nodiscard]] const std::string &getSession() const;
 };
 } // namespace SDK_CLIENT_NAMESPACE
-#endif // ARMONIK_EXTENSIONS_CPP_SESSIONSERVICE_H

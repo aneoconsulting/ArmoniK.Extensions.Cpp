@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_TASKOPTIONS_H
-#define ARMONIK_SDK_TASKOPTIONS_H
+#pragma once
 
 #include "Duration.h"
 #include <map>
@@ -94,4 +93,3 @@ struct TaskOptions {
   explicit operator armonik::api::grpc::v1::TaskOptions() const;
 };
 } // namespace SDK_COMMON_NAMESPACE
-#endif // ARMONIK_SDK_TASKOPTIONS_H

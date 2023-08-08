@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_SESSIONSERVICEIMPL_H
-#define ARMONIK_SDK_SESSIONSERVICEIMPL_H
+#pragma once
 
 #include "ChannelPool.h"
 #include "TaskOptions.h"
@@ -121,5 +120,3 @@ public:
                    const WaitOptions &options = WaitOptions());
 };
 } // namespace SDK_CLIENT_NAMESPACE::Internal
-
-#endif // ARMONIK_SDK_SESSIONSERVICEIMPL_H
