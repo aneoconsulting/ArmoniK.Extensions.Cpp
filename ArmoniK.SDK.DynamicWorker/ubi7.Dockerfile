@@ -6,8 +6,8 @@ USER root
 ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
 ENV PATH="/app/install/bin:$PATH"
 
-RUN yum update -y \
-    && yum --disableplugin=subscription-manager \
+RUN yum check-update \
+    ; yum --disableplugin=subscription-manager \
         install -y git make \
         rh-python38-python-devel \
         centos-release-scl \
@@ -78,7 +78,6 @@ USER armonikuser
 
 # Copy the application files, libraries, and binaries from the builder image to the final image
 COPY --from=builder /app/install/bin /app/install/bin
-COPY --from=builder /app/install/lib /app/install/lib
 COPY --from=builder /app/install/lib64 /app/install/lib64
 COPY --from=builder /app/install/include /app/install/include
 

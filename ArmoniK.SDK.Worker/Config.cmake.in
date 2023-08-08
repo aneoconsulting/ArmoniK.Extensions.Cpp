@@ -1,8 +1,9 @@
 @PACKAGE_INIT@
 
 set_and_check(ARMONIK_SDK_WORKER_PREFIX "@PACKAGE_CMAKE_INSTALL_PREFIX@")
+set_and_check(ARMONIK_SDK_WORKER_LIBPATH "@PACKAGE_CMAKE_INSTALL_LIBDIR@")
 
-include("${ARMONIK_SDK_WORKER_PREFIX}/lib/cmake/ArmoniK.SDK.Worker/ArmoniK.SDK.WorkerTargets.cmake")
+include("${ARMONIK_SDK_WORKER_LIBPATH}/cmake/ArmoniK.SDK.Worker/ArmoniK.SDK.WorkerTargets.cmake")
 
 check_required_components(ArmoniK.SDK.Worker)
 
