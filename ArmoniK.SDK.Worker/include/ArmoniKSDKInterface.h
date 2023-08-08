@@ -1,5 +1,4 @@
-#ifndef ARMONIKSDKINTERFACE_H
-#define ARMONIKSDKINTERFACE_H
+#pragma once
 
 /**
  * \file ArmoniKSDKInterface.h
@@ -122,6 +121,4 @@ typedef armonik_status_t (*armonik_call_t)(void *armonik_context, void *service_
                                            armonik_callback_t callback);
 #ifdef __cplusplus
 }
-#endif
-
 #endif

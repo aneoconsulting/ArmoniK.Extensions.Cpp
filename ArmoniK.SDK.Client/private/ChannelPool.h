@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_CHANNELPOOL_H
-#define ARMONIK_SDK_CHANNELPOOL_H
+#pragma once
 
 #include "Properties.h"
 #include <grpcpp/channel.h>
@@ -28,5 +27,3 @@ private:
 };
 
 } // namespace SDK_CLIENT_NAMESPACE::Internal
-
-#endif // ARMONIK_SDK_CHANNELPOOL_H

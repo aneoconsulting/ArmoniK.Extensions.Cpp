@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_PROPERTIES_H
-#define ARMONIK_SDK_PROPERTIES_H
+#pragma once
 
 #include "Configuration.h"
 #include "TaskOptions.h"
@@ -20,5 +19,3 @@ struct Properties {
   TaskOptions taskOptions;
 };
 } // namespace SDK_COMMON_NAMESPACE
-
-#endif // ARMONIK_SDK_PROPERTIES_H

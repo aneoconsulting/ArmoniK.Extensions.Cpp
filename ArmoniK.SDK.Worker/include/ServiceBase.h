@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_SERVICEBASE_H
-#define ARMONIK_SDK_SERVICEBASE_H
+#pragma once
 
 #include <string>
 
@@ -48,5 +47,3 @@ public:
 } // namespace Worker
 } // namespace Sdk
 } // namespace ArmoniK
-
-#endif // ARMONIK_SDK_SERVICEBASE_H

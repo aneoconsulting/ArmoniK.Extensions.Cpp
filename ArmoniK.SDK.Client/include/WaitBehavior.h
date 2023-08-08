@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_WAITBEHAVIOR_H
-#define ARMONIK_SDK_WAITBEHAVIOR_H
+#pragma once
 
 namespace SDK_CLIENT_NAMESPACE {
 /**
@@ -32,5 +31,3 @@ inline enum WaitBehavior operator|(WaitBehavior a, WaitBehavior b) {
 }
 
 } // namespace SDK_CLIENT_NAMESPACE
-
-#endif // ARMONIK_SDK_WAITBEHAVIOR_H

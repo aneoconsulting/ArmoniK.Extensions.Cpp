@@ -1,5 +1,7 @@
 #pragma once
+
 #include <utility>
+
 namespace SDK_DYNAMICWORKER_NAMESPACE {
 /**
  * @brief Manage external dynamic library

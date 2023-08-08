@@ -1,5 +1,4 @@
-#ifndef ARMONIK_SDK_ISERVICEINVOCATIONHANDLER_H
-#define ARMONIK_SDK_ISERVICEINVOCATIONHANDLER_H
+#pragma once
 
 #include <string>
 
@@ -25,4 +24,3 @@ public:
   virtual void HandleError(const std::exception &e, const std::string &taskId) = 0;
 };
 } // namespace SDK_CLIENT_NAMESPACE
-#endif // ARMONIK_SDK_ISERVICEINVOCATIONHANDLER_H
