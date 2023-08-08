@@ -82,7 +82,7 @@ jobs:
   build-cpp-packages:
     name: Build C++ Packages
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -120,16 +120,9 @@ jobs:
         uses: aneoconsulting/ArmoniK.Action.Deploy/deploy@main
         with:
           working-directory: ${{ github.workspace }}/infra
-          type: localhost 
-      - name: Build API C++
-        run: |
-          mv ArmoniK.Api ../
-          cd ../ArmoniK.Api/packages/cpp/tools/
-          ./compile.sh
-          cd ../install
-          echo "ARMONIK_API_DIR =$(pwd)" >> $GITHUB_ENV
+          type: localhost
 
-      - name: Build SDK C++
+      - name: Build C++ SDK worker and dynamic worker
         run: |
           ./build-deploy-end2end.sh
 
