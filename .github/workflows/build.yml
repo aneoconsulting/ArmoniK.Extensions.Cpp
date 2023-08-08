@@ -96,19 +96,6 @@ jobs:
           path: ArmoniK.Api
           working-directory: ${{ github.workspace }}/ArmoniK.Api
           ref: main
-        
-      - name: Build API C++
-        run: |
-          mv ArmoniK.Api ../
-          cd ../ArmoniK.Api/packages/cpp/tools/
-          ./compile.sh
-          cd ../install
-          echo "ARMONIK_API_DIR =$(pwd)" >> $GITHUB_ENV
-
-      - name: Build SDK C++
-        run: |
-          ./build-deploy-end2end.sh
-
       - name: Install ArmoniK Dependencies
         uses: aneoconsulting/ArmoniK.Action.Deploy/dependencies@main
         with:
@@ -116,7 +103,7 @@ jobs:
             terraform: true
             k3s: true
             aws: true
-  
+
       - name: Checkout Infra
         uses: actions/checkout@v3
         with:
@@ -133,7 +120,18 @@ jobs:
         uses: aneoconsulting/ArmoniK.Action.Deploy/deploy@main
         with:
           working-directory: ${{ github.workspace }}/infra
-          type: localhost
+          type: localhost 
+      - name: Build API C++
+        run: |
+          mv ArmoniK.Api ../
+          cd ../ArmoniK.Api/packages/cpp/tools/
+          ./compile.sh
+          cd ../install
+          echo "ARMONIK_API_DIR =$(pwd)" >> $GITHUB_ENV
+
+      - name: Build SDK C++
+        run: |
+          ./build-deploy-end2end.sh
 
       - name: Run Client tests
         run: |
