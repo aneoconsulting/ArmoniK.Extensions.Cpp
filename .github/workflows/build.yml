@@ -126,6 +126,7 @@ jobs:
       - name: Override parameters tfvars
         run: |
           pwd
+          cp parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all/parameters.tfvars
 
       - id: deploy
         name: Deploy
@@ -139,5 +140,7 @@ jobs:
           set -ex
           export CPIP=$(kubectl get svc control-plane -n armonik -o custom-columns="IP:.spec.clusterIP" --no-headers=true)
           export CPPort=$(kubectl get svc control-plane -n armonik -o custom-columns="PORT:.spec.ports[*].port" --no-headers=true)
+          kubectl get po -A
+          docker images
           ./build-client.sh
           docker run --rm -t --network host -e Grpc__EndPoint=http://$CPIP:$CPPort armonik_sdk_client_test:0.1.0
