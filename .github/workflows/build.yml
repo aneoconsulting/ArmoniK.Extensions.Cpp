@@ -89,32 +89,6 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Install ArmoniK Dependencies
-        uses: aneoconsulting/ArmoniK.Action.Deploy/dependencies@main
-        with:
-           docker: true
-           terraform: true
-           k3s: true
-           aws: true
-
-      - name: Checkout Infra
-        uses: actions/checkout@v3
-        with:
-          repository: aneoconsulting/ArmoniK
-          path: infra
-          
-      - name: Override parameters tfvars
-        run: |
-          pwd
-          cp parameters.tfvars infra/infrastructure/quick-deploy/localhost/all/parameters.tfvars
-
-      - id: deploy
-        name: Deploy
-        uses: aneoconsulting/ArmoniK.Action.Deploy/deploy@main
-        with:
-          working-directory: ${{ github.workspace }}/infra
-          type: localhost
-
       - name: Checkout API
         uses: actions/checkout@v3
         with:
@@ -134,6 +108,32 @@ jobs:
       - name: Build SDK C++
         run: |
           ./build-deploy-end2end.sh
+
+      - name: Install ArmoniK Dependencies
+        uses: aneoconsulting/ArmoniK.Action.Deploy/dependencies@main
+        with:
+            docker: true
+            terraform: true
+            k3s: true
+            aws: true
+  
+      - name: Checkout Infra
+        uses: actions/checkout@v3
+        with:
+          repository: aneoconsulting/ArmoniK
+          path: infra
+          
+      - name: Override parameters tfvars
+        run: |
+          pwd
+          cp parameters.tfvars infra/infrastructure/quick-deploy/localhost/all/parameters.tfvars
+
+      - id: deploy
+        name: Deploy
+        uses: aneoconsulting/ArmoniK.Action.Deploy/deploy@main
+        with:
+          working-directory: ${{ github.workspace }}/infra
+          type: localhost
 
       - name: Run Client tests
         run: |
