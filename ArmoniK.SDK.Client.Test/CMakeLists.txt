@@ -13,7 +13,7 @@ find_package(ArmoniK.SDK.Client CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Common ArmoniK.SDK.Client)
+target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Common ArmoniK.SDK.Client GTest::gtest_main)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NAMESPACE})
 
@@ -25,6 +25,19 @@ target_include_directories(${PROJECT_NAME}
         )
 
 FILE(COPY appsettings.json DESTINATION "${PROJECT_BINARY_DIR}")
+
+# gTest support
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+include(GoogleTest)
+gtest_discover_tests(${PROJECT_NAME})
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
 set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 0)
