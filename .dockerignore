@@ -19,7 +19,7 @@
 **/build*
 **/.build*
 **/gen
-**/install*
+**/install
 **/.git
 **/.github
 **/.vs
