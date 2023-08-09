@@ -19,7 +19,7 @@ RUN  ln -s /opt/cmake-3.24.1/bin/* /usr/local/bin
 RUN echo "source /opt/rh/devtoolset-10/enable" >> /etc/bashrc
 SHELL ["/bin/bash", "--login", "-c"]
 
-ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
+ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64:$LD_LIBRARY_PATH"
 # Generate unique machne-id file required by dbus-11
 RUN dbus-uuidgen > /var/lib/dbus/machine-id
 
