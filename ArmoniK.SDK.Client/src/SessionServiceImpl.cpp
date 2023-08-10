@@ -1,7 +1,7 @@
 #include "SessionServiceImpl.h"
 #include "IServiceInvocationHandler.h"
-#include "Properties.h"
-#include "TaskPayload.h"
+#include <armonik/sdk/common/Properties.h>
+#include <armonik/sdk/common/TaskPayload.h>
 #include <armonik/client/results_common.pb.h>
 #include <armonik/common/exceptions/ArmoniKApiException.h>
 #include <armonik/common/exceptions/ArmoniKTaskError.h>

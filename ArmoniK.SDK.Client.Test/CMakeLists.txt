@@ -13,9 +13,9 @@ find_package(ArmoniK.SDK.Client CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Common ArmoniK.SDK.Client GTest::gtest_main)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${ArmoniK.SDK.Common_BINARY_DIR}/libArmoniK.SDK.Common.a ArmoniK.SDK.Client GTest::gtest_main)
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NAMESPACE})
+target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NAMESPACE} SDK_COMMON_NAMESPACE=ArmoniK::Sdk::Common)
 
 setup_options(${PROJECT_NAME})
 

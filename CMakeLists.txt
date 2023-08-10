@@ -64,26 +64,48 @@ function(setup_options project_name_param)
     endif()
 endfunction()
 
+
+include(ExternalProject)
+ExternalProject_Add(ArmoniK.SDK.Common
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Common"
+    BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Common"
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=/app/install -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR}
+    BUILD_ALWAYS TRUE
+    STEP_TARGETS build
+)
+set(ArmoniK.SDK.Common_BINARY_DIR "${CMAKE_BINARY_DIR}/ArmoniK.SDK.Common/")
+
+execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/../ArmoniK.SDK.Common"
+)
+execute_process(COMMAND "${CMAKE_COMMAND}" --build .
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/../ArmoniK.SDK.Common"
+)
+include_directories(/app/install/include)
+
 if(BUILD_DYNAMICWORKER)
     # TODO Move to normal worker build when End2End separated (needs ExternalProject_Add)
     list(APPEND CMAKE_PREFIX_PATH "/app/install")
     add_subdirectory(ArmoniK.SDK.DynamicWorker)
+    add_dependencies(ArmoniK.SDK.DynamicWorker ArmoniK.SDK.Common)
 else()
     if(BUILD_END2END)
         list(APPEND CMAKE_PREFIX_PATH "/app/install")
         if(BUILD_CLIENT)
             add_subdirectory(ArmoniK.SDK.Client.Test)
+            add_dependencies(ArmoniK.SDK.Client.Test ArmoniK.SDK.Common)
         endif()
         if(UNIX AND BUILD_WORKER)
             add_subdirectory(ArmoniK.SDK.Worker.Test)
         endif()
     else ()
-        add_subdirectory(ArmoniK.SDK.Common)
         if(BUILD_CLIENT)
             add_subdirectory(ArmoniK.SDK.Client)
+            add_dependencies(ArmoniK.SDK.Client ArmoniK.SDK.Common)
         endif()
         if(UNIX AND BUILD_WORKER)
             add_subdirectory(ArmoniK.SDK.Worker)
+            add_dependencies(ArmoniK.SDK.Worker ArmoniK.SDK.Common)
         endif()
     endif ()
 endif()

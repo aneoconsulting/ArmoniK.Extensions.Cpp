@@ -2,10 +2,17 @@ cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.Common)
 set(NAMESPACE ArmoniK::Sdk::Common)
 project(${PROJECT_NAME})
+set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
+set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_PREFIX}/lib)
 set(ARMONIK_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/armonik/sdk/common)
 set(PROJECT_BUILD_DIR ${BUILD_DIR}/${PROJECT_NAME})
 
 set(CMAKE_CXX_STANDARD 17)
+
+set(VERSION 0.1.0)
+include(CMakePackageConfigHelpers)
+
+include(CMakePrintHelpers)
 
 SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -29,6 +36,36 @@ target_include_directories(${PROJECT_NAME}
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )
 
+function(setup_options project_name_param)
+
+    file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
+    string(FIND "${${project_name_param}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
+
+    if(${ARGC} GREATER 1)
+        set(extra_param ${ARGV1})
+    endif()
+
+    if(MSVC)
+        target_compile_options(${project_name_param} PRIVATE /W4)
+    else()
+        if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
+            target_compile_options(${project_name_param} PRIVATE -Wall -Wextra -Wpedantic -fsanitize=undefined,address ${extra_param})
+        else ()
+            target_compile_options(${project_name_param} PRIVATE -Wall -Wextra -Wpedantic ${extra_param})
+        endif()
+    endif()
+
+    if(IS_ALPINE EQUAL -1)
+        message(STATUS "Not found Alpine distribution " ${IS_ALPINE})
+    else()
+        message(STATUS "Found Alpine distribution " ${IS_ALPINE})
+    endif()
+
+    if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
+        target_link_options(${project_name_param} PRIVATE -fsanitize=undefined,address ${extra_param})
+    endif()
+endfunction()
+
 setup_options(${PROJECT_NAME})
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
@@ -49,6 +86,7 @@ install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY ${HEADER_FILES_DIR}/ DESTINATION ${ARMONIK_INSTALL_INCLUDE_DIR} FILES_MATCHING PATTERN "*.h")
+cmake_print_variables(ARMONIK_INSTALL_INCLUDE_DIR)
 
 install(EXPORT ${PROJECT_NAME}Targets
         FILE ${PROJECT_NAME}Targets.cmake

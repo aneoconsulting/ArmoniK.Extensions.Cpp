@@ -4,6 +4,7 @@ set(NAMESPACE ArmoniK::Sdk::Client)
 project(${PROJECT_NAME})
 set(ARMONIK_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/armonik/sdk/client)
 set(PROJECT_BUILD_DIR ${BUILD_DIR}/${PROJECT_NAME})
+include(CMakePrintHelpers)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -19,9 +20,9 @@ find_package(ArmoniK.Api.Client CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES} ${PRIVATE_HEADERS_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client)
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_NAMESPACE=${NAMESPACE})
+target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_NAMESPACE=${NAMESPACE} SDK_COMMON_NAMESPACE=ArmoniK::Sdk::Common)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
@@ -50,12 +51,13 @@ install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY ${HEADER_FILES_DIR}/ DESTINATION ${ARMONIK_INSTALL_INCLUDE_DIR} FILES_MATCHING PATTERN "*.h")
+cmake_print_variables(CMAKE_INSTALL_INCLUDEDIR)
 
 install(EXPORT ${PROJECT_NAME}Targets
         FILE ${PROJECT_NAME}Targets.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
         )
-
+cmake_print_variables(PACKAGE_CMAKE_INSTALL_PREFIX)
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
         INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}

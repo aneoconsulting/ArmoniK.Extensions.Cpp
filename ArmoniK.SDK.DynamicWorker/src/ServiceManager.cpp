@@ -1,5 +1,5 @@
 #include "ServiceManager.h"
-#include "ArmoniKSdkException.h"
+#include <armonik/sdk/common/ArmoniKSdkException.h>
 #include "ContextIds.h"
 #include <armonik/worker/Worker/ProcessStatus.h>
 #include <utility>

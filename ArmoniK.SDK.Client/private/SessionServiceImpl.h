@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ChannelPool.h"
-#include "TaskOptions.h"
+#include <armonik/sdk/common/TaskOptions.h>
 #include "WaitBehavior.h"
 #include <armonik/client/submitter/SubmitterClient.h>
 #include <results_service.grpc.pb.h>
