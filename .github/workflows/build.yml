@@ -113,7 +113,7 @@ jobs:
       - name: Override parameters tfvars
         run: |
           pwd
-          cp parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all/parameters.tfvars
+          cp parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/parameters.tfvars
 
       - id: deploy
         name: Deploy
