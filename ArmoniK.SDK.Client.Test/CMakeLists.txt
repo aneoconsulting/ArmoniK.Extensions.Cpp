@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.Client.Test)
 set(NAMESPACE ArmoniK::Sdk::Client::Test)
+set(version 0.1.0)
+
 project(${PROJECT_NAME})
+set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -9,19 +12,21 @@ SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
 
-find_package(ArmoniK.SDK.Client CONFIG REQUIRED)
+find_package(ArmoniK.Api.Common CONFIG REQUIRED)
+find_package(ArmoniK.Api.Client CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${ArmoniK.SDK.Common_BINARY_DIR}/libArmoniK.SDK.Common.a ArmoniK.SDK.Client GTest::gtest_main)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ${ArmoniK.SDK.Common_BINARY_DIR}/libArmoniK.SDK.Common.a ${ArmoniK.SDK.Client_BINARY_DIR}/libArmoniK.SDK.Client.a GTest::gtest_main)
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NAMESPACE} SDK_COMMON_NAMESPACE=ArmoniK::Sdk::Common)
+target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NAMESPACE} SDK_COMMON_NAMESPACE=ArmoniK::Sdk::Common SDK_CLIENT_NAMESPACE=ArmoniK::Sdk::Client)
 
 setup_options(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "${SOURCES_FILES_DIR}"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )
 
 FILE(COPY appsettings.json DESTINATION "${PROJECT_BINARY_DIR}")

@@ -4,6 +4,7 @@ set(NAMESPACE ArmoniK::Sdk::Worker::Test)
 set(version 0.1.0)
 
 project(${PROJECT_NAME})
+set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -16,11 +17,9 @@ SET(WORKER_HEADER_DIR "${WORKER_FILES}/include")
 FILE(GLOB_RECURSE SRC_WORKER_FILES ${WORKER_SOURCE_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_WORKER_FILES ${WORKER_HEADER_DIR}/*.h)
 
-find_package(ArmoniK.SDK.Worker REQUIRED CONFIG)
-
 add_library(${PROJECT_NAME} SHARED ${SRC_WORKER_FILES} ${HEADER_WORKER_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC "-Wl,--whole-archive" ArmoniK.SDK.Worker "-Wl,--no-whole-archive")
+target_link_libraries(${PROJECT_NAME} PUBLIC "-Wl,--whole-archive" ${ArmoniK.SDK.Worker_BINARY_DIR}/libArmoniK.SDK.Worker.a "-Wl,--no-whole-archive")
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4)
@@ -28,11 +27,12 @@ else()
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_END2END_NAMESPACE=${NAMESPACE})
+target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_END2END_NAMESPACE=${NAMESPACE} SDK_WORKER_NAMESPACE=ArmoniK::Sdk::Worker)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${WORKER_HEADER_DIR}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})

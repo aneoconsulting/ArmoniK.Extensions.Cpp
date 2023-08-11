@@ -2,11 +2,15 @@ cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.Client)
 set(NAMESPACE ArmoniK::Sdk::Client)
 project(${PROJECT_NAME})
+set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
+set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_PREFIX}/lib)
 set(ARMONIK_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/armonik/sdk/client)
 set(PROJECT_BUILD_DIR ${BUILD_DIR}/${PROJECT_NAME})
-include(CMakePrintHelpers)
 
 set(CMAKE_CXX_STANDARD 17)
+
+set(VERSION 0.1.0)
+include(CMakePackageConfigHelpers)
 
 SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -20,7 +24,7 @@ find_package(ArmoniK.Api.Client CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES} ${PRIVATE_HEADERS_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ${ArmoniK.SDK.Common_BINARY_DIR}/libArmoniK.SDK.Common.a)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_NAMESPACE=${NAMESPACE} SDK_COMMON_NAMESPACE=ArmoniK::Sdk::Common)
 
@@ -28,10 +32,31 @@ target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
         "$<BUILD_INTERFACE:${PRIVATE_HEADERS_DIR}>"
-        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+        "$<BUILD_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )
 
-setup_options(${PROJECT_NAME})
+file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
+string(FIND "${${project_name_param}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
+
+if(MSVC)
+        target_compile_options(${PROJECT_NAME} PRIVATE /W4)
+else()
+        if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
+        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -fsanitize=undefined,address)
+        else ()
+        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
+        endif()
+endif()
+
+if(IS_ALPINE EQUAL -1)
+        message(STATUS "Not found Alpine distribution " ${IS_ALPINE})
+else()
+        message(STATUS "Found Alpine distribution " ${IS_ALPINE})
+endif()
+
+if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
+        target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=undefined,address)
+endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
 set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 0)
@@ -51,13 +76,11 @@ install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY ${HEADER_FILES_DIR}/ DESTINATION ${ARMONIK_INSTALL_INCLUDE_DIR} FILES_MATCHING PATTERN "*.h")
-cmake_print_variables(CMAKE_INSTALL_INCLUDEDIR)
 
 install(EXPORT ${PROJECT_NAME}Targets
         FILE ${PROJECT_NAME}Targets.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
         )
-cmake_print_variables(PACKAGE_CMAKE_INSTALL_PREFIX)
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
         INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ServiceBase.h>
+#include <armonik/sdk/worker/ServiceBase.h>
 #include <iostream>
 #include <stdexcept>
 namespace SDK_END2END_NAMESPACE {
