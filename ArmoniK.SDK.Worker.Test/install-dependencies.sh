@@ -8,7 +8,6 @@ then
       make\
       cmake \
       linux-headers \
-      fmt-dev \
       bash
 elif which apt-get
 then

@@ -42,7 +42,7 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
         "-DBUILD_TEST=OFF" \
         "-DBUILD_CLIENT=OFF" \
         "-DBUILD_WORKER=ON" .. && \
-    make -j $(nproc) install && \
+    make -j $(nproc) && \
     ls -alR /armonik/api && \
     make clean
 
