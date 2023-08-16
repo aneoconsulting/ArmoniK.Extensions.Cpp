@@ -38,8 +38,33 @@ option(BUILD_COMMON "Build Common" ON)
 option(BUILD_WORKER "Build Worker" ON)
 option(BUILD_CLIENT "Build Client" ON)
 option(BUILD_DYNAMICWORKER "Build DynamicWorker" OFF)
-if(BUILD_COMMON)
+option(BUILD_WORKERTEST "Build Worker Test" OFF)
+option(BUILD_SDK "Build SDK" ON)
+
 include(ExternalProject)
+# if(NOT BUILD_WORKERTEST)
+# ExternalProject_Add(ArmoniK.SDK.Common
+#     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Common"
+#     BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Common"
+#     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR}
+#     BUILD_ALWAYS TRUE
+#     STEP_TARGETS build
+# )
+# endif()
+
+# if(BUILD_WORKER AND NOT BUILD_WORKERTEST)
+#     ExternalProject_Add(ArmoniK.SDK.Worker
+#         SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Worker"
+#         BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Worker"
+#         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR}
+#         DEPENDS ArmoniK.SDK.Common
+#         BUILD_ALWAYS TRUE
+#         STEP_TARGETS builds
+#     )
+# endif()
+
+include_directories(/app/install/include)
+if(BUILD_SDK)
     ExternalProject_Add(ArmoniK.SDK.Common
         SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Common"
         BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Common"
@@ -47,31 +72,18 @@ include(ExternalProject)
         BUILD_ALWAYS TRUE
         STEP_TARGETS build
     )
-endif()
 
-if(BUILD_WORKER)
-ExternalProject_Add(ArmoniK.SDK.Worker
-    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Worker"
-    BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Worker"
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR}
-    DEPENDS ArmoniK.SDK.Common
-    BUILD_ALWAYS TRUE
-    STEP_TARGETS builds
-)
-endif()
+    if(BUILD_WORKER)
+        ExternalProject_Add(ArmoniK.SDK.Worker
+            SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Worker"
+            BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Worker"
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR}
+            DEPENDS ArmoniK.SDK.Common
+            BUILD_ALWAYS TRUE
+            STEP_TARGETS builds
+        )
+    endif()
 
-include_directories(/app/install/include)
-if(BUILD_DYNAMICWORKER)
-    ExternalProject_Add(ArmoniK.SDK.DynamicWorker
-        SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.DynamicWorker"
-        BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.DynamicWorker"
-        DEPENDS ArmoniK.SDK.Common ArmoniK.SDK.Worker
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR}
-        BUILD_ALWAYS TRUE
-    )
-endif()
-
-if(BUILD_END2END)
     if(BUILD_CLIENT)
         ExternalProject_Add(ArmoniK.SDK.Client
             SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Client"
@@ -81,22 +93,56 @@ if(BUILD_END2END)
             BUILD_ALWAYS TRUE
             STEP_TARGETS build
         )
+    endif()
+endif()
+
+if(BUILD_DYNAMICWORKER)
+    If(NOT BUILD_WORKER)
+        find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
+    endif()
+    ExternalProject_Add(ArmoniK.SDK.DynamicWorker
+        SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.DynamicWorker"
+        BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.DynamicWorker"
+        DEPENDS ArmoniK.SDK.Common ArmoniK.SDK.Worker
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR}
+        BUILD_ALWAYS TRUE
+        STEP_TARGETS builds
+    )
+endif()
+
+if(BUILD_END2END)
+    if(BUILD_CLIENT)
+        # ExternalProject_Add(ArmoniK.SDK.Client
+        #     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Client"
+        #     BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Client"
+        #     DEPENDS ArmoniK.SDK.Common
+        #     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR}
+        #     BUILD_ALWAYS TRUE
+        #     STEP_TARGETS build
+        # )
+        if(NOT BUILD_SDK)
+            find_package(ArmoniK.SDK.Common CONFIG REQUIRED)
+            find_package(ArmoniK.SDK.Client CONFIG REQUIRED)
+        endif()
         ExternalProject_Add(ArmoniK.SDK.Client.Test
             SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Client.Test"
             BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Client.Test"
             DEPENDS ArmoniK.SDK.Common ArmoniK.SDK.Client
             CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR}
             BUILD_ALWAYS TRUE
+            STEP_TARGETS builds
         )
     endif()
+
     if(UNIX AND BUILD_WORKER)
+        find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
         ExternalProject_Add(ArmoniK.SDK.Worker.Test
             SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Worker.Test"
             BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Worker.Test"
             DEPENDS ArmoniK.SDK.Worker
             CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR}
             BUILD_ALWAYS TRUE
+            STEP_TARGETS builds
         )
     endif()
 endif ()
-

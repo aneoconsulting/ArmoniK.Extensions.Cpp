@@ -39,4 +39,4 @@ then
   lib_build_path=${ARMONIK_SHARED_HOST_PATH:-"${working_dir}/install"}
 fi
 mkdir -p "$lib_build_path"
-docker run --rm -v "$lib_build_path:/host" --entrypoint sh armonik.sdk.worker.test:build -c "cp /app/build/lib*/* /host/"
+docker run --rm -v "$lib_build_path:/host" --entrypoint sh armonik.sdk.worker.test:build -c "cp /app/install/lib*/libArmoniK.SDK.Worker.Test.* /host/"

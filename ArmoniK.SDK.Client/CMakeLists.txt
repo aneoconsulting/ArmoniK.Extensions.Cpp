@@ -38,7 +38,7 @@ target_include_directories(${PROJECT_NAME}
         )
 
 file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
-string(FIND "${${project_name_param}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
+string(FIND "${${PROJECT_NAME}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
 
 if(MSVC)
         target_compile_options(${PROJECT_NAME} PRIVATE /W4)
