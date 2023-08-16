@@ -63,6 +63,11 @@ target_include_directories(${PROJECT_NAME}
 
 FILE(COPY appsettings.json DESTINATION "${PROJECT_BINARY_DIR}")
 
+if(POLICY CMP0135)
+	cmake_policy(SET CMP0135 NEW)
+	set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
+endif()
+
 # gTest support
 include(FetchContent)
 FetchContent_Declare(
