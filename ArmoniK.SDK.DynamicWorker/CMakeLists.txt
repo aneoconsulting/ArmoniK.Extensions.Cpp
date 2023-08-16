@@ -14,6 +14,7 @@ FILE(GLOB_RECURSE SRC_DYNAMICWORKER_FILES ${SOURCES_FILES_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_DYNAMICWORKER_FILES ${HEADER_FILES_DIR}/*.h)
 
 find_package(ArmoniK.Api.Worker REQUIRED CONFIG)
+find_package(ArmoniK.SDK.Common REQUIRED CONFIG)
 
 find_file(ARMONIK_SDK_HEADER ArmoniKSDKInterface.h PATHS /app/install PATH_SUFFIXES armonik/sdk/worker include/armonik/sdk/worker REQUIRED NO_CACHE)
 message(STATUS "Found ArmonikSDKInterface.h at location ${ARMONIK_SDK_HEADER}")
@@ -21,10 +22,32 @@ get_filename_component(ARMONIK_SDK_HEADER_DIR ${ARMONIK_SDK_HEADER} DIRECTORY)
 
 add_executable(${PROJECT_NAME} ${SRC_DYNAMICWORKER_FILES} ${HEADER_DYNAMICWORKER_FILES})
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_DYNAMICWORKER_NAMESPACE=${NAMESPACE} SDK_COMMON_NAMESPACE=ArmoniK::Sdk::Common)
-setup_options(${PROJECT_NAME})
+target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_DYNAMICWORKER_NAMESPACE=${NAMESPACE})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.Api.Common ${ArmoniK.SDK.Common_BINARY_DIR}/libArmoniK.SDK.Common.a)
+file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
+string(FIND "${${project_name_param}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
+
+if(MSVC)
+target_compile_options(${PROJECT_NAME} PRIVATE /W4)
+else()
+if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
+        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -fsanitize=undefined,address ${extra_param})
+else ()
+        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+endif()
+
+if(IS_ALPINE EQUAL -1)
+message(STATUS "Not found Alpine distribution " ${IS_ALPINE})
+else()
+message(STATUS "Found Alpine distribution " ${IS_ALPINE})
+endif()
+
+if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
+target_link_options(${project_name_param} PRIVATE -fsanitize=undefined,address ${extra_param})
+endif()
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.Api.Common ArmoniK.SDK.Common)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
@@ -47,4 +70,4 @@ install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(FILES appsettings.json DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES appsettings.json DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

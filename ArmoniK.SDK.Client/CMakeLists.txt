@@ -21,12 +21,13 @@ FILE(GLOB_RECURSE HEADER_CLIENT_FILES ${HEADER_FILES_DIR}/*.h)
 FILE(GLOB_RECURSE PRIVATE_HEADERS_FILES ${PRIVATE_HEADERS_DIR}/*.h)
 
 find_package(ArmoniK.Api.Client CONFIG REQUIRED)
+find_package(ArmoniK.SDK.Common CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES} ${PRIVATE_HEADERS_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ${ArmoniK.SDK.Common_BINARY_DIR}/libArmoniK.SDK.Common.a)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common)
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_NAMESPACE=${NAMESPACE} SDK_COMMON_NAMESPACE=ArmoniK::Sdk::Common)
+target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_NAMESPACE=${NAMESPACE})
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
