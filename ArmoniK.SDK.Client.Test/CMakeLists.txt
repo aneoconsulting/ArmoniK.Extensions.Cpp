@@ -12,15 +12,13 @@ SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
 
-find_package(ArmoniK.Api.Common CONFIG REQUIRED)
-find_package(ArmoniK.Api.Client CONFIG REQUIRED)
-
+find_package(fmt CONFIG REQUIRED)
 find_package(ArmoniK.SDK.Common CONFIG REQUIRED)
 find_package(ArmoniK.SDK.Client CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.SDK.Common ArmoniK.SDK.Client GTest::gtest_main)
+target_link_libraries(${PROJECT_NAME} PUBLIC fmt ArmoniK.SDK.Common ArmoniK.SDK.Client GTest::gtest_main)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NAMESPACE})
 

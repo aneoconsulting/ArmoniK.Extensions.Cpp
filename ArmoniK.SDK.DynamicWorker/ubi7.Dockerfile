@@ -54,15 +54,6 @@ COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
 COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
 
-# Build the application using the copied source files and protobuf definitions
-WORKDIR /app/builder/sdk
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" \
-    "-DCMAKE_PREFIX_PATH=/usr/local/grpc" \
-    "-DBUILD_CLIENT=OFF" \
-    "-DBUILD_DYNAMICWORKER=OFF" \
-    "-DBUILD_END2END=OFF" \
-    /app/source/ && make -j $(nproc) install && make clean
-
 WORKDIR /app/builder/worker
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" \
     "-DCMAKE_PREFIX_PATH=/usr/local/grpc" \

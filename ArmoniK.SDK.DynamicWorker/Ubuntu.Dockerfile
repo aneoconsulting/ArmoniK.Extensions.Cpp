@@ -14,6 +14,7 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-ge
     automake \
     locales-all \
     build-essential \
+    libfmt-dev \
     libc-ares-dev \
     protobuf-compiler-grpc \
     grpc-proto \
@@ -52,10 +53,6 @@ COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
 COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
 COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
-
-# Build the application using the copied source files and protobuf definitions
-WORKDIR /app/builder/sdk
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
 
 WORKDIR /app/builder/worker
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean

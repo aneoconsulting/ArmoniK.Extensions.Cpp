@@ -15,6 +15,7 @@ RUN apk update && apk add --no-cache \
     make \
     cmake \
     linux-headers \
+    libfmt-dev \
     grpc \
     grpc-dev \
     protobuf \
@@ -51,11 +52,8 @@ COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
 
 # Build the application using the copied source files and protobuf definitions
-WORKDIR /app/builder/sdk
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
-
 WORKDIR /app/builder/worker
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) && make clean
 
 # Start with the latest Alpine base image for the final stage
 FROM alpine AS runner
