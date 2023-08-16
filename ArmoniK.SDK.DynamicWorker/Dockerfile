@@ -15,7 +15,7 @@ RUN apk update && apk add --no-cache \
     make \
     cmake \
     linux-headers \
-    libfmt-dev \
+    fmt-dev \
     grpc \
     grpc-dev \
     protobuf \
