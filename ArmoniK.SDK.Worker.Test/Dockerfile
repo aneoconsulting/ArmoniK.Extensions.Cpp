@@ -16,6 +16,8 @@ SHELL ["/bin/bash", "--login", "-c"]
 RUN mkdir -p /app/build
 COPY --from=source /app/install /app/install
 WORKDIR /app/source
+COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
+COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
 COPY ./ArmoniK.SDK.Worker.Test ./ArmoniK.SDK.Worker.Test
 COPY ./CMakeLists.txt ./CMakeLists.txt
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/build" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install && make clean
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/build" "-DBUILD_COMMON=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) && make clean
