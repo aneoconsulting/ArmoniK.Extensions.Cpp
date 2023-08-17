@@ -56,7 +56,7 @@ COPY ./CMakeLists.txt ./
 COPY ./Utils.cmake ./
 
 WORKDIR /app/builder/worker
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) && make clean
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) && make clean
 
 # Start with the latest Alpine base image for the final stage
 FROM ubuntu:23.04 AS runner

@@ -33,7 +33,6 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_END2END_NAMESPACE=${NAMESP
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${WORKER_HEADER_DIR}>"
-        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})

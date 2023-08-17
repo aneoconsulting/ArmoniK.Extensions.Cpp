@@ -54,7 +54,7 @@ COPY ./Utils.cmake ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/build
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) && make clean
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) && make clean
 
 # Set the entrypoint for the application's test executable
 # This is the command that will be executed when the container is run

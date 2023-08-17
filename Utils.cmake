@@ -17,12 +17,6 @@ function(setup_options project_name_param)
         endif()
     endif()
 
-    if(IS_ALPINE EQUAL -1)
-        message(STATUS "Not found Alpine distribution " ${IS_ALPINE})
-    else()
-        message(STATUS "Found Alpine distribution " ${IS_ALPINE})
-    endif()
-
     if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
         target_link_options(${project_name_param} PRIVATE -fsanitize=undefined,address ${extra_param})
     endif()

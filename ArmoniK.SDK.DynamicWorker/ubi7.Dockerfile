@@ -57,6 +57,7 @@ COPY ./Utils.cmake ./
 
 WORKDIR /app/builder/worker
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" \
+    "-DINSTALL_SDK_DIR=/app/install" \
     "-DCMAKE_PREFIX_PATH=/usr/local/grpc" \
     "-DBUILD_CLIENT=OFF" \
     "-DBUILD_DYNAMICWORKER=ON" \

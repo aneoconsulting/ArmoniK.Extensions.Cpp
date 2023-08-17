@@ -34,6 +34,7 @@ target_include_directories(${PROJECT_NAME}
         "$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
         "$<BUILD_INTERFACE:${PRIVATE_HEADERS_DIR}>"
         "$<BUILD_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
