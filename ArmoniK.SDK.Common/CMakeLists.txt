@@ -9,7 +9,6 @@ set(PROJECT_BUILD_DIR ${BUILD_DIR}/${PROJECT_NAME})
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(VERSION 0.1.0)
 include(CMakePackageConfigHelpers)
 
 SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -35,28 +34,8 @@ target_include_directories(${PROJECT_NAME}
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )
 
-file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
-string(FIND "${${PROJECT_NAME}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
-
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
-else()
-    if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
-        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -fsanitize=undefined,address)
-    else ()
-        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-    endif()
-endif()
-
-if(IS_ALPINE EQUAL -1)
-    message(STATUS "Not found Alpine distribution " ${IS_ALPINE})
-else()
-    message(STATUS "Found Alpine distribution " ${IS_ALPINE})
-endif()
-
-if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
-    target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=undefined,address)
-endif()
+include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
+setup_options(${PROJECT_NAME})
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
 set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 0)

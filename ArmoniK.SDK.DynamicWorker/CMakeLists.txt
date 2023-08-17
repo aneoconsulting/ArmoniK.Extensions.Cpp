@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.DynamicWorker)
 set(NAMESPACE ArmoniK::Sdk::DynamicWorker)
-set(version 0.1.0)
 
 project(${PROJECT_NAME})
 
@@ -25,28 +24,8 @@ add_executable(${PROJECT_NAME} ${SRC_DYNAMICWORKER_FILES} ${HEADER_DYNAMICWORKER
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_DYNAMICWORKER_NAMESPACE=${NAMESPACE})
 
-file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
-string(FIND "${${project_name_param}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
-
-if(MSVC)
-target_compile_options(${PROJECT_NAME} PRIVATE /W4)
-else()
-if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
-        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -fsanitize=undefined,address ${extra_param})
-else ()
-        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-endif()
-
-if(IS_ALPINE EQUAL -1)
-message(STATUS "Not found Alpine distribution " ${IS_ALPINE})
-else()
-message(STATUS "Found Alpine distribution " ${IS_ALPINE})
-endif()
-
-if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
-target_link_options(${project_name_param} PRIVATE -fsanitize=undefined,address ${extra_param})
-endif()
+include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
+setup_options(${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.Api.Common fmt ArmoniK.SDK.Common)
 

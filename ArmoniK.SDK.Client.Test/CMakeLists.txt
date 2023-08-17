@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.Client.Test)
 set(NAMESPACE ArmoniK::Sdk::Client::Test)
-set(version 0.1.0)
 
 project(${PROJECT_NAME})
-set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -22,28 +20,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC fmt ArmoniK.SDK.Common ArmoniK.SDK.
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NAMESPACE})
 
-file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
-string(FIND "${${PROJECT_NAME}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
-
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
-else()
-    if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
-        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -fsanitize=undefined,address)
-    else ()
-        target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-    endif()
-endif()
-
-if(IS_ALPINE EQUAL -1)
-    message(STATUS "Not found Alpine distribution " ${IS_ALPINE})
-else()
-    message(STATUS "Found Alpine distribution " ${IS_ALPINE})
-endif()
-
-if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
-    target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=undefined,address)
-endif()
+include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
+setup_options(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
@@ -54,8 +32,7 @@ target_include_directories(${PROJECT_NAME}
 FILE(COPY appsettings.json DESTINATION "${PROJECT_BINARY_DIR}")
 
 if(POLICY CMP0135)
-	cmake_policy(SET CMP0135 NEW)
-	set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
+	cmake_policy(SET CMP0135 OLD)
 endif()
 
 # gTest support

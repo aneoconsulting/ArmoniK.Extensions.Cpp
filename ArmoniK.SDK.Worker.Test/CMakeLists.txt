@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.Worker.Test)
 set(NAMESPACE ArmoniK::Sdk::Worker::Test)
-set(version 0.1.0)
 include(CMakePackageConfigHelpers)
 
 project(${PROJECT_NAME})
-set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -38,7 +36,7 @@ target_include_directories(${PROJECT_NAME}
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${version})
+set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
 set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 0)
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERFACE_${PROJECT_NAME}_MAJOR_VERSION 0)
 set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING ${PROJECT_NAME}_MAJOR_VERSION)
