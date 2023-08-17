@@ -107,9 +107,7 @@ if(BUILD_END2END)
     endif()
 
     if(UNIX AND BUILD_WORKER)
-        If(NOT BUILD_WORKER)
-            find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
-        endif()
+        find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
         ExternalProject_Add(ArmoniK.SDK.Worker.Test
             SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Worker.Test"
             BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Worker.Test"

@@ -18,4 +18,5 @@ COPY --from=source /app/install /app/install
 WORKDIR /app/source
 COPY ./ArmoniK.SDK.Worker.Test ./ArmoniK.SDK.Worker.Test
 COPY ./CMakeLists.txt ./CMakeLists.txt
+COPY ./Utils.cmake ./
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/build" "-DBUILD_SDK=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) && make clean
