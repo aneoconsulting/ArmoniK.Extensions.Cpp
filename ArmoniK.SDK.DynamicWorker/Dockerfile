@@ -61,6 +61,7 @@ FROM alpine AS runner
 # These include tools and libraries for building and compiling the source code
 RUN apk update && apk add --no-cache \
     c-ares \
+    fmt-dev \
     libprotobuf \
     grpc \
     grpc-cpp
