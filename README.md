@@ -2,7 +2,7 @@
 
 This project is part of the [ArmoniK](https://github.com/aneoconsulting/ArmoniK) project.
 
-In order to build the SDK C++, one may have the ArmoniK API C++ installed in the local environnement, or use the script available to build in a docker environnement.
+In order to build the SDK C++, one may have the ArmoniK API C++ installed in the local environment, or use the script available to build in a docker environment.
 
 ## How to build for Linux
 
@@ -15,14 +15,14 @@ In order to build the SDK C++, one may have the ArmoniK API C++ installed in the
 
 - In WSL:
   - run ```restart-build-env.sh```
-  - Specify the ARMONIK_API_DIR as an environnement variable prior to running this script if the ArmoniK.Api cpp installation directory is not ```../ArmoniK.Api/packages/cpp/install```
+  - Specify the ARMONIK_API_DIR as an environment variable prior to running this script if the ArmoniK.Api cpp installation directory is not ```../ArmoniK.Api/packages/cpp/install```
 - In your IDE:
-  - Setup ``Remote Host`` as your toolchain and specify the user as ``user``, password as ``password`` and the adress and ports to match the REMOTE_BUILD_ADDRESS variable specified in the script
+  - Setup ``Remote Host`` as your toolchain and specify the user as ``root``, password as ``password`` and the adress and ports to match the REMOTE_BUILD_ADDRESS variable specified in the script
 
 ### Visual Studio setup
 
 - In WSL, run ```setup-remote.sh```
-  - You will be connected to the docker in interactive mode. Then, you can build and run your project in the linux enviroment.
+  - You will be connected to the docker in interactive mode. Then, you can build and run your project in the linux environment.
   - If You want to perform remote developpement in your IDE, then run:
   - ```service ssh start```
 - In your IDE:
@@ -52,5 +52,5 @@ This script will build the dynamic worker image to be used by the ArmoniK deploy
 
 ### Build the client test and submit jobs
 
-Once the worker is built and deployed with ArmoniK, one can submit jobs. In order to do so, one may build the client test by launching the cmake with the flags ```BUILD_CLIENT=ON``` and ```BUILD_END2END=ON```. After the test build, the environnement variable ```Grpc__EndPoint``` must be set in the test environnement and then run:
+Once the worker is built and deployed with ArmoniK, one can submit jobs. In order to do so, one may build the client test by launching the cmake with the flags ```BUILD_CLIENT=ON``` and ```BUILD_END2END=ON```. After the test build, the environment variable ```Grpc__EndPoint``` must be set in the test environment and then run:
     - ```./ArmoniK.SDK.Client.Test```
