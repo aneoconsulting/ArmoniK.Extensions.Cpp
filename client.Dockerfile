@@ -15,6 +15,7 @@ RUN apk update && apk add --no-cache \
     make \
     cmake \
     linux-headers \
+    fmt-dev \
     grpc \
     grpc-dev \
     protobuf \
@@ -49,12 +50,11 @@ COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
 COPY ./ArmoniK.SDK.Client ./ArmoniK.SDK.Client
 COPY ./ArmoniK.SDK.Client.Test ./ArmoniK.SDK.Client.Test
 COPY ./CMakeLists.txt ./
+COPY ./Utils.cmake ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/build
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DLLWORKER=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
-
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DLLWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install && make clean
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) && make clean
 
 # Set the entrypoint for the application's test executable
 # This is the command that will be executed when the container is run

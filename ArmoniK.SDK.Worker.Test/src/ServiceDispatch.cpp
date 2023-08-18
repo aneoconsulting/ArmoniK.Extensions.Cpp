@@ -1,4 +1,4 @@
-#include <ArmoniKSDKInterface.h>
+#include <armonik/sdk/worker/ArmoniKSDKInterface.h>
 #include <cstring>
 #include <iostream>
 

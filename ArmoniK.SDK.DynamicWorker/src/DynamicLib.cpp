@@ -1,5 +1,5 @@
 #include "DynamicLib.h"
-#include <ArmoniKSdkException.h>
+#include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <dlfcn.h>
 #include <stdexcept>
 

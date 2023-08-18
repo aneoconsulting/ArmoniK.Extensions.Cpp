@@ -1,6 +1,6 @@
 #include "ApplicationManager.h"
-#include "ArmoniKSdkException.h"
-#include "Configuration.h"
+#include <armonik/sdk/common/ArmoniKSdkException.h>
+#include <armonik/sdk/common/Configuration.h>
 #include <sstream>
 
 namespace SDK_DYNAMICWORKER_NAMESPACE {

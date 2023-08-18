@@ -14,6 +14,7 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-ge
     automake \
     locales-all \
     build-essential \
+    libfmt-dev \
     libc-ares-dev \
     protobuf-compiler-grpc \
     grpc-proto \
@@ -52,13 +53,10 @@ COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
 COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
 COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
-
-# Build the application using the copied source files and protobuf definitions
-WORKDIR /app/builder/sdk
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
+COPY ./Utils.cmake ./
 
 WORKDIR /app/builder/worker
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) && make clean
 
 # Start with the latest Alpine base image for the final stage
 FROM ubuntu:23.04 AS runner
@@ -66,6 +64,7 @@ FROM ubuntu:23.04 AS runner
 # These include tools and libraries for building and compiling the source code
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
     libc-ares-dev \
+    libfmt-dev \
     grpc-proto \
     libgrpc-dev \
     libgrpc++-dev \

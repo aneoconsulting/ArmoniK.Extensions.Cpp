@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Properties.h"
+#include <armonik/sdk/common/Properties.h>
 #include <grpcpp/channel.h>
 
 namespace SDK_CLIENT_NAMESPACE::Internal {

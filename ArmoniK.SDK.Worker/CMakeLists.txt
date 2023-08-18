@@ -2,8 +2,12 @@ cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.Worker)
 set(NAMESPACE ArmoniK::Sdk::Worker)
 project(${PROJECT_NAME})
+set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_PREFIX}/include)
+set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_PREFIX}/lib)
 set(ARMONIK_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/armonik/sdk/worker)
 set(PROJECT_BUILD_DIR ${BUILD_DIR}/${PROJECT_NAME})
+
+include(CMakePackageConfigHelpers)
 
 SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -26,7 +30,8 @@ target_include_directories(${PROJECT_NAME}
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )
 
-setup_options(${PROJECT_NAME} -fPIC)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
+setup_options(${PROJECT_NAME})
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
 set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 0)

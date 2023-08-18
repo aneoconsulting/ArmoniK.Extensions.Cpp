@@ -15,6 +15,7 @@ RUN apk update && apk add --no-cache \
     make \
     cmake \
     linux-headers \
+    fmt-dev \
     grpc \
     grpc-dev \
     protobuf \
@@ -49,13 +50,11 @@ COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
 COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
 COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
+COPY ./Utils.cmake ./
 
 # Build the application using the copied source files and protobuf definitions
-WORKDIR /app/builder/sdk
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
-
 WORKDIR /app/builder/worker
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) && make clean
 
 # Start with the latest Alpine base image for the final stage
 FROM alpine AS runner
@@ -63,6 +62,7 @@ FROM alpine AS runner
 # These include tools and libraries for building and compiling the source code
 RUN apk update && apk add --no-cache \
     c-ares \
+    fmt-dev \
     libprotobuf \
     grpc \
     grpc-cpp

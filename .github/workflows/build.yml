@@ -113,7 +113,12 @@ jobs:
       - name: Override parameters tfvars
         run: |
           pwd
-          cp parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all/parameters.tfvars
+          cp parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/parameters.tfvars
+
+      - name: Build C++ SDK worker and dynamic worker
+        run: |
+          export ARMONIK_SHARED_HOST_PATH=${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/data
+          ./build-deploy-end2end.sh
 
       - id: deploy
         name: Deploy
@@ -121,10 +126,6 @@ jobs:
         with:
           working-directory: ${{ github.workspace }}/infra
           type: localhost
-
-      - name: Build C++ SDK worker and dynamic worker
-        run: |
-          ./build-deploy-end2end.sh
 
       - name: Run Client tests
         run: |

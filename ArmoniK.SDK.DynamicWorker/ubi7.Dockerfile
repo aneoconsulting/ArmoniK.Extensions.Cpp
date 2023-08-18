@@ -42,7 +42,7 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
         "-DBUILD_TEST=OFF" \
         "-DBUILD_CLIENT=OFF" \
         "-DBUILD_WORKER=ON" .. && \
-    make -j $(nproc) install && \
+    make -j $(nproc) && \
     ls -alR /armonik/api && \
     make clean
 
@@ -53,18 +53,11 @@ COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
 COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
 COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
-
-# Build the application using the copied source files and protobuf definitions
-WORKDIR /app/builder/sdk
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" \
-    "-DCMAKE_PREFIX_PATH=/usr/local/grpc" \
-    "-DBUILD_CLIENT=OFF" \
-    "-DBUILD_DYNAMICWORKER=OFF" \
-    "-DBUILD_END2END=OFF" \
-    /app/source/ && make -j $(nproc) install && make clean
+COPY ./Utils.cmake ./
 
 WORKDIR /app/builder/worker
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" \
+    "-DINSTALL_SDK_DIR=/app/install" \
     "-DCMAKE_PREFIX_PATH=/usr/local/grpc" \
     "-DBUILD_CLIENT=OFF" \
     "-DBUILD_DYNAMICWORKER=ON" \

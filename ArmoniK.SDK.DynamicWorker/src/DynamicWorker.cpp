@@ -1,7 +1,7 @@
 #include "DynamicWorker.h"
 #include "ApplicationManager.h"
-#include <ArmoniKSdkException.h>
-#include <TaskPayload.h>
+#include <armonik/sdk/common/ArmoniKSdkException.h>
+#include <armonik/sdk/common/TaskPayload.h>
 namespace SDK_DYNAMICWORKER_NAMESPACE {
 
 DynamicWorker::DynamicWorker(std::unique_ptr<armonik::api::grpc::v1::agent::Agent::Stub> agent,
