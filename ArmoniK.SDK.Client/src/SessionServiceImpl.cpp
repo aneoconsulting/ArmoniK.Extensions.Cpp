@@ -14,6 +14,10 @@
 #include <utility>
 #include <vector>
 
+namespace armonik::api::grpc::v1 {
+class TaskOptions;
+}
+
 namespace SDK_CLIENT_NAMESPACE::Internal {
 
 std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
@@ -98,10 +102,18 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties)
     : taskOptions(properties.taskOptions), channel_pool(properties) {
-  auto channel = channel_pool.WithChannel();
-  client =
-      std::make_unique<Api::Client::SubmitterClient>(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel));
-  results = armonik::api::grpc::v1::results::Results::NewStub(channel);
+
+  client = channel_pool.template WithChannel<Api::Client::SubmitterClient>([](std::shared_ptr<grpc::Channel> channel) {
+    std::unique_ptr<Api::Client::SubmitterClient> client =
+        std::make_unique<Api::Client::SubmitterClient>(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel));
+    return client;
+  });
+
+  results = channel_pool.template WithChannel<armonik::api::grpc::v1::results::Results::Stub>(
+      [](std::shared_ptr<grpc::Channel> channel) {
+        auto client = armonik::api::grpc::v1::results::Results::NewStub(channel);
+        return client;
+      });
 
   // Creates a new session
   session = client->create_session(static_cast<armonik::api::grpc::v1::TaskOptions>(properties.taskOptions),

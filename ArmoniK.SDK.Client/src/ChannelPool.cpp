@@ -70,11 +70,6 @@ bool ChannelPool::ShutdownOnFailure(std::shared_ptr<grpc::Channel> channel) {
   }
 }
 
-std::shared_ptr<grpc::Channel> ChannelPool::WithChannel() {
-  auto guard = GetChannel();
-  return guard.channel;
-}
-
 ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties) : properties_(std::move(properties)) {}
 ChannelPool::~ChannelPool() = default;
 
@@ -83,7 +78,11 @@ ChannelPool::ChannelGuard::ChannelGuard(const ArmoniK::Sdk::Common::Properties &
   channel = (*pool_).AcquireChannel();
 }
 
-void ChannelPool::ChannelGuard::Dispose() { (*pool_).ReleaseChannel(channel); }
+ChannelPool::ChannelGuard::~ChannelGuard() { (*pool_).ReleaseChannel(channel); }
 
 ChannelPool::ChannelGuard ChannelPool::GetChannel() { return ChannelGuard(properties_); }
+
+std::shared_ptr<grpc::Channel> &ChannelPool::ChannelGuard ::operator=(ChannelGuard &other) noexcept {
+  return other.channel;
+}
 } // namespace SDK_CLIENT_NAMESPACE::Internal

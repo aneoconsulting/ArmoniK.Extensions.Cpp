@@ -6,7 +6,6 @@
 #include <shared_mutex>
 
 namespace SDK_CLIENT_NAMESPACE::Internal {
-
 /**
  * @brief A pool for Grpc channels
  */
@@ -19,9 +18,19 @@ public:
   explicit ChannelPool(ArmoniK::Sdk::Common::Properties properties);
   ChannelPool(const ChannelPool &) = delete;
 
+  /**
+   * @brief Move constructor
+   *
+   * @param other Other session service
+   */
   ChannelPool(ChannelPool &&other) noexcept;
   ChannelPool &operator=(const ChannelPool &) = delete;
 
+  /**
+   * @brief Move assignment constructor
+   *
+   * @param other Other session service
+   */
   ChannelPool &operator=(ChannelPool &&other) noexcept;
   ~ChannelPool();
 
@@ -35,33 +44,72 @@ public:
   /**
    * @brief Releases a channel to the pool
    *
-   * @param channel
+   * @param channel The gRPC channel
    */
   void ReleaseChannel(std::shared_ptr<grpc::Channel> channel);
 
   /**
    * @brief Check the state of a channel and shut it down in case of failure
    *
-   * @param channel
+   * @param channel The gRPC channel
    * @return true if channel has been shut down
    * @return false if not
    */
   static bool ShutdownOnFailure(std::shared_ptr<grpc::Channel> channel);
 
-  std::shared_ptr<grpc::Channel> WithChannel();
+  /**
+   * @brief Call func with an acquired channel
+   *
+   * @tparam T return type
+   * @param func The function to be called
+   * @return std::unique_ptr<T>
+   */
+  template <typename T> std::unique_ptr<T> WithChannel(std::unique_ptr<T> (*func)(std::shared_ptr<grpc::Channel>)) {
+    auto guard = GetChannel();
+    return func(guard.channel);
+  }
 
+  /**
+   * @brief Helper class that acquires a channel from a pool when constructed, and releases it when disposed
+   *
+   */
   class ChannelGuard {
   public:
+    /**
+     * @brief Free channel
+     *
+     */
     std::shared_ptr<grpc::Channel> channel;
 
+    /**
+     * @brief Construct a new Channel Guard object
+     *
+     * @param properties
+     */
     ChannelGuard(const ArmoniK::Sdk::Common::Properties &properties);
 
-    void Dispose();
+    /**
+     * @brief Destroy the Channel Guard object
+     *
+     */
+    ~ChannelGuard();
 
-  private:
+    /**
+     * @brief Implicit convert a ChannelGuard into a ChannelBase
+     *
+     * @param other the other channel guard
+     * @return std::shared_ptr<grpc::Channel>&
+     */
+    std::shared_ptr<grpc::Channel> &operator=(ChannelGuard &other) noexcept;
+
     std::shared_ptr<ChannelPool> pool_;
   };
 
+  /**
+   * @brief Get the Channel object that will be automatically released when disposed
+   *
+   * @return ChannelGuard
+   */
   ChannelGuard GetChannel();
 
 private:
