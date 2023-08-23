@@ -98,7 +98,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties)
     : taskOptions(properties.taskOptions), channel_pool(properties) {
-  auto channel = channel_pool.GetChannel();
+  auto channel = channel_pool.WithChannel();
   client =
       std::make_unique<Api::Client::SubmitterClient>(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel));
   results = armonik::api::grpc::v1::results::Results::NewStub(channel);
