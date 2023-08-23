@@ -22,6 +22,7 @@ add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES} ${
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_WORKER_NAMESPACE=${NAMESPACE})
+target_compile_options(${PROJECT_NAME} PRIVATE -fPIC)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC

@@ -6,28 +6,22 @@ project(${PROJECT_NAME})
 
 set(CMAKE_CXX_STANDARD 17)
 
-SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
 
-find_package(fmt CONFIG REQUIRED)
 find_package(ArmoniK.SDK.Common CONFIG REQUIRED)
 find_package(ArmoniK.SDK.Client CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC fmt ArmoniK.SDK.Common ArmoniK.SDK.Client GTest::gtest_main)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.SDK.Common ArmoniK.SDK.Client)
+target_link_libraries(${PROJECT_NAME} PRIVATE GTest::gtest_main)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NAMESPACE})
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
 setup_options(${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
-        PUBLIC
-        "${SOURCES_FILES_DIR}"
-        "$<BUILD_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
-        )
 
 FILE(COPY appsettings.json DESTINATION "${PROJECT_BINARY_DIR}")
 
@@ -43,6 +37,7 @@ FetchContent_Declare(
 )
 # For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+set(INSTALL_GTEST OFF)
 FetchContent_MakeAvailable(googletest)
 
 include(GoogleTest)
