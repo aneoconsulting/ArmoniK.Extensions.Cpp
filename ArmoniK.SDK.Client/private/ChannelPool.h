@@ -1,5 +1,8 @@
 #pragma once
 
+#include <armonik/common/logger/formatter.h>
+#include <armonik/common/logger/logger.h>
+#include <armonik/common/logger/writer.h>
 #include <armonik/sdk/common/Properties.h>
 #include <grpcpp/channel.h>
 #include <queue>
@@ -32,6 +35,11 @@ public:
    * @param other Other session service
    */
   ChannelPool &operator=(ChannelPool &&other) noexcept;
+
+  /**
+   * @brief Destroy the Channel Pool object
+   *
+   */
   ~ChannelPool();
 
   /**
@@ -116,6 +124,8 @@ private:
   ArmoniK::Sdk::Common::Properties properties_;
   std::queue<std::shared_ptr<grpc::Channel>> channel_pool_;
   std::shared_mutex channel_mutex_;
+  ArmoniK::Api::Common::logger::Logger logger_{ArmoniK::Api::Common::logger::writer_console(),
+                                               ArmoniK::Api::Common::logger::formatter_plain(true)};
 };
 
 } // namespace SDK_CLIENT_NAMESPACE::Internal

@@ -9,7 +9,6 @@ namespace SDK_CLIENT_NAMESPACE::Internal {
 
 std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   std::shared_ptr<grpc::Channel> channel;
-  std::cout << "Pool size " << channel_pool_.size() << std::endl;
   if (channel_pool_.size() != 0) {
     channel = channel_pool_.front();
     channel_pool_.pop();
@@ -17,9 +16,9 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
 
   if (channel != nullptr) {
     if (ShutdownOnFailure(channel)) {
-      std::cout << "Shutdown unhealthy channel" << std::endl;
+      logger_.debug("Shutdown unhealthy channel");
     } else {
-      std::cout << "Acquired already existing channel from pool" << std::endl;
+      logger_.debug("Acquired already existing channel from pool");
       return channel;
     }
   }
@@ -31,15 +30,15 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
     endpoint = endpoint.substr(scheme_delim + 3);
   }
   channel = grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
-  std::cout << "Created and acquired new channel from pool" << std::endl;
+  logger_.debug("Created and acquired new channel from pool");
   return channel;
 }
 
 void ChannelPool::ReleaseChannel(std::shared_ptr<grpc::Channel> channel) {
   if (ShutdownOnFailure(channel)) {
-    std::cout << "Shutdown unhealthy channel" << std::endl;
+    logger_.debug("Shutdown unhealthy channel");
   } else {
-    std::cout << "Released channel to pool" << std::endl;
+    logger_.debug("Released channel to pool");
     std::shared_lock _(channel_mutex_);
     channel_pool_.push(channel);
   }
