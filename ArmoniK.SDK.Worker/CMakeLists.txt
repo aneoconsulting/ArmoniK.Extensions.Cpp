@@ -31,7 +31,7 @@ target_include_directories(${PROJECT_NAME}
         )
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
-setup_options(${PROJECT_NAME})
+setup_options(${PROJECT_NAME} -fPIC)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
 set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 0)

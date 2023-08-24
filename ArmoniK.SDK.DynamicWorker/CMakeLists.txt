@@ -12,7 +12,6 @@ SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 FILE(GLOB_RECURSE SRC_DYNAMICWORKER_FILES ${SOURCES_FILES_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_DYNAMICWORKER_FILES ${HEADER_FILES_DIR}/*.h)
 
-find_package(fmt CONFIG REQUIRED)
 find_package(ArmoniK.Api.Worker REQUIRED CONFIG)
 find_package(ArmoniK.SDK.Common REQUIRED CONFIG)
 
@@ -27,7 +26,7 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_DYNAMICWORKER_NAMESPACE=${
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
 setup_options(${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.Api.Common fmt ArmoniK.SDK.Common)
+target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.Api.Common ArmoniK.SDK.Common)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC

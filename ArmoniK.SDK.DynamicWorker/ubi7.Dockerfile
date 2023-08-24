@@ -28,7 +28,7 @@ RUN echo $PATH
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
-ARG API_VERSION=main
+ARG API_VERSION=3.11.0
 RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cd ArmoniK.Api/packages/cpp && \
     git checkout "${API_VERSION}" && \
@@ -42,7 +42,7 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
         "-DBUILD_TEST=OFF" \
         "-DBUILD_CLIENT=OFF" \
         "-DBUILD_WORKER=ON" .. && \
-    make -j $(nproc) && \
+    make -j $(nproc) install && \
     ls -alR /armonik/api && \
     make clean
 
@@ -56,12 +56,13 @@ COPY ./CMakeLists.txt ./
 COPY ./Utils.cmake ./
 
 WORKDIR /app/builder/worker
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" \
-    "-DINSTALL_SDK_DIR=/app/install" \
-    "-DCMAKE_PREFIX_PATH=/usr/local/grpc" \
-    "-DBUILD_CLIENT=OFF" \
-    "-DBUILD_DYNAMICWORKER=ON" \
-    "-DBUILD_END2END=OFF" \
+RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
+    -DINSTALL_SDK_DIR=/app/install \
+    -DCMAKE_PREFIX_PATH=/usr/local/grpc \
+    -DARMONIK_API_DIR=/armonik/api \
+    -DBUILD_CLIENT=OFF \
+    -DBUILD_DYNAMICWORKER=ON \
+    -DBUILD_END2END=OFF \
     /app/source/ && make -j $(nproc) install && make clean
 
 # Start with the latest Alpine base image for the final stage
@@ -70,9 +71,7 @@ FROM dockerhubaneo/armonikworker_base:ubi7.9-0.0.1 AS runner
 USER armonikuser
 
 # Copy the application files, libraries, and binaries from the builder image to the final image
-COPY --from=builder /app/install/bin /app/install/bin
-COPY --from=builder /app/install/lib64 /app/install/lib64
-COPY --from=builder /app/install/include /app/install/include
+COPY --from=builder /app/install/. /app/install/.
 
 # Update the PATH environment variable to include the application libraries and binaries
 ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"

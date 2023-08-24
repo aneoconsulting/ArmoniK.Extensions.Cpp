@@ -28,6 +28,7 @@ else()
     endif()
 endif ()
 list(APPEND CMAKE_PREFIX_PATH ${INSTALL_SDK_DIR})
+string(REPLACE ";" "|" CMAKE_PREFIX_PATH_ALT_SEP "${CMAKE_PREFIX_PATH}")
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -36,8 +37,6 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 option(BUILD_END2END "Build End2End test" OFF)
-option(BUILD_TESTS "Build Unit Tests" OFF)
-option(BUILD_COMMON "Build Common" ON)
 option(BUILD_WORKER "Build Worker" ON)
 option(BUILD_CLIENT "Build Client" ON)
 option(BUILD_DYNAMICWORKER "Build DynamicWorker" OFF)
@@ -46,34 +45,46 @@ option(BUILD_SDK "Build SDK" ON)
 
 include(ExternalProject)
 
+add_custom_target(${SOLUTION_NAME} ALL)
+
 if(BUILD_SDK)
     ExternalProject_Add(ArmoniK.SDK.Common
         SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Common"
-        BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Common"
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR} -DVERSION=${VERSION}
+        BINARY_DIR "${BUILD_DIR}/ArmoniK.SDK.Common"
+        CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_ALT_SEP} -DVERSION=${VERSION}
+        CONFIGURE_HANDLED_BY_BUILD TRUE
         BUILD_ALWAYS TRUE
-        STEP_TARGETS build
+        INSTALL_DIR ${INSTALL_SDK_DIR}
+        LIST_SEPARATOR |
     )
+
+    add_dependencies(${SOLUTION_NAME} ArmoniK.SDK.Common)
 
     if(BUILD_WORKER)
         ExternalProject_Add(ArmoniK.SDK.Worker
             SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Worker"
-            BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Worker"
-            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR} -DVERSION=${VERSION}
+            BINARY_DIR "${BUILD_DIR}/ArmoniK.SDK.Worker"
+            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_ALT_SEP} -DVERSION=${VERSION}
+            CONFIGURE_HANDLED_BY_BUILD TRUE
             BUILD_ALWAYS TRUE
-            STEP_TARGETS build
+            INSTALL_DIR ${INSTALL_SDK_DIR}
+            LIST_SEPARATOR |
         )
+        add_dependencies(${SOLUTION_NAME} ArmoniK.SDK.Worker)
     endif()
 
     if(BUILD_CLIENT)
         ExternalProject_Add(ArmoniK.SDK.Client
             SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Client"
-            BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Client"
+            BINARY_DIR "${BUILD_DIR}/ArmoniK.SDK.Client"
             DEPENDS ArmoniK.SDK.Common
-            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR} -DVERSION=${VERSION}
+            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_ALT_SEP} -DVERSION=${VERSION}
+            CONFIGURE_HANDLED_BY_BUILD TRUE
             BUILD_ALWAYS TRUE
-            STEP_TARGETS build
+            INSTALL_DIR ${INSTALL_SDK_DIR}
+            LIST_SEPARATOR |
         )
+        add_dependencies(${SOLUTION_NAME} ArmoniK.SDK.Client)
     endif()
 endif()
 
@@ -84,12 +95,15 @@ if(BUILD_DYNAMICWORKER)
     endif()
     ExternalProject_Add(ArmoniK.SDK.DynamicWorker
         SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.DynamicWorker"
-        BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.DynamicWorker"
+        BINARY_DIR "${BUILD_DIR}/ArmoniK.SDK.DynamicWorker"
         DEPENDS ArmoniK.SDK.Common ArmoniK.SDK.Worker
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR} -DVERSION=${VERSION}
+        CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_ALT_SEP} -DVERSION=${VERSION}
+        CONFIGURE_HANDLED_BY_BUILD TRUE
         BUILD_ALWAYS TRUE
-        STEP_TARGETS build
+        INSTALL_DIR ${INSTALL_SDK_DIR}
+        LIST_SEPARATOR |
     )
+    add_dependencies(${SOLUTION_NAME} ArmoniK.SDK.DynamicWorker)
 endif()
 
 if(BUILD_END2END)
@@ -100,12 +114,15 @@ if(BUILD_END2END)
         endif()
         ExternalProject_Add(ArmoniK.SDK.Client.Test
             SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Client.Test"
-            BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Client.Test"
+            BINARY_DIR "${BUILD_DIR}/ArmoniK.SDK.Client.Test"
             DEPENDS ArmoniK.SDK.Common ArmoniK.SDK.Client
-            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR} -DVERSION=${VERSION}
+            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_ALT_SEP} -DVERSION=${VERSION}
+            CONFIGURE_HANDLED_BY_BUILD TRUE
             BUILD_ALWAYS TRUE
-            STEP_TARGETS build
+            INSTALL_DIR ${INSTALL_SDK_DIR}
+            LIST_SEPARATOR |
         )
+        add_dependencies(${SOLUTION_NAME} ArmoniK.SDK.Client.Test)
     endif()
 
     if(UNIX AND BUILD_WORKER)
@@ -114,11 +131,17 @@ if(BUILD_END2END)
         endif()
         ExternalProject_Add(ArmoniK.SDK.Worker.Test
             SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ArmoniK.SDK.Worker.Test"
-            BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/ArmoniK.SDK.Worker.Test"
+            BINARY_DIR "${BUILD_DIR}/ArmoniK.SDK.Worker.Test"
             DEPENDS ArmoniK.SDK.Worker
-            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${ARMONIK_API_DIR} -DVERSION=${VERSION}
+            CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${INSTALL_SDK_DIR} -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_ALT_SEP} -DVERSION=${VERSION}
+            CONFIGURE_HANDLED_BY_BUILD TRUE
             BUILD_ALWAYS TRUE
-            STEP_TARGETS build
+            INSTALL_DIR ${INSTALL_SDK_DIR}
+            LIST_SEPARATOR |
         )
+        add_dependencies(${SOLUTION_NAME} ArmoniK.SDK.Worker.Test)
     endif()
 endif ()
+
+
+install(CODE "")
