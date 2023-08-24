@@ -101,9 +101,13 @@ jobs:
             aws: true
 
       - name: Build C++ SDK worker and dynamic worker
+        id: build
         run: |
           export ARMONIK_SHARED_HOST_PATH=${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/data
-          ./build-deploy-end2end.sh "${{ matrix.dist }}" "3.11.0" "dockerhubaneo/armonik-sdk-cpp-dynamicworker" "${{ needs.versionning.outputs.version}}"
+          export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
+          ./build-deploy-end2end.sh "${{ matrix.dist }}" "3.11.0" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}"
+          echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
+          echo "worker_version="${{ needs.versionning.outputs.version}}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')" >> $GITHUB_OUTPUT
 
       - name: Checkout Infra
         uses: actions/checkout@v3
@@ -114,7 +118,7 @@ jobs:
       - name: Override parameters tfvars
         run: |
           cp parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/parameters.tfvars
-          cat ${{ github.workspace }}/infra/versions.tfvars.json | jq --arg version "${{ needs.versionning.outputs.version }}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')" '.armonik_versions.samples=$version | .armonik_images.samples+=["armonik-sdk-cpp-dynamicworker"]' > .versions.tfvars.json
+          cat ${{ github.workspace }}/infra/versions.tfvars.json | jq --arg worker "${{ steps.build.outputs.worker_img }}" --arg version "${{ steps.build.outputs.worker_version }}" '.armonik_versions.samples=$version | .armonik_images.samples+=[$worker]' > .versions.tfvars.json
           mv .versions.tfvars.json ${{ github.workspace }}/infra/versions.tfvars.json
 
       - id: deploy
@@ -137,4 +141,4 @@ jobs:
         run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_LOGIN }} --password-stdin
 
       - name: Push Docker
-        run: docker push "dockerhubaneo/armonik-sdk-cpp-dynamicworker:${{ needs.versionning.outputs.version }}-$(echo "${{ matrix.dist }}"
+        run: docker push "${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}"

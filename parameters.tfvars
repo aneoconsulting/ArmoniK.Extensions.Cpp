@@ -100,8 +100,8 @@ compute_plane = {
     # ArmoniK workers
     worker = [
       {
-        image = "armonik-sdk-cpp-dynamicworker"
-        tag   = "0.1.0-Alpine"
+        image = "dockerhubaneo/armonik-sdk-cpp-dynamicworker"
+        tag   = "0.1.0-alpine"
         limits = {
           cpu    = "1000m"
           memory = "1024Mi"
