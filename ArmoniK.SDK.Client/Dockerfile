@@ -38,7 +38,7 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cp -r ../../Protos/V1/* /app/proto && \
     mkdir -p build/ && \
     cd build/ && \
-    cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" "-DBUILD_TEST=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_WORKER=ON" .. && \
+    cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" "-DBUILD_TEST=OFF" "-DBUILD_CLIENT=ON" "-DBUILD_WORKER=OFF" .. && \
     make -j $(nproc) install && \
     make clean
 
@@ -46,39 +46,28 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
 # Copy the application source files into the image
 WORKDIR /app/source
 COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
-COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
-COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
+COPY ./ArmoniK.SDK.Client ./ArmoniK.SDK.Client
+COPY ./ArmoniK.SDK.Client.Test ./ArmoniK.SDK.Client.Test
 COPY ./CMakeLists.txt ./
 COPY ./Utils.cmake ./
 
 # Build the application using the copied source files and protobuf definitions
-WORKDIR /app/builder/worker
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" /app/source/ && make -j $(nproc) install && make clean
+WORKDIR /app/build
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install && make clean
 
-# Start with the latest Alpine base image for the final stage
-FROM alpine AS runner
-# Install all the necessary dependencies required for the build process
-# These include tools and libraries for building and compiling the source code
+FROM alpine as runner
+
 RUN apk update && apk add --no-cache \
     c-ares \
     libprotobuf \
     grpc \
     grpc-cpp
-	
-# Create a non-root user and group for running the application
-# This is a security best practice to avoid running applications as the root user
-RUN addgroup -g 5000 -S armonikuser && adduser -D -h /home/armonikuser  -u 5000 -G armonikuser --shell /bin/sh armonikuser && mkdir /cache && chown armonikuser: /cache
-USER armonikuser
 
-# Copy the application files, libraries, and binaries from the builder image to the final image
-COPY --from=builder /app/install/bin /app/install/bin
-COPY --from=builder /app/install/lib /app/install/lib
-COPY --from=builder /app/install/include /app/install/include
-
-# Update the PATH environment variable to include the application libraries and binaries
 ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
 ENV PATH="/app/install/bin:$PATH"
 
+COPY --from=builder /armonik/api/. /app/install/.
+COPY --from=builder /app/install/. /app/install/.
 # Set the entrypoint for the application's test executable
 # This is the command that will be executed when the container is run
-ENTRYPOINT ["/app/install/bin/ArmoniK.SDK.DynamicWorker"]
+ENTRYPOINT ["/app/install/bin/ArmoniK.SDK.Client.Test"]

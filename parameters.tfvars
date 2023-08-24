@@ -101,7 +101,7 @@ compute_plane = {
     worker = [
       {
         image = "armonik-sdk-cpp-dynamicworker"
-        tag   = "0.1.0"
+        tag   = "0.1.0-Alpine"
         limits = {
           cpu    = "1000m"
           memory = "1024Mi"

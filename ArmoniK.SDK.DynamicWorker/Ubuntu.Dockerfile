@@ -63,7 +63,6 @@ FROM ubuntu:23.04 AS runner
 # These include tools and libraries for building and compiling the source code
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
     libc-ares-dev \
-    libfmt-dev \
     grpc-proto \
     libgrpc-dev \
     libgrpc++-dev \
