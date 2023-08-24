@@ -37,7 +37,6 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 option(BUILD_END2END "Build End2End test" OFF)
-option(BUILD_COMMON "Build Common" ON)
 option(BUILD_WORKER "Build Worker" ON)
 option(BUILD_CLIENT "Build Client" ON)
 option(BUILD_DYNAMICWORKER "Build DynamicWorker" OFF)
