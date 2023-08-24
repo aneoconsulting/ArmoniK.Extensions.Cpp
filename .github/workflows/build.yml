@@ -107,7 +107,8 @@ jobs:
           export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
           ./build-deploy-end2end.sh "${{ matrix.dist }}" "3.11.0" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}"
           echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
-          echo "worker_version="${{ needs.versionning.outputs.version}}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')" >> $GITHUB_OUTPUT
+          export WORKER_VERSION="${{ needs.versionning.outputs.version}}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')"
+          echo "worker_version=$WORKER_VERSION" >> $GITHUB_OUTPUT
 
       - name: Checkout Infra
         uses: actions/checkout@v3
