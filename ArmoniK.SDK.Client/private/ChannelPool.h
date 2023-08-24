@@ -5,8 +5,8 @@
 #include <armonik/common/logger/writer.h>
 #include <armonik/sdk/common/Properties.h>
 #include <grpcpp/channel.h>
+#include <mutex>
 #include <queue>
-#include <shared_mutex>
 
 namespace SDK_CLIENT_NAMESPACE::Internal {
 /**
@@ -134,7 +134,7 @@ public:
 private:
   ArmoniK::Sdk::Common::Properties properties_;
   std::queue<std::shared_ptr<grpc::Channel>> channel_pool_;
-  std::shared_mutex channel_mutex_;
+  std::mutex channel_mutex_;
   ArmoniK::Api::Common::logger::LocalLogger logger_;
 };
 

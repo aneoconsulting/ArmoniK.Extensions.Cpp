@@ -98,7 +98,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                        ArmoniK::Api::Common::logger::Logger &logger)
-    : taskOptions(properties.taskOptions), logger_(logger.local()), channel_pool(properties, logger) {
+    : taskOptions(properties.taskOptions), channel_pool(properties, logger), logger_(logger.local()) {
 
   client = channel_pool.WithChannel<std::unique_ptr<Api::Client::SubmitterClient>>(
       [](std::shared_ptr<grpc::Channel> channel) {

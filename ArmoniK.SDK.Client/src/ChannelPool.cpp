@@ -31,6 +31,7 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   if (scheme_delim != std::string::npos) {
     endpoint = endpoint.substr(scheme_delim + 3);
   }
+  // TODO Handle TLS/mTLS
   channel = grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
   logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Created and acquired new channel from pool");
   return channel;
