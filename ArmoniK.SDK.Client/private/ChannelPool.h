@@ -18,23 +18,34 @@ public:
    * @brief Creates a channel pool from the given properties
    * @param properties Properties
    */
-  explicit ChannelPool(ArmoniK::Sdk::Common::Properties properties);
+  explicit ChannelPool(ArmoniK::Sdk::Common::Properties properties, ArmoniK::Api::Common::logger::Logger &logger);
+
+  /**
+   * @brief Copy constructor
+   *
+   * @param other Other channel pool
+   */
   ChannelPool(const ChannelPool &) = delete;
+
+  /**
+   * @brief Copy operator
+   *
+   * @param other Other channel pool
+   */
+  ChannelPool &operator=(const ChannelPool &) = delete;
 
   /**
    * @brief Move constructor
    *
-   * @param other Other session service
+   * @param other Other channel pool
    */
-  ChannelPool(ChannelPool &&other) noexcept;
-  ChannelPool &operator=(const ChannelPool &) = delete;
-
+  ChannelPool(ChannelPool &&other) noexcept = default;
   /**
    * @brief Move assignment constructor
    *
-   * @param other Other session service
+   * @param other Other channel pool
    */
-  ChannelPool &operator=(ChannelPool &&other) noexcept;
+  ChannelPool &operator=(ChannelPool &&other) noexcept = default;
 
   /**
    * @brief Destroy the Channel Pool object
@@ -72,7 +83,7 @@ public:
    * @param func The function to be called
    * @return std::unique_ptr<T>
    */
-  template <typename T> std::unique_ptr<T> WithChannel(std::unique_ptr<T> (*func)(std::shared_ptr<grpc::Channel>)) {
+  template <typename T> T WithChannel(T (*func)(std::shared_ptr<grpc::Channel>)) {
     auto guard = GetChannel();
     return func(guard.channel);
   }
@@ -94,7 +105,7 @@ public:
      *
      * @param properties
      */
-    ChannelGuard(const ArmoniK::Sdk::Common::Properties &properties);
+    ChannelGuard(Internal::ChannelPool *pool);
 
     /**
      * @brief Destroy the Channel Guard object
@@ -108,9 +119,9 @@ public:
      * @param other the other channel guard
      * @return std::shared_ptr<grpc::Channel>&
      */
-    std::shared_ptr<grpc::Channel> &operator=(ChannelGuard &other) noexcept;
+    explicit operator std::shared_ptr<grpc::Channel>() const { return this->channel; }
 
-    std::shared_ptr<ChannelPool> pool_;
+    ChannelPool *pool_;
   };
 
   /**
@@ -124,8 +135,7 @@ private:
   ArmoniK::Sdk::Common::Properties properties_;
   std::queue<std::shared_ptr<grpc::Channel>> channel_pool_;
   std::shared_mutex channel_mutex_;
-  ArmoniK::Api::Common::logger::Logger logger_{ArmoniK::Api::Common::logger::writer_console(),
-                                               ArmoniK::Api::Common::logger::formatter_plain(true)};
+  ArmoniK::Api::Common::logger::LocalLogger logger_;
 };
 
 } // namespace SDK_CLIENT_NAMESPACE::Internal

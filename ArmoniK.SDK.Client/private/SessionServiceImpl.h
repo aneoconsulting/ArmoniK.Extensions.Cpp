@@ -72,6 +72,12 @@ private:
    */
   ChannelPool channel_pool;
 
+  /**
+   * @brief Local logger
+   *
+   */
+  ArmoniK::Api::Common::logger::LocalLogger logger_;
+
 public:
   SessionServiceImpl() = delete;
   SessionServiceImpl(const SessionServiceImpl &) = delete;
@@ -80,7 +86,8 @@ public:
    * @brief Creates a SessionService from the given Properties
    * @param properties Session properties
    */
-  explicit SessionServiceImpl(const ArmoniK::Sdk::Common::Properties &properties);
+  explicit SessionServiceImpl(const ArmoniK::Sdk::Common::Properties &properties,
+                              ArmoniK::Api::Common::logger::Logger &logger);
 
   /**
    * @brief Submits the given list of task requests using the session's task options

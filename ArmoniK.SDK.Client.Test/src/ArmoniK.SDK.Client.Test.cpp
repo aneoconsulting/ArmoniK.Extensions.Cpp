@@ -2,6 +2,9 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+#include <armonik/common/logger/formatter.h>
+#include <armonik/common/logger/logger.h>
+#include <armonik/common/logger/writer.h>
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <armonik/sdk/client/SessionService.h>
 #include <armonik/sdk/common/Configuration.h>
@@ -108,8 +111,12 @@ TEST(testSDK, testEcho) {
   // Create the properties
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
+  // Create the logger
+  ArmoniK::Api::Common::logger::Logger logger{ArmoniK::Api::Common::logger::writer_console(),
+                                              ArmoniK::Api::Common::logger::formatter_plain(true)};
+
   // Create the session service
-  ArmoniK::Sdk::Client::SessionService service(properties);
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
 
   // Get the created session id
   std::cout << "Session : " << service.getSession() << std::endl;
@@ -162,8 +169,12 @@ TEST(testSDK, testAddInt) {
   // Create the properties
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
+  // Create the logger
+  ArmoniK::Api::Common::logger::Logger logger{ArmoniK::Api::Common::logger::writer_console(),
+                                              ArmoniK::Api::Common::logger::formatter_plain(true)};
+
   // Create the session service
-  ArmoniK::Sdk::Client::SessionService service(properties);
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
 
   // Get the created session id
   std::cout << "Session : " << service.getSession() << std::endl;
@@ -265,8 +276,12 @@ TEST(testSDK, testAddFloat) {
   // Create the properties
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
+  // Create the logger
+  ArmoniK::Api::Common::logger::Logger logger{ArmoniK::Api::Common::logger::writer_console(),
+                                              ArmoniK::Api::Common::logger::formatter_plain(true)};
+
   // Create the session service
-  ArmoniK::Sdk::Client::SessionService service(properties);
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
 
   // Get the created session id
   std::cout << "Session : " << service.getSession() << std::endl;
