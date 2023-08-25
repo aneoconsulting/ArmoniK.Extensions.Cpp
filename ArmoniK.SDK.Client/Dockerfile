@@ -53,7 +53,8 @@ COPY ./Utils.cmake ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/build
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install && make clean
+ARG CLIENT_VERSION=0.1.0
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" -DVERSION=$CLIENT_VERSION /app/source/ && make -j $(nproc) install && make clean
 
 FROM alpine as runner
 
