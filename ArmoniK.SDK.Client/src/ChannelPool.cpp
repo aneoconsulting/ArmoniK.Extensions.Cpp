@@ -6,16 +6,84 @@
 
 namespace SDK_CLIENT_NAMESPACE::Internal {
 
-std::shared_ptr<grpc::Channel> ChannelPool::GetChannel() {
-  // TODO Setup TLS / mTLS support
-  // TODO Setup channel recycling
+std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
+  std::shared_ptr<grpc::Channel> channel;
+  {
+    std::lock_guard _(channel_mutex_);
+    if (channel_pool_.size() != 0) {
+      channel = channel_pool_.front();
+      channel_pool_.pop();
+    }
+  }
+
+  if (channel != nullptr) {
+    if (ShutdownOnFailure(channel)) {
+      logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Shutdown unhealthy channel");
+    } else {
+      logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Acquired already existing channel from pool");
+      return channel;
+    }
+  }
+
   std::string endpoint(properties_.configuration.get_control_plane().getEndpoint());
   auto scheme_delim = endpoint.find("://");
   if (scheme_delim != std::string::npos) {
     endpoint = endpoint.substr(scheme_delim + 3);
   }
-  return grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
+  // TODO Handle TLS/mTLS
+  channel = grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
+  logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Created and acquired new channel from pool");
+  return channel;
 }
 
-ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties) : properties_(std::move(properties)) {}
+void ChannelPool::ReleaseChannel(std::shared_ptr<grpc::Channel> channel) {
+  if (ShutdownOnFailure(channel)) {
+    logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Shutdown unhealthy channel");
+  } else {
+    logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Released channel to pool");
+    std::lock_guard _(channel_mutex_);
+    channel_pool_.push(channel);
+  }
+}
+
+bool ChannelPool::ShutdownOnFailure(std::shared_ptr<grpc::Channel> channel) {
+  switch ((*channel).GetState(true)) {
+  case GRPC_CHANNEL_CONNECTING:
+    break;
+  case GRPC_CHANNEL_IDLE:
+    break;
+
+  case GRPC_CHANNEL_SHUTDOWN:
+    return true;
+    break;
+
+  case GRPC_CHANNEL_TRANSIENT_FAILURE:
+    channel.reset();
+    return true;
+    break;
+
+  case GRPC_CHANNEL_READY:
+    break;
+
+  default:
+    return false;
+    break;
+  }
+  return false;
+}
+
+ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, ArmoniK::Api::Common::logger::Logger &logger)
+    : properties_(std::move(properties)), logger_(logger.local()) {}
+ChannelPool::~ChannelPool() = default;
+
+ChannelPool::ChannelGuard::ChannelGuard(Internal::ChannelPool *pool) : pool_(pool) {
+  if (pool_ != nullptr) {
+    channel = pool_->AcquireChannel();
+  }
+}
+
+ChannelPool::ChannelGuard::~ChannelGuard() { pool_->ReleaseChannel(channel); }
+
+ChannelPool::ChannelGuard ChannelPool::GetChannel() { return ChannelGuard(this); }
+
 } // namespace SDK_CLIENT_NAMESPACE::Internal

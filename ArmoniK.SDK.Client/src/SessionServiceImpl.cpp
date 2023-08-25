@@ -42,7 +42,7 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
     std::stringstream message;
     message << "Error: " << status.error_code() << ": " << status.error_message()
             << ". details : " << status.error_details() << std::endl;
-    std::cerr << "Could not create results for submit: " << std::endl;
+    logger_.log(ArmoniK::Api::Common::logger::Level::Error, "Could not create results for submit: ");
     throw ArmoniK::Api::Common::exceptions::ArmoniKApiException(message.str());
   }
   std::vector<std::string> result_ids;
@@ -96,12 +96,22 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   return task_ids;
 }
 
-SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties)
-    : taskOptions(properties.taskOptions), channel_pool(properties) {
-  auto channel = channel_pool.GetChannel();
-  client =
-      std::make_unique<Api::Client::SubmitterClient>(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel));
-  results = armonik::api::grpc::v1::results::Results::NewStub(channel);
+SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
+                                       ArmoniK::Api::Common::logger::Logger &logger)
+    : taskOptions(properties.taskOptions), channel_pool(properties, logger), logger_(logger.local()) {
+
+  client = channel_pool.WithChannel<std::unique_ptr<Api::Client::SubmitterClient>>(
+      [](std::shared_ptr<grpc::Channel> channel) {
+        std::unique_ptr<Api::Client::SubmitterClient> client = std::make_unique<Api::Client::SubmitterClient>(
+            armonik::api::grpc::v1::submitter::Submitter::NewStub(channel));
+        return client;
+      });
+
+  results = channel_pool.WithChannel<std::unique_ptr<armonik::api::grpc::v1::results::Results::Stub>>(
+      [](std::shared_ptr<grpc::Channel> channel) {
+        auto client = armonik::api::grpc::v1::results::Results::NewStub(channel);
+        return client;
+      });
 
   // Creates a new session
   session = client->create_session(static_cast<armonik::api::grpc::v1::TaskOptions>(properties.taskOptions),
@@ -175,18 +185,24 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
         } catch (const ArmoniK::Api::Common::exceptions::ArmoniKTaskError &e) {
           // Task is in error
           hasError |= task_ids.find(task_id) != task_ids.end();
-          std::cerr << "Task " << task_id << " is in error : " << e.what() << std::endl;
+          std::stringstream message;
+          message << "Task " << task_id << " is in error : " << e.what() << std::endl;
+          logger_.log(ArmoniK::Api::Common::logger::Level::Error, message.str());
           handler->HandleError(e, task_id);
 
         } catch (const ArmoniK::Api::Common::exceptions::ArmoniKApiException &e) {
           // Internal error
           hasError |= task_ids.find(task_id) != task_ids.end();
-          std::cerr << "Internal error while handling result " << e.what() << std::endl;
+          std::stringstream message;
+          message << "Internal error while handling result " << e.what() << std::endl;
+          logger_.log(ArmoniK::Api::Common::logger::Level::Error, message.str());
           handler->HandleError(e, task_id);
         }
         done.emplace_back(task_id, rid);
       } else if (status == armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND) {
-        std::cout << "Result " << rid << " not found" << std::endl;
+        std::stringstream message;
+        message << "Result " << rid << " not found" << std::endl;
+        logger_.log(ArmoniK::Api::Common::logger::Level::Info, message.str());
         done.emplace_back("", rid);
       }
     }

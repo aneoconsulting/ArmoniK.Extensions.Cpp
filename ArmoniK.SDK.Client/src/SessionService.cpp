@@ -4,8 +4,9 @@
 
 namespace SDK_CLIENT_NAMESPACE {
 
-SessionService::SessionService(const ArmoniK::Sdk::Common::Properties &properties)
-    : impl(new Internal::SessionServiceImpl(properties)) {}
+SessionService::SessionService(const ArmoniK::Sdk::Common::Properties &properties,
+                               ArmoniK::Api::Common::logger::Logger &logger)
+    : impl(new Internal::SessionServiceImpl(properties, logger)), logger_(logger.local()) {}
 
 const std::string &SessionService::getSession() const {
   ensure_valid();

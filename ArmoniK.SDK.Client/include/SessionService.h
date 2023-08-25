@@ -1,6 +1,9 @@
 #pragma once
 
 #include "WaitBehavior.h"
+#include <armonik/common/logger/formatter.h>
+#include <armonik/common/logger/logger.h>
+#include <armonik/common/logger/writer.h>
 #include <memory>
 #include <set>
 #include <string>
@@ -26,6 +29,7 @@ class IServiceInvocationHandler;
 class SessionService {
 private:
   std::unique_ptr<SDK_CLIENT_NAMESPACE::Internal::SessionServiceImpl> impl;
+  ArmoniK::Api::Common::logger::LocalLogger logger_;
   void ensure_valid() const;
 
 public:
@@ -33,7 +37,8 @@ public:
    * @brief Creates a SessionService from the given Properties
    * @param properties Session properties
    */
-  explicit SessionService(const ArmoniK::Sdk::Common::Properties &properties);
+  explicit SessionService(const ArmoniK::Sdk::Common::Properties &properties,
+                          ArmoniK::Api::Common::logger::Logger &logger);
   SessionService(const SessionService &) = delete;
   /**
    * @brief Move constructor
