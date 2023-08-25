@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 
-set(VERSION 0.1.0)
+if(NOT DEFINED VERSION)
+    set(VERSION 0.1.0)
+endif()
 
 set(SOLUTION_NAME ArmoniK.SDK)
 project(${SOLUTION_NAME} C CXX)
@@ -57,7 +59,6 @@ if(BUILD_SDK)
         INSTALL_DIR ${INSTALL_SDK_DIR}
         LIST_SEPARATOR |
     )
-
     add_dependencies(${SOLUTION_NAME} ArmoniK.SDK.Common)
 
     if(BUILD_WORKER)
@@ -142,6 +143,5 @@ if(BUILD_END2END)
         add_dependencies(${SOLUTION_NAME} ArmoniK.SDK.Worker.Test)
     endif()
 endif ()
-
 
 install(CODE "")

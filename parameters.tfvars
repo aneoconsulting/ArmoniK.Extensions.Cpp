@@ -100,8 +100,7 @@ compute_plane = {
     # ArmoniK workers
     worker = [
       {
-        image = "armonik-sdk-cpp-dynamicworker"
-        tag   = "0.1.0"
+        image = "dockerhubaneo/armonik-sdk-cpp-dynamicworker"
         limits = {
           cpu    = "1000m"
           memory = "1024Mi"
@@ -312,4 +311,11 @@ extra_conf = {
   control = {
     Submitter__MaxErrorAllowed = 50
   }
+}
+
+environment_description = {
+  name        = "local-dev"
+  version     = "0.0.0"
+  description = "Local development environment"
+  color       = "blue"
 }

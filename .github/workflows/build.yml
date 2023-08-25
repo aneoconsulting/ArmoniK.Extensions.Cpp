@@ -82,20 +82,16 @@ jobs:
   build-cpp-packages:
     name: Build C++ Packages
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    strategy:
+      matrix:
+        dist: ["Alpine", "RedHat", "Ubuntu"]
+    needs: [versionning]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           ref: ${{ github.ref }}
 
-      - name: Checkout API
-        uses: actions/checkout@v3
-        with:
-          repository: aneoconsulting/ArmoniK.Api
-          path: ArmoniK.Api
-          working-directory: ${{ github.workspace }}/ArmoniK.Api
-          ref: main
       - name: Install ArmoniK Dependencies
         uses: aneoconsulting/ArmoniK.Action.Deploy/dependencies@main
         with:
@@ -109,16 +105,24 @@ jobs:
         with:
           repository: aneoconsulting/ArmoniK
           path: infra
+
+      - name: Build C++ SDK
+        id: build
+        run: |
+          export ARMONIK_SHARED_HOST_PATH=${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/data
+          export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
+          export API_VERSION="3.11.0"
+          ./build-deploy-end2end.sh "${{ matrix.dist }}" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION"
+          ./build-client.sh armonik_sdk_client_test "${{ needs.versionning.outputs.version}}" "$API_VERSION"
+          echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
+          export WORKER_VERSION="${{ needs.versionning.outputs.version}}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')"
+          echo "worker_version=$WORKER_VERSION" >> $GITHUB_OUTPUT
           
       - name: Override parameters tfvars
         run: |
-          pwd
           cp parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/parameters.tfvars
-
-      - name: Build C++ SDK worker and dynamic worker
-        run: |
-          export ARMONIK_SHARED_HOST_PATH=${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/data
-          ./build-deploy-end2end.sh
+          cat ${{ github.workspace }}/infra/versions.tfvars.json | jq --arg worker "${{ steps.build.outputs.worker_img }}" --arg version "${{ steps.build.outputs.worker_version }}" '.armonik_versions.samples=$version | .armonik_images.samples+=[$worker]' > .versions.tfvars.json
+          mv .versions.tfvars.json ${{ github.workspace }}/infra/versions.tfvars.json
 
       - id: deploy
         name: Deploy
@@ -128,11 +132,15 @@ jobs:
           type: localhost
 
       - name: Run Client tests
+        timeout-minutes: 5
         run: |
           set -ex
           export CPIP=$(kubectl get svc control-plane -n armonik -o custom-columns="IP:.spec.clusterIP" --no-headers=true)
           export CPPort=$(kubectl get svc control-plane -n armonik -o custom-columns="PORT:.spec.ports[*].port" --no-headers=true)
-          kubectl get po -A
-          docker images
-          ./build-client.sh
-          docker run --rm -t --network host -e Grpc__EndPoint=http://$CPIP:$CPPort armonik_sdk_client_test:0.1.0
+          docker run --rm -t --network host -e Grpc__EndPoint=http://$CPIP:$CPPort -e WorkerLib__Version="${{ needs.versionning.outputs.version}}" armonik_sdk_client_test:"${{ needs.versionning.outputs.version}}"
+
+      - name: Login Docker
+        run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_LOGIN }} --password-stdin
+
+      - name: Push Docker
+        run: docker push "${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}"

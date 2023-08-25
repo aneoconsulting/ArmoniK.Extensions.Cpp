@@ -53,8 +53,22 @@ COPY ./Utils.cmake ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/build
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" /app/source/ && make -j $(nproc) install && make clean
+ARG CLIENT_VERSION=0.1.0
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" -DVERSION=$CLIENT_VERSION /app/source/ && make -j $(nproc) install && make clean
 
+FROM alpine as runner
+
+RUN apk update && apk add --no-cache \
+    c-ares \
+    libprotobuf \
+    grpc \
+    grpc-cpp
+
+ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
+ENV PATH="/app/install/bin:$PATH"
+
+COPY --from=builder /armonik/api/. /app/install/.
+COPY --from=builder /app/install/. /app/install/.
 # Set the entrypoint for the application's test executable
 # This is the command that will be executed when the container is run
 ENTRYPOINT ["/app/install/bin/ArmoniK.SDK.Client.Test"]

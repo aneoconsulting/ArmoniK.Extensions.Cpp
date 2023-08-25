@@ -35,11 +35,8 @@ target_include_directories(${PROJECT_NAME}
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
 setup_options(${PROJECT_NAME})
-
-set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
-set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 0)
-set_property(TARGET ${PROJECT_NAME} PROPERTY INTERFACE_${PROJECT_NAME}_MAJOR_VERSION 0)
-set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING ${PROJECT_NAME}_MAJOR_VERSION)
+split_version(${VERSION})
+setup_lib_version(${PROJECT_NAME})
 
 # generate the version file for the config file
 write_basic_package_version_file(

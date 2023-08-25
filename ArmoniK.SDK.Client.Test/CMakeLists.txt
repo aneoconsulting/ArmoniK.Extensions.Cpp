@@ -22,6 +22,8 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_CLIENT_TEST_NAMESPACE=${NA
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
 setup_options(${PROJECT_NAME})
+split_version(${VERSION})
+setup_lib_version(${PROJECT_NAME})
 
 FILE(COPY appsettings.json DESTINATION "${PROJECT_BINARY_DIR}")
 
@@ -42,11 +44,6 @@ FetchContent_MakeAvailable(googletest)
 
 include(GoogleTest)
 gtest_discover_tests(${PROJECT_NAME})
-
-set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
-set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 0)
-set_property(TARGET ${PROJECT_NAME} PROPERTY INTERFACE_${PROJECT_NAME}_MAJOR_VERSION 0)
-set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING ${PROJECT_NAME}_MAJOR_VERSION)
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
