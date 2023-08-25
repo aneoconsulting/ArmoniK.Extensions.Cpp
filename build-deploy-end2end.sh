@@ -4,9 +4,9 @@ set -ex
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
 working_dir="$(realpath "$script_path" )"
 environment="${1:-"Alpine"}"
-api_version="${2:-"3.11.0"}"
-worker_name=${3:-"armonik-sdk-cpp-dynamicworker"}
-worker_version=${4:-"0.1.0"}
+worker_name=${2:-"armonik-sdk-cpp-dynamicworker"}
+worker_version=${3:-"0.1.0"}
+api_version="${4:-"3.11.0"}"
 worker_tag="${worker_version}-$(echo "$environment" | awk '{print tolower($0)}')"
 lib_build_path=${5:-""}
 case "$environment" in
