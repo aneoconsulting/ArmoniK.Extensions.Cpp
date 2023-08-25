@@ -136,7 +136,7 @@ jobs:
           export CPIP=$(kubectl get svc control-plane -n armonik -o custom-columns="IP:.spec.clusterIP" --no-headers=true)
           export CPPort=$(kubectl get svc control-plane -n armonik -o custom-columns="PORT:.spec.ports[*].port" --no-headers=true)
           ./build-client.sh armonik_sdk_client_test "${{ needs.versionning.outputs.version}}"
-          docker run --rm -t --network host -e Grpc__EndPoint=http://$CPIP:$CPPort armonik_sdk_client_test:"${{ needs.versionning.outputs.version}}" -e WorkerLib__Version="${{ needs.versionning.outputs.version}}"
+          docker run --rm -t --network host -e Grpc__EndPoint=http://$CPIP:$CPPort -e WorkerLib__Version="${{ needs.versionning.outputs.version}}" armonik_sdk_client_test:"${{ needs.versionning.outputs.version}}"
 
       - name: Login Docker
         run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_LOGIN }} --password-stdin
