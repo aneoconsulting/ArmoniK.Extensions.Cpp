@@ -2,16 +2,15 @@
 
 #include <armonik/common/options/ControlPlane.h>
 #include <grpcpp/create_channel.h>
-#include <shared_mutex>
 #include <utility>
 
 namespace SDK_CLIENT_NAMESPACE::Internal {
 
 std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   std::shared_ptr<grpc::Channel> channel;
-  if (channel_pool_.size() != 0) {
+  {
     std::lock_guard _(channel_mutex_);
-    {
+    if (channel_pool_.size() != 0) {
       channel = channel_pool_.front();
       channel_pool_.pop();
     }
