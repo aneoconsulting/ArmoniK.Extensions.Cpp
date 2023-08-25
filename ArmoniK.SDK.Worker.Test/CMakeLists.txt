@@ -22,12 +22,10 @@ add_library(${PROJECT_NAME} SHARED ${SRC_WORKER_FILES} ${HEADER_WORKER_FILES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC "-Wl,--whole-archive" ArmoniK.SDK.Worker "-Wl,--no-whole-archive")
 
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
-else()
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
+include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
+setup_options(${PROJECT_NAME})
+split_version(${VERSION})
+setup_lib_version(${PROJECT_NAME})
 target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_END2END_NAMESPACE=${NAMESPACE})
 
 target_include_directories(${PROJECT_NAME}
@@ -35,10 +33,7 @@ target_include_directories(${PROJECT_NAME}
         "$<BUILD_INTERFACE:${WORKER_HEADER_DIR}>"
         )
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
-set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 0)
-set_property(TARGET ${PROJECT_NAME} PROPERTY INTERFACE_${PROJECT_NAME}_MAJOR_VERSION 0)
-set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING ${PROJECT_NAME}_MAJOR_VERSION)
+
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

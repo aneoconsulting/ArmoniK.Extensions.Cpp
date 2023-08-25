@@ -25,6 +25,8 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_DYNAMICWORKER_NAMESPACE=${
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
 setup_options(${PROJECT_NAME})
+split_version(${VERSION})
+setup_lib_version(${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.Api.Common ArmoniK.SDK.Common)
 
@@ -39,11 +41,6 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_CURRENT_SOURCE_DIR}/appsettings.json
         ${CMAKE_CURRENT_BINARY_DIR}/appsettings.json)
-
-set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${VERSION})
-set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 0)
-set_property(TARGET ${PROJECT_NAME} PROPERTY INTERFACE_${PROJECT_NAME}_MAJOR_VERSION 0)
-set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY COMPATIBLE_INTERFACE_STRING ${PROJECT_NAME}_MAJOR_VERSION)
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

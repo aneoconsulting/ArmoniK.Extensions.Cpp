@@ -27,9 +27,9 @@ case "$environment" in
     exit 1
 esac
 
-"${working_dir}"/ArmoniK.SDK.DynamicWorker/build.sh "${working_dir}/ArmoniK.SDK.DynamicWorker/${dockerfile_name}" "${worker_name}:${worker_tag}" "$api_version"
+"${working_dir}"/ArmoniK.SDK.DynamicWorker/build.sh "${working_dir}/ArmoniK.SDK.DynamicWorker/${dockerfile_name}" "${worker_name}:${worker_tag}" "$api_version" "$worker_version"
 
-docker build --build-arg DynamicWorkerImage="${worker_name}:${worker_tag}" --build-arg BuildBaseImage="${build_base_image}" -f "${working_dir}/ArmoniK.SDK.Worker.Test/Dockerfile" --progress plain -t "armonik.sdk.worker.test:build-${environment}" .
+docker build --build-arg DynamicWorkerImage="${worker_name}:${worker_tag}" --build-arg BuildBaseImage="${build_base_image}" --build-arg WorkerLibVersion="$worker_version" -f "${working_dir}/ArmoniK.SDK.Worker.Test/Dockerfile" --progress plain -t "armonik.sdk.worker.test:build-${environment}" .
 
 if [ -z "$lib_build_path" ]
 then

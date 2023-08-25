@@ -56,6 +56,7 @@ COPY ./CMakeLists.txt ./
 COPY ./Utils.cmake ./
 
 WORKDIR /app/builder/worker
+ARG WORKER_VERSION=0.1.0
 RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
     -DINSTALL_SDK_DIR=/app/install \
     -DCMAKE_PREFIX_PATH=/usr/local/grpc \
@@ -63,6 +64,7 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
     -DBUILD_CLIENT=OFF \
     -DBUILD_DYNAMICWORKER=ON \
     -DBUILD_END2END=OFF \
+    -DVERSION="${WORKER_VERSION}" \
     /app/source/ && make -j $(nproc) install && make clean
 
 # Start with the latest Alpine base image for the final stage
@@ -79,4 +81,5 @@ ENV PATH="/app/install/bin:$PATH"
 
 # Set the entrypoint for the application's test executable
 # This is the command that will be executed when the container is run
-ENTRYPOINT ["/app/install/bin/ArmoniK.SDK.DynamicWorker"]
+WORKDIR /app/install/bin
+ENTRYPOINT ["./ArmoniK.SDK.DynamicWorker"]
