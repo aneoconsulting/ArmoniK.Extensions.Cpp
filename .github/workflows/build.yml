@@ -100,21 +100,22 @@ jobs:
             k3s: true
             aws: true
 
-      - name: Build C++ SDK worker and dynamic worker
-        id: build
-        run: |
-          export ARMONIK_SHARED_HOST_PATH=${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/data
-          export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
-          ./build-deploy-end2end.sh "${{ matrix.dist }}" "3.11.0" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}"
-          echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
-          export WORKER_VERSION="${{ needs.versionning.outputs.version}}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')"
-          echo "worker_version=$WORKER_VERSION" >> $GITHUB_OUTPUT
-
       - name: Checkout Infra
         uses: actions/checkout@v3
         with:
           repository: aneoconsulting/ArmoniK
           path: infra
+
+      - name: Build C++ SDK
+        id: build
+        run: |
+          export ARMONIK_SHARED_HOST_PATH=${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/data
+          export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
+          ./build-deploy-end2end.sh "${{ matrix.dist }}" "3.11.0" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}"
+          ./build-client.sh armonik_sdk_client_test "${{ needs.versionning.outputs.version}}"
+          echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
+          export WORKER_VERSION="${{ needs.versionning.outputs.version}}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')"
+          echo "worker_version=$WORKER_VERSION" >> $GITHUB_OUTPUT
           
       - name: Override parameters tfvars
         run: |
@@ -135,7 +136,6 @@ jobs:
           set -ex
           export CPIP=$(kubectl get svc control-plane -n armonik -o custom-columns="IP:.spec.clusterIP" --no-headers=true)
           export CPPort=$(kubectl get svc control-plane -n armonik -o custom-columns="PORT:.spec.ports[*].port" --no-headers=true)
-          ./build-client.sh armonik_sdk_client_test "${{ needs.versionning.outputs.version}}"
           docker run --rm -t --network host -e Grpc__EndPoint=http://$CPIP:$CPPort -e WorkerLib__Version="${{ needs.versionning.outputs.version}}" armonik_sdk_client_test:"${{ needs.versionning.outputs.version}}"
 
       - name: Login Docker
