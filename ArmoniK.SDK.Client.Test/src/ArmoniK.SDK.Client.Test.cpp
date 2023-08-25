@@ -106,8 +106,8 @@ TEST(testSDK, testEcho) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest",
-                                                         "EchoService");
+  ArmoniK::Sdk::Common::TaskOptions session_task_options(
+      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "EchoService");
 
   // Create the properties
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
@@ -163,8 +163,8 @@ TEST(testSDK, testAddInt) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest",
-                                                         "AdditionService");
+  ArmoniK::Sdk::Common::TaskOptions session_task_options(
+      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService");
 
   // Create the properties
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
@@ -270,8 +270,8 @@ TEST(testSDK, testAddFloat) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest",
-                                                         "AdditionService");
+  ArmoniK::Sdk::Common::TaskOptions session_task_options(
+      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService");
 
   // Create the properties
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
