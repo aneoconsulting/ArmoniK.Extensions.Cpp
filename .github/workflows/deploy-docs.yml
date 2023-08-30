@@ -3,7 +3,7 @@ name: Deploy Docs to Pages
 on:
   push:
     branches:
-      - ddi/action-doxigen
+      - main
   workflow_dispatch:
 
 permissions:
@@ -36,7 +36,7 @@ jobs:
         run: cd .docs && nci
 
       - name: Install Doxygen
-        run: sudo apt-get install doxygen -y
+        run: sudo apt-get install doxygen -y && sudo apt install graphviz -y
         shell: bash
 
       - name: Generate Doxygen Documentation
