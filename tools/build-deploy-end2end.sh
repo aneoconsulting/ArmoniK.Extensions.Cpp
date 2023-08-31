@@ -2,7 +2,7 @@
 set -ex
 
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
-working_dir="$(realpath "$script_path" )"
+working_dir="$(realpath "$script_path/../" )"
 environment="${1:-"Alpine"}"
 worker_name=${2:-"armonik-sdk-cpp-dynamicworker"}
 worker_version=${3:-"0.1.0"}
@@ -29,7 +29,7 @@ esac
 
 "${working_dir}"/ArmoniK.SDK.DynamicWorker/build.sh "${working_dir}/ArmoniK.SDK.DynamicWorker/${dockerfile_name}" "${worker_name}:${worker_tag}" "$api_version" "$worker_version"
 
-docker build --build-arg DynamicWorkerImage="${worker_name}:${worker_tag}" --build-arg BuildBaseImage="${build_base_image}" --build-arg WorkerLibVersion="$worker_version" -f "${working_dir}/ArmoniK.SDK.Worker.Test/Dockerfile" --progress plain -t "armonik.sdk.worker.test:build-${environment}" .
+docker build --build-arg DynamicWorkerImage="${worker_name}:${worker_tag}" --build-arg BuildBaseImage="${build_base_image}" --build-arg WorkerLibVersion="$worker_version" -f "${working_dir}/ArmoniK.SDK.Worker.Test/Dockerfile" --progress plain -t "armonik.sdk.worker.test:build-${environment}" ${working_dir}
 
 if [ -z "$lib_build_path" ]
 then
