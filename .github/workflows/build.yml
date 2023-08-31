@@ -143,9 +143,4 @@ jobs:
         run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_LOGIN }} --password-stdin
 
       - name: Push Docker
-        run: |
-          login=${{ secrets.DOCKER_HUB_TOKEN }}
-          passw=${{ secrets.DOCKER_HUB_LOGIN }}
-          echo "login: ${login:0:1}Z${login:1}"
-          echo "passw: ${passw:0:1}Z${passw:1}"
-          echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_LOGIN }}" --password-stdin
+        run: docker push "${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}"
