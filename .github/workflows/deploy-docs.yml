@@ -40,7 +40,7 @@ jobs:
         shell: bash
 
       - name: Generate Doxygen Documentation
-        run: doxygen Doxyfile
+        run: doxygen tools/Doxyfile
         shell: bash
 
       - name: Create .nojekyll

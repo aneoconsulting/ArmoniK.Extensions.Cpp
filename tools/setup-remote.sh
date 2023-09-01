@@ -6,7 +6,7 @@ IMAGE_TAG="${1:-armonik_sdk_build_visual_studio:0.1.0}"
 
 # Get the absolute path of the current script and its directory
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
-working_dir="$(realpath "$script_path" )"
+working_dir="$(realpath "$script_path/../" )"
 
 ARMONIK_API_DIR="$(realpath "${working_dir}/../ArmoniK.Api/packages/cpp/install")"
 

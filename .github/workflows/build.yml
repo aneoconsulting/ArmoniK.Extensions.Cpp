@@ -112,15 +112,15 @@ jobs:
           export ARMONIK_SHARED_HOST_PATH=${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/data
           export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
           export API_VERSION="3.11.0"
-          ./build-deploy-end2end.sh "${{ matrix.dist }}" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION"
-          ./build-client.sh armonik_sdk_client_test "${{ needs.versionning.outputs.version}}" "$API_VERSION"
+          ./tools/build-deploy-end2end.sh "${{ matrix.dist }}" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION"
+          ./tools/build-client.sh armonik_sdk_client_test "${{ needs.versionning.outputs.version}}" "$API_VERSION"
           echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
           export WORKER_VERSION="${{ needs.versionning.outputs.version}}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')"
           echo "worker_version=$WORKER_VERSION" >> $GITHUB_OUTPUT
           
       - name: Override parameters tfvars
         run: |
-          cp parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/parameters.tfvars
+          cp tools/parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/parameters.tfvars
           cat ${{ github.workspace }}/infra/versions.tfvars.json | jq --arg worker "${{ steps.build.outputs.worker_img }}" --arg version "${{ steps.build.outputs.worker_version }}" '.armonik_versions.samples=$version | .armonik_images.samples+=[$worker]' > .versions.tfvars.json
           mv .versions.tfvars.json ${{ github.workspace }}/infra/versions.tfvars.json
 
