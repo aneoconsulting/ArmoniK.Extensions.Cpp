@@ -111,16 +111,17 @@ jobs:
         run: |
           export ARMONIK_SHARED_HOST_PATH=${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/data
           export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
-          export CLIENT_IMG="dockerhubaneo/armonik_sdk_client_test"
-          export WORKER_TEST_IMG="dockerhubaneo/armonik.sdk.worker.test"
+          export CLIENT_IMG="dockerhubaneo/armonik-sdk-client-test"
+          export WORKER_TEST_IMG="dockerhubaneo/armonik-sdk-worker-test"
           export API_VERSION="3.11.0"
-          ./tools/build-deploy-end2end.sh "${{ matrix.dist }}" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION"
-          ./tools/build-client.sh armonik_sdk_client_test "${{ needs.versionning.outputs.version}}" "$API_VERSION"
+          ./tools/build-deploy-end2end.sh "${{ matrix.dist }}" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION" "$WORKER_TEST_IMG"
+          ./tools/build-client.sh "$CLIENT_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION"
           echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
           export WORKER_VERSION="${{ needs.versionning.outputs.version}}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')"
           echo "worker_version=$WORKER_VERSION" >> $GITHUB_OUTPUT
           echo "client_img=$CLIENT_IMG" >> $GITHUB_OUTPUT
           echo "client_version=${{ needs.versionning.outputs.version}}" >> $GITHUB_OUTPUT
+          echo "worker_test_img=$WORKER_TEST_IMG" >> $GITHUB_OUTPUT
 
       - name: Login Docker
         run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_LOGIN }} --password-stdin
@@ -149,5 +150,5 @@ jobs:
       - name: Push Docker
         run: |
           docker push "${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}"
-          docker push dockerhubaneo/armonik.sdk.worker.test:build-"${{ matrix.dist }}"
+          docker push "${{ steps.build.outputs.worker_test_img}}":"build-${{ matrix.dist }}"
           docker push "${{ steps.build.outputs.client_img}}:${{ steps.build.outputs.client_version }}"
