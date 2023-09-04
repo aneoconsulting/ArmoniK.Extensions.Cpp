@@ -157,6 +157,7 @@ EXCLUDE_SYMLINKS       = NO
 EXCLUDE_PATTERNS       = */cmake-* \
                          */build/* \
                          */install/* \
+                         */tools/* \
                          */.docs/* \
                          */.git/* \
                          */.github/* \
