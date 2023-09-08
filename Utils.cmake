@@ -1,7 +1,8 @@
 function(setup_options project_name_param)
-
-    file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
-    string(FIND "${${project_name_param}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
+    if(UNIX)
+        file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
+        string(FIND "${${project_name_param}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
+    endif()
 
     if(${ARGC} GREATER 1)
         set(extra_param ${ARGV1})
