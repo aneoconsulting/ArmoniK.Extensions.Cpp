@@ -11,7 +11,7 @@ void armonik_destroy_service_default(void *p) {
 }
 
 #ifdef __linux__
-  __attribute__((weak, alias("armonik_destroy_service_default")))
+__attribute__((weak, alias("armonik_destroy_service_default")))
 #endif
   void armonik_destroy_service(void *p);
 
@@ -22,14 +22,14 @@ void *armonik_enter_session_default(void *service_context, const char *session_i
 #ifdef __linux__
 __attribute__((weak, alias("armonik_enter_session_default")))
 #endif
-  void *armonik_enter_session(void *service_context,
-                                                                                          const char *session_id);
+void *
+armonik_enter_session(void *service_context, const char *session_id);
 
 void armonik_leave_session_default(void *service_context, void *session_context) {
   static_cast<ArmoniK::Sdk::Worker::ServiceBase *>(service_context)->leave_session(session_context);
 }
 
-  #ifdef __linux__
+#ifdef __linux__
 __attribute__((weak, alias("armonik_leave_session_default")))
 #endif
   void armonik_leave_session(void *service_context,
@@ -53,9 +53,10 @@ armonik_status_t armonik_call_default(void *armonik_context, void *service_conte
   }
 }
 
-  #ifdef __linux__
+#ifdef __linux__
 __attribute__((weak, alias("armonik_call_default")))
 #endif
-  armonik_status_t armonik_call(void *armonik_context, void *service_context, void *session_context, const char *function_name,
+armonik_status_t
+armonik_call(void *armonik_context, void *service_context, void *session_context, const char *function_name,
              const char *input, size_t input_size, armonik_callback_t callback);
 }

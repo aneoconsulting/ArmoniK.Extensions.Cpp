@@ -20,7 +20,7 @@ case "$environment" in
     build_base_image="ubuntu:23.04"
   ;;
   "RedHat")
-    dockerfile_name="ubi7ssh.Dockerfile"
+    dockerfile_name="ubi7.Dockerfile"
     build_base_image="dockerhubaneo/armonikworker_base:ubi7.9-0.0.1"
   ;;
   *)
