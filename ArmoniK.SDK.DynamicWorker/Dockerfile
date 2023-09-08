@@ -50,6 +50,7 @@ COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
 COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
 COPY ./Utils.cmake ./
+COPY ./Packaging.cmake ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/builder/worker

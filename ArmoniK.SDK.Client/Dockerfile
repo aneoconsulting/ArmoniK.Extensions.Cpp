@@ -50,6 +50,7 @@ COPY ./ArmoniK.SDK.Client ./ArmoniK.SDK.Client
 COPY ./ArmoniK.SDK.Client.Test ./ArmoniK.SDK.Client.Test
 COPY ./CMakeLists.txt ./
 COPY ./Utils.cmake ./
+COPY ./Packaging.cmake ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/build

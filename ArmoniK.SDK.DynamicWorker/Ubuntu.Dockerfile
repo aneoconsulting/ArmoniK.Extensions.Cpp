@@ -53,6 +53,7 @@ COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
 COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
 COPY ./Utils.cmake ./
+COPY ./Packaging.cmake ./
 
 WORKDIR /app/builder/worker
 ARG WORKER_VERSION=0.1.0
