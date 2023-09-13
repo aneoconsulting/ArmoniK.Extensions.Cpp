@@ -46,9 +46,20 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     ls -alR /armonik/api && \
     make clean
 
+# Copy the application source files into the image
+WORKDIR /app/source
+COPY tools/packaging/common/. ./tools/packaging/common/
+COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
+COPY ./ArmoniK.SDK.Client ./ArmoniK.SDK.Client
+COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
+COPY ./CMakeLists.txt ./
+COPY ./Utils.cmake ./
+COPY ./Packaging.cmake ./
+
 WORKDIR /app/build
-ENV CXX = "/opt/rh/devtoolset-10/root/usr/bin/c++"
 ARG WORKER_VERSION=0.1.0
 
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app/install -DINSTALL_SDK_DIR=/app/install -DCMAKE_PREFIX_PATH=/usr/local/grpc -DARMONIK_API_DIR=/armonik/api -DBUILD_DYNAMICWORKER=OFF -DBUILD_END2END=OFF -DCPACK_GENERATOR=TGZ /app/source/ && make -j $(nproc) install && make package -j
+
 # Set the default command to build the client using CMake and make
-CMD ["bash", "-c", "cmake -DCMAKE_INSTALL_PREFIX=/app/install -DINSTALL_SDK_DIR=/app/install -DCMAKE_PREFIX_PATH=/usr/local/grpc -DARMONIK_API_DIR=/armonik/api -DBUILD_DYNAMICWORKER=OFF -DBUILD_END2END=OFF /app/source/ && make -j $(nproc) install && make package -j"]
+CMD ["bash"]

@@ -17,4 +17,4 @@ docker build -t "${IMAGE_TAG}" -f ubi-package.Dockerfile "${working_dir}"
 mkdir -p ${working_dir}/build
 
 # Compile the project source using the Docker image
-docker run -v "${working_dir}:/app/source" -v "${install_dir}:/app/install" -v "${working_dir}/build:/app/build" --rm "${IMAGE_TAG}"
+docker run --rm "${IMAGE_TAG}"

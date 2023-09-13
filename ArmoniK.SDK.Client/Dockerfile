@@ -45,6 +45,7 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
 
 # Copy the application source files into the image
 WORKDIR /app/source
+COPY tools/packaging/common/. ./tools/packaging/common/
 COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
 COPY ./ArmoniK.SDK.Client ./ArmoniK.SDK.Client
 COPY ./ArmoniK.SDK.Client.Test ./ArmoniK.SDK.Client.Test

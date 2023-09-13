@@ -12,6 +12,8 @@ RUN yum check-update \
         rh-python38-python-devel \
         centos-release-scl \
         devtoolset-10 \
+        rpmdevtools \
+        rpmlint \
         && yum --disableplugin=subscription-manager clean all
 
 RUN  ln -s /opt/cmake-3.24.1/bin/* /usr/local/bin
@@ -40,48 +42,26 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" \
         "-DCMAKE_PREFIX_PATH=/usr/local/grpc" \
         "-DBUILD_TEST=OFF" \
-        "-DBUILD_CLIENT=OFF" \
+        "-DBUILD_CLIENT=ON" \
         "-DBUILD_WORKER=ON" .. && \
     make -j $(nproc) install && \
     ls -alR /armonik/api && \
     make clean
 
-
 # Copy the application source files into the image
 WORKDIR /app/source
 COPY tools/packaging/common/. ./tools/packaging/common/
 COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
+COPY ./ArmoniK.SDK.Client ./ArmoniK.SDK.Client
 COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
-COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
 COPY ./Utils.cmake ./
 COPY ./Packaging.cmake ./
 
-WORKDIR /app/builder/worker
+WORKDIR /app/build
 ARG WORKER_VERSION=0.1.0
-RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
-    -DINSTALL_SDK_DIR=/app/install \
-    -DCMAKE_PREFIX_PATH=/usr/local/grpc \
-    -DARMONIK_API_DIR=/armonik/api \
-    -DBUILD_CLIENT=OFF \
-    -DBUILD_DYNAMICWORKER=ON \
-    -DBUILD_END2END=OFF \
-    -DVERSION="${WORKER_VERSION}" \
-    /app/source/ && make -j $(nproc) install && make clean
 
-# Start with the latest Alpine base image for the final stage
-FROM dockerhubaneo/armonikworker_base:ubi7.9-0.0.1 AS runner
-	
-USER armonikuser
+RUN cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app/install -DINSTALL_SDK_DIR=/app/install -DCMAKE_PREFIX_PATH=/usr/local/grpc -DARMONIK_API_DIR=/armonik/api -DBUILD_DYNAMICWORKER=OFF -DBUILD_END2END=OFF -DCPACK_GENERATOR=RPM /app/source/ && make -j $(nproc) install && make package -j
 
-# Copy the application files, libraries, and binaries from the builder image to the final image
-COPY --from=builder /app/install/. /app/install/.
-
-# Update the PATH environment variable to include the application libraries and binaries
-ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
-ENV PATH="/app/install/bin:$PATH"
-
-# Set the entrypoint for the application's test executable
-# This is the command that will be executed when the container is run
-WORKDIR /app/install/bin
-ENTRYPOINT ["./ArmoniK.SDK.DynamicWorker"]
+# Set the default command to build the client using CMake and make
+CMD ["bash"]

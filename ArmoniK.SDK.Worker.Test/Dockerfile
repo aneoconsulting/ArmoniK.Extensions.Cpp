@@ -16,6 +16,7 @@ SHELL ["/bin/bash", "--login", "-c"]
 RUN mkdir -p /app/build
 COPY --from=source /app/install /app/install
 WORKDIR /app/source
+COPY tools/packaging/common/. ./tools/packaging/common/
 COPY ./ArmoniK.SDK.Worker.Test ./ArmoniK.SDK.Worker.Test
 COPY ./CMakeLists.txt ./CMakeLists.txt
 COPY ./Utils.cmake ./
