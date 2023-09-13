@@ -85,7 +85,6 @@ jobs:
     strategy:
       matrix:
         dist: ["Alpine", "RedHat", "Ubuntu"]
-        type: [tar.gz, deb, rpm]
     needs: [versionning]
     steps:
       - name: Checkout
@@ -153,14 +152,26 @@ jobs:
           docker push "${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}"
           docker push "${{ steps.build.outputs.worker_test_img}}":"build-${{ matrix.dist }}"
           docker push "${{ steps.build.outputs.client_img}}:${{ steps.build.outputs.client_version }}"
-
+          
+  build-upload-artifact:
+    strategy:
+      fail-fast: false
+      matrix:
+        type: [tar.gz, deb, rpm]
+    name: Build C++ Packages [${{ matrix.type }}]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+        with:
+          ref: ${{ github.ref }}
       - name: Build and upload tgz, rpm and deb packages 
         run: |
-          cd packages/cpp/tools/packaging
+          cd tools/packaging
           ./make-${{ matrix.type }}.sh
       - name: Publish package as artefact
         uses: actions/upload-artifact@65d862660abb392b8c4a3d1195a2108db131dd05
         with:
           if-no-files-found: error
           path: tools/packaging/*.${{ matrix.type }}
-          name: libarmonik.${{ matrix.type }}
+          name: armoniksdk-0.1.0-Linux.${{ matrix.type }}
