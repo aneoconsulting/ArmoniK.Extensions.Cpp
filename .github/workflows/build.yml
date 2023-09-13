@@ -85,6 +85,7 @@ jobs:
     strategy:
       matrix:
         dist: ["Alpine", "RedHat", "Ubuntu"]
+        type: [tar.gz, deb, rpm]
     needs: [versionning]
     steps:
       - name: Checkout
@@ -152,3 +153,14 @@ jobs:
           docker push "${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}"
           docker push "${{ steps.build.outputs.worker_test_img}}":"build-${{ matrix.dist }}"
           docker push "${{ steps.build.outputs.client_img}}:${{ steps.build.outputs.client_version }}"
+
+      - name: Build and upload tgz, rpm and deb packages 
+        run: |
+          cd packages/cpp/tools/packaging
+          ./make-${{ matrix.type }}.sh
+      - name: Publish package as artefact
+        uses: actions/upload-artifact@65d862660abb392b8c4a3d1195a2108db131dd05
+        with:
+          if-no-files-found: error
+          path: tools/packaging/*.${{ matrix.type }}
+          name: libarmonik.${{ matrix.type }}
