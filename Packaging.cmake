@@ -11,11 +11,9 @@ set(CPACK_PACKAGE_VERSION_PATCH ${version_patch})
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/packaging/common/DESCRIPTION")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ArmoniK API Libraries")
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/aneoconsulting/ArmoniK.Extensions.Cpp")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/tools/packaging/common/LICENSE")
 set(CPACK_PACKAGE_CONTACT "armonik-support@aneo.fr")
 
 # Rpm options
-set(CPACK_RPM_PACKAGE_LICENSE "Apache 2.0")
 set(CPACK_RPM_PACKAGE_GROUP "Development Tools")
 set(CPACK_RPM_CHANGELOG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/packaging/common/CHANGELOG")
 

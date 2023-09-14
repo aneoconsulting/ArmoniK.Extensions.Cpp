@@ -174,4 +174,4 @@ jobs:
         with:
           if-no-files-found: error
           path: tools/packaging/*.${{ matrix.type }}
-          name: armoniksdk-0.1.0-Linux.${{ matrix.type }}
+          name: armoniksdk.${{ matrix.type }}

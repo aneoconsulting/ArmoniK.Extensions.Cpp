@@ -32,7 +32,7 @@ RUN echo $PATH
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
-ARG API_VERSION=main
+ARG API_VERSION=3.12.0
 RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cd ArmoniK.Api/packages/cpp && \
     git checkout "${API_VERSION}" && \
