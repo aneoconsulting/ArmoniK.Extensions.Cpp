@@ -1,0 +1,2 @@
+The ArmoniK C++ SDK is used by developers to create ArmoniK applications. This SDK contains a high-level API, programs, and tools, including code samples, libraries, documentation, and docker images to ease the compile and build process of client and worker binaries on multiple target platforms such as Ubuntu, and Redhat. 
+It also provides guides that help developers to create a software application for use on ArmoniK. ArmoniK C++ SDK provides everything developers need to get their applications ready for production quickly and efficiently.

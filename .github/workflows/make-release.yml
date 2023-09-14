@@ -58,3 +58,33 @@ jobs:
     - name: Delete tag if invalid
       if: failure() || cancelled()
       run : git push origin -d ${{ github.ref_name }}
+
+  release-cpp-package:
+    needs: [versionning]
+    strategy:
+      fail-fast: false
+      matrix:
+        type: [tar.gz, deb, rpm]
+    name: Build C++ SDK Packages [${{ matrix.type }}]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Build the package
+        run: |
+          cd tools/packaging
+          ./make-${{ matrix.type }}.sh
+      - name: Publish package as artefact
+        uses: actions/upload-artifact@65d862660abb392b8c4a3d1195a2108db131dd05
+        with:
+          if-no-files-found: error
+          path: tools/packaging/*.${{ matrix.type }}
+          name: armoniksdk-${{ github.ref_name }}.${{ matrix.type }}
+      - name: Upload to release
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          gh release upload ${{ github.ref_name }} tools/packaging/*.${{ matrix.type }}

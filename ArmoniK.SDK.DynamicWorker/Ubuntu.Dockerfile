@@ -32,7 +32,7 @@ RUN echo $PATH
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
-ARG API_VERSION=main
+ARG API_VERSION=3.12.0
 RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cd ArmoniK.Api/packages/cpp && \
     git checkout "${API_VERSION}" && \
@@ -48,11 +48,13 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
 
 # Copy the application source files into the image
 WORKDIR /app/source
+COPY tools/packaging/common/. ./tools/packaging/common/
 COPY ./ArmoniK.SDK.Common ./ArmoniK.SDK.Common
 COPY ./ArmoniK.SDK.Worker ./ArmoniK.SDK.Worker
 COPY ./ArmoniK.SDK.DynamicWorker ./ArmoniK.SDK.DynamicWorker
 COPY ./CMakeLists.txt ./
 COPY ./Utils.cmake ./
+COPY ./Packaging.cmake ./
 
 WORKDIR /app/builder/worker
 ARG WORKER_VERSION=0.1.0

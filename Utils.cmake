@@ -1,8 +1,5 @@
 function(setup_options project_name_param)
 
-    file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
-    string(FIND "${${project_name_param}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
-
     if(${ARGC} GREATER 1)
         set(extra_param ${ARGV1})
     endif()
@@ -10,6 +7,8 @@ function(setup_options project_name_param)
     if(MSVC)
         target_compile_options(${project_name_param} PRIVATE /W4)
     else()
+        file(READ /etc/issue ${PROJECT_NAME}_ETCISSUE_CONTENT)
+        string(FIND "${${project_name_param}_ETCISSUE_CONTENT}" "Alpine" IS_ALPINE)
         if(CMAKE_BUILD_TYPE MATCHES DEBUG AND IS_ALPINE EQUAL -1)
             target_compile_options(${project_name_param} PRIVATE -Wall -Wextra -Wpedantic -fsanitize=undefined,address ${extra_param})
         else ()
