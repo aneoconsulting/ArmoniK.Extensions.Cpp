@@ -6,7 +6,9 @@ project(${PROJECT_NAME})
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
+if(NOT TARGET ArmoniK.SDK.Worker)
+    find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
+endif()
 
 SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")

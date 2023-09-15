@@ -87,7 +87,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   std::vector<std::string> task_ids;
   task_ids.reserve(task_requests.size());
   {
-    std::lock_guard<std::shared_mutex> lock(maps_mutex);
+    std::lock_guard<std::mutex> lock(maps_mutex);
     for (auto &&t : list) {
       task_ids.push_back(t.task_info().task_id());
       taskId_resultId[t.task_info().task_id()] = t.task_info().expected_output_keys(0);
@@ -139,7 +139,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
     std::vector<std::string> resultIds;
 
     {
-      std::shared_lock<std::shared_mutex> _(maps_mutex);
+      std::lock_guard<std::mutex> _(maps_mutex);
       resultIds.reserve(resultId_taskId.size());
       for (auto &&rid_tid : resultId_taskId) {
         resultIds.push_back(rid_tid.first);
@@ -165,7 +165,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           rid_status.second == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
         // Get the handler and taskid information
         {
-          std::shared_lock<std::shared_mutex> _(maps_mutex);
+          std::lock_guard<std::mutex> _(maps_mutex);
           handler = result_handlers.at(rid_status.first);
           task_id = resultId_taskId.at(rid_status.first);
         }
@@ -212,7 +212,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
 
     {
       // Remove all finished tasks and results from the global lists
-      std::lock_guard<std::shared_mutex> _(maps_mutex);
+      std::lock_guard<std::mutex> _(maps_mutex);
       for (auto &&tid_rid : done) {
         taskId_resultId.erase(tid_rid.first);
         resultId_taskId.erase(tid_rid.second);

@@ -2,7 +2,10 @@
 
 #include <armonik/sdk/worker/ServiceBase.h>
 #include <iostream>
-namespace ArmoniK::Sdk::Worker::Test {
+namespace ArmoniK {
+namespace Sdk {
+namespace Worker {
+namespace Test {
 
 /**
  * @brief Example implementation of a ArmoniK::Sdk::Worker::ServiceBase
@@ -32,4 +35,7 @@ public:
   EchoService() : ServiceBase() { std::cout << "Created EchoService" << std::endl; }
 };
 
-} // namespace ArmoniK::Sdk::Worker::Test
+} // namespace Test
+} // namespace Worker
+} // namespace Sdk
+} // namespace ArmoniK

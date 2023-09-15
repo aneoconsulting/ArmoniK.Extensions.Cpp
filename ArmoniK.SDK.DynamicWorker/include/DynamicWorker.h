@@ -4,7 +4,9 @@
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/worker/Worker/ArmoniKWorker.h>
 
-namespace ArmoniK::Sdk::DynamicWorker {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 /**
  * @brief ArmoniK Worker that loads a dynamic library and executes method within it
  */
@@ -23,7 +25,7 @@ public:
    * @param taskHandler Task handler
    * @return Whether the task executed successfully or not
    */
-  Api::Worker::ProcessStatus Execute(Api::Worker::TaskHandler &taskHandler) override;
+  armonik::api::worker::ProcessStatus Execute(armonik::api::worker::TaskHandler &taskHandler) override;
 
 private:
   /**
@@ -31,4 +33,6 @@ private:
    */
   ArmoniK::Sdk::DynamicWorker::ApplicationManager manager;
 };
-} // namespace ArmoniK::Sdk::DynamicWorker
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK

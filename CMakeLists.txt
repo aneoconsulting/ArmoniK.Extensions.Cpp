@@ -69,7 +69,7 @@ if(BUILD_END2END)
         add_subdirectory(ArmoniK.SDK.Client.Test)
     endif()
 
-    if(UNIX AND BUILD_WORKER)
+    if(UNIX AND BUILD_WORKERTEST)
         add_subdirectory(ArmoniK.SDK.Worker.Test)
     endif()
 endif ()

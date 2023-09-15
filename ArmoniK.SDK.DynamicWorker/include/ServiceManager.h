@@ -4,7 +4,9 @@
 #include <armonik/worker/Worker/ProcessStatus.h>
 #include <armonik/worker/Worker/TaskHandler.h>
 
-namespace ArmoniK::Sdk::DynamicWorker {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 /**
  * @brief Manager of service for ArmoniK Worker
  */
@@ -115,4 +117,6 @@ private:
    */
   static void UploadResult(void *opaque_context, armonik_status_t status, const char *data, size_t data_size);
 };
-} // namespace ArmoniK::Sdk::DynamicWorker
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK

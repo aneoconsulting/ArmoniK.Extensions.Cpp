@@ -3,7 +3,9 @@
 #include <armonik/sdk/common/Configuration.h>
 #include <sstream>
 
-namespace ArmoniK::Sdk::DynamicWorker {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 
 ApplicationManager &ApplicationManager::UseApplication(const AppId &appId) & {
   if (appId == currentId) {
@@ -46,4 +48,6 @@ ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration
     applicationsBasePath = "/data";
   }
 }
-} // namespace ArmoniK::Sdk::DynamicWorker
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK

@@ -4,8 +4,8 @@
 #include "armonik/sdk/client/WaitBehavior.h"
 #include <armonik/client/submitter/SubmitterClient.h>
 #include <armonik/sdk/common/TaskOptions.h>
+#include <mutex>
 #include <results_service.grpc.pb.h>
-#include <shared_mutex>
 
 namespace ArmoniK {
 namespace Sdk {
@@ -46,7 +46,7 @@ private:
   /**
    * @brief Session task options
    */
-  Common::TaskOptions taskOptions;
+  ArmoniK::Sdk::Common::TaskOptions taskOptions;
 
   /**
    * @brief Map between taskId and resultId
@@ -66,7 +66,7 @@ private:
   /**
    * @brief Maps mutex
    */
-  std::shared_mutex maps_mutex;
+  std::mutex maps_mutex;
 
   /**
    * @brief Client used for submission

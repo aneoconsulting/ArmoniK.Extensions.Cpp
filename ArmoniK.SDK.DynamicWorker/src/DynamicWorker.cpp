@@ -2,7 +2,9 @@
 #include "ApplicationManager.h"
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/TaskPayload.h>
-namespace ArmoniK::Sdk::DynamicWorker {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 
 DynamicWorker::DynamicWorker(std::unique_ptr<armonik::api::grpc::v1::agent::Agent::Stub> agent,
                              const ArmoniK::Sdk::Common::Configuration &config)
@@ -27,4 +29,6 @@ DynamicWorker::Execute(armonik::api::worker::TaskHandler &taskHandler) {
 
   return armonik::api::worker::ProcessStatus::Ok;
 }
-} // namespace ArmoniK::Sdk::DynamicWorker
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK

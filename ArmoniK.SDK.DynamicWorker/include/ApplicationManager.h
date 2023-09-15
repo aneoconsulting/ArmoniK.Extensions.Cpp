@@ -6,11 +6,17 @@
 #include <Worker/ProcessStatus.h>
 #include <armonik/worker/Worker/TaskHandler.h>
 
-namespace ArmoniK::Sdk::Common {
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
 class Configuration;
 }
+} // namespace Sdk
+} // namespace ArmoniK
 
-namespace ArmoniK::Sdk::DynamicWorker {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 /**
  * @brief Application manager to load and unload applications
  */
@@ -86,4 +92,6 @@ private:
    */
   std::string applicationsBasePath;
 };
-} // namespace ArmoniK::Sdk::DynamicWorker
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK

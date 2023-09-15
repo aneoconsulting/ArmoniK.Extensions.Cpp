@@ -4,7 +4,9 @@
 #include <armonik/worker/Worker/ProcessStatus.h>
 #include <utility>
 
-namespace ArmoniK::Sdk::DynamicWorker {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 namespace {
 struct ArmonikContext {
   armonik::api::worker::TaskHandler &taskHandler;
@@ -69,4 +71,6 @@ void ServiceManager::clear() {
   functionPointers.destroy_service(service_context);
   serviceId.clear();
 }
-} // namespace ArmoniK::Sdk::DynamicWorker
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK

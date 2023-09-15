@@ -5,7 +5,9 @@
 #include <string>
 #include <utility>
 
-namespace ArmoniK::Sdk::DynamicWorker {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 /**
  * @brief Id of an application
  */
@@ -157,4 +159,6 @@ struct ArmoniKFunctionPointers {
     call = nullptr;
   }
 };
-} // namespace ArmoniK::Sdk::DynamicWorker
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK
