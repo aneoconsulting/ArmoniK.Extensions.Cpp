@@ -35,7 +35,6 @@ else()
     endif()
 endif ()
 list(APPEND CMAKE_PREFIX_PATH ${INSTALL_SDK_DIR})
-string(REPLACE ";" "|" CMAKE_PREFIX_PATH_ALT_SEP "${CMAKE_PREFIX_PATH}")
 
 # make cache variables for install destinations
 include(GNUInstallDirs)
