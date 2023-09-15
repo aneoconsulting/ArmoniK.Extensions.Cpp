@@ -3,7 +3,9 @@
 #include "Configuration.h"
 #include "TaskOptions.h"
 
-namespace SDK_COMMON_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
 /**
  * @brief Client properties
  */
@@ -18,4 +20,6 @@ struct Properties {
    */
   TaskOptions taskOptions;
 };
-} // namespace SDK_COMMON_NAMESPACE
+} // namespace Common
+} // namespace Sdk
+} // namespace ArmoniK

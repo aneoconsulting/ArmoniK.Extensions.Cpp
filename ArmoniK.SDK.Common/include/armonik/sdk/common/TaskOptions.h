@@ -5,11 +5,19 @@
 #include <memory>
 #include <string>
 
-namespace armonik::api::grpc::v1 {
+namespace armonik {
+namespace api {
+namespace grpc {
+namespace v1 {
 class TaskOptions;
 }
+} // namespace grpc
+} // namespace api
+} // namespace armonik
 
-namespace SDK_COMMON_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
 /**
  * @brief Simplified TaskOptions
  */
@@ -92,4 +100,6 @@ struct TaskOptions {
    */
   explicit operator armonik::api::grpc::v1::TaskOptions() const;
 };
-} // namespace SDK_COMMON_NAMESPACE
+} // namespace Common
+} // namespace Sdk
+} // namespace ArmoniK

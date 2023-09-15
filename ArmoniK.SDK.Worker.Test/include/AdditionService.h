@@ -3,7 +3,7 @@
 #include <armonik/sdk/worker/ServiceBase.h>
 #include <iostream>
 #include <stdexcept>
-namespace SDK_END2END_NAMESPACE {
+namespace ArmoniK::Sdk::Worker::Test {
 
 /**
  * \example AdditionService.h
@@ -69,4 +69,4 @@ public:
   }
 };
 
-} // namespace SDK_END2END_NAMESPACE
+} // namespace ArmoniK::Sdk::Worker::Test

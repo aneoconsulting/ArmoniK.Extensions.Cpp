@@ -7,29 +7,33 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <string_view>
 #include <vector>
 
-namespace ArmoniK::Sdk::Common {
-class TaskOptions;
-class Properties;
-class TaskPayload;
-} // namespace ArmoniK::Sdk::Common
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
+struct TaskOptions;
+struct Properties;
+struct TaskPayload;
+} // namespace Common
+} // namespace Sdk
+} // namespace ArmoniK
 
-namespace SDK_CLIENT_NAMESPACE::Internal {
+namespace ArmoniK {
+namespace Sdk {
+namespace Client {
+class IServiceInvocationHandler;
+namespace Internal {
 class SessionServiceImpl;
 }
-
-namespace SDK_CLIENT_NAMESPACE {
-class IServiceInvocationHandler;
 
 /**
  * @brief Service used for task submission
  */
 class SessionService {
 private:
-  std::unique_ptr<SDK_CLIENT_NAMESPACE::Internal::SessionServiceImpl> impl;
-  ArmoniK::Api::Common::logger::LocalLogger logger_;
+  std::unique_ptr<ArmoniK::Sdk::Client::Internal::SessionServiceImpl> impl;
+  armonik::api::common::logger::LocalLogger logger_;
   void ensure_valid() const;
 
 public:
@@ -38,7 +42,7 @@ public:
    * @param properties Session properties
    */
   explicit SessionService(const ArmoniK::Sdk::Common::Properties &properties,
-                          ArmoniK::Api::Common::logger::Logger &logger);
+                          armonik::api::common::logger::Logger &logger);
   SessionService(const SessionService &) = delete;
   /**
    * @brief Move constructor
@@ -91,4 +95,6 @@ public:
    */
   [[nodiscard]] const std::string &getSession() const;
 };
-} // namespace SDK_CLIENT_NAMESPACE
+} // namespace Client
+} // namespace Sdk
+} // namespace ArmoniK

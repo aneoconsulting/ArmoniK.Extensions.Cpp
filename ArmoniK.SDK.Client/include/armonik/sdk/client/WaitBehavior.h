@@ -1,6 +1,8 @@
 #pragma once
 
-namespace SDK_CLIENT_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Client {
 /**
  * @brief Options for result waiting
  */
@@ -30,4 +32,6 @@ inline enum WaitBehavior operator|(WaitBehavior a, WaitBehavior b) {
   return static_cast<WaitBehavior>(static_cast<int>(a) | static_cast<int>(b));
 }
 
-} // namespace SDK_CLIENT_NAMESPACE
+} // namespace Client
+} // namespace Sdk
+} // namespace ArmoniK

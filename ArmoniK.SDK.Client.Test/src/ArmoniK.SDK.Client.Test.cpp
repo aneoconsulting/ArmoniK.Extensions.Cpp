@@ -83,14 +83,12 @@ public:
 };
 
 template <typename T> std::string StrSerialize(T a, T b) {
-  std::string payload_val;
+  char payload_val[sizeof(T) * 2];
 
-  payload_val.resize(sizeof(T) * 2);
+  std::memcpy(payload_val, &a, sizeof(T));
+  std::memcpy(payload_val + sizeof(T), &b, sizeof(T));
 
-  std::memcpy(payload_val.data(), &a, sizeof(T));
-  std::memcpy(payload_val.data() + sizeof(T), &b, sizeof(T));
-
-  return payload_val;
+  return std::string(payload_val, sizeof(T) * 2);
 }
 
 TEST(testSDK, testEcho) {
@@ -116,8 +114,8 @@ TEST(testSDK, testEcho) {
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
   // Create the logger
-  ArmoniK::Api::Common::logger::Logger logger{ArmoniK::Api::Common::logger::writer_console(),
-                                              ArmoniK::Api::Common::logger::formatter_plain(true)};
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true)};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -177,8 +175,8 @@ TEST(testSDK, testAddInt) {
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
   // Create the logger
-  ArmoniK::Api::Common::logger::Logger logger{ArmoniK::Api::Common::logger::writer_console(),
-                                              ArmoniK::Api::Common::logger::formatter_plain(true)};
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true)};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -288,8 +286,8 @@ TEST(testSDK, testAddFloat) {
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
   // Create the logger
-  ArmoniK::Api::Common::logger::Logger logger{ArmoniK::Api::Common::logger::writer_console(),
-                                              ArmoniK::Api::Common::logger::formatter_plain(true)};
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true)};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -311,7 +309,7 @@ TEST(testSDK, testAddFloat) {
   std::vector<std::string> task_ids;
 
   auto tasks =
-      service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(32.3, 21.2))}, handler);
+      service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(32.3f, 21.2f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -319,56 +317,56 @@ TEST(testSDK, testAddFloat) {
   // auto result_payload =
   service.WaitResults();
 
-  auto ans = handler->check_float_result(32.3, 21.2);
+  auto ans = handler->check_float_result(32.3f, 21.2f);
 
   auto error = 0.0000001;
 
   EXPECT_NEAR(handler->float_result, ans, error);
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(32.5, 54.7))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(32.5f, 54.7f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_float_result(32.5, 54.7);
+  ans = handler->check_float_result(32.5f, 54.7f);
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(2.9, 1.07))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(2.9f, 1.07f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_float_result(2.9, 1.07);
+  ans = handler->check_float_result(2.9f, 1.07f);
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(64.2, 54.0))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(64.2f, 54.0f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_float_result(64.2, 54.0);
+  ans = handler->check_float_result(64.2f, 54.0f);
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(7.6, 8.5))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(7.6f, 8.5f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
 
-  ans = handler->check_float_result(7.6, 8.5);
+  ans = handler->check_float_result(7.6f, 8.5f);
   EXPECT_NEAR(handler->float_result, ans, error);
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));

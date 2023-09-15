@@ -2,7 +2,9 @@
 
 #include <cstdint>
 
-namespace SDK_COMMON_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
 /**
  * @brief Simple duration structure
  */
@@ -16,4 +18,6 @@ struct Duration {
    */
   int32_t nanos = 0;
 };
-} // namespace SDK_COMMON_NAMESPACE
+} // namespace Common
+} // namespace Sdk
+} // namespace ArmoniK

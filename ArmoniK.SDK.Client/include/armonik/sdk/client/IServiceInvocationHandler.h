@@ -2,7 +2,9 @@
 
 #include <string>
 
-namespace SDK_CLIENT_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Client {
 
 /**
  * @brief Task result handler interface class
@@ -23,4 +25,6 @@ public:
    */
   virtual void HandleError(const std::exception &e, const std::string &taskId) = 0;
 };
-} // namespace SDK_CLIENT_NAMESPACE
+} // namespace Client
+} // namespace Sdk
+} // namespace ArmoniK

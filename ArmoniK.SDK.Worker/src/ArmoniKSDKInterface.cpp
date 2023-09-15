@@ -1,5 +1,5 @@
-#include "ServiceBase.h"
-#include <ArmoniKSDKInterface.h>
+#include "armonik/sdk/worker/ArmoniKSDKInterface.h"
+#include "armonik/sdk/worker/ServiceBase.h"
 #include <cstring>
 
 extern "C" {

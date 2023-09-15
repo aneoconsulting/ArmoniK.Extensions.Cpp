@@ -2,15 +2,15 @@
 #include "ApplicationManager.h"
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/TaskPayload.h>
-namespace SDK_DYNAMICWORKER_NAMESPACE {
+namespace ArmoniK::Sdk::DynamicWorker {
 
 DynamicWorker::DynamicWorker(std::unique_ptr<armonik::api::grpc::v1::agent::Agent::Stub> agent,
                              const ArmoniK::Sdk::Common::Configuration &config)
     : ArmoniKWorker(std::move(agent)), manager(config) {}
 
-ArmoniK::Api::Worker::ProcessStatus
+armonik::api::worker::ProcessStatus
 
-DynamicWorker::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler) {
+DynamicWorker::Execute(armonik::api::worker::TaskHandler &taskHandler) {
   try {
     auto &payload = taskHandler.getPayload();
     auto taskPayload = ArmoniK::Sdk::Common::TaskPayload::Deserialize(payload);
@@ -22,9 +22,9 @@ DynamicWorker::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler) {
         .UseSession(taskHandler.getSessionId())
         .Execute(taskHandler, taskPayload.method_name, taskPayload.arguments);
   } catch (const ArmoniK::Sdk::Common::ArmoniKSdkException &e) {
-    return ArmoniK::Api::Worker::ProcessStatus(e.what());
+    return armonik::api::worker::ProcessStatus(e.what());
   }
 
-  return ArmoniK::Api::Worker::ProcessStatus::Ok;
+  return armonik::api::worker::ProcessStatus::Ok;
 }
-} // namespace SDK_DYNAMICWORKER_NAMESPACE
+} // namespace ArmoniK::Sdk::DynamicWorker

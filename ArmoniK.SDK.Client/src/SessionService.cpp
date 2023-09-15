@@ -1,11 +1,13 @@
-#include "SessionService.h"
+#include "armonik/sdk/client/SessionService.h"
 #include "SessionServiceImpl.h"
 #include <string>
 
-namespace SDK_CLIENT_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Client {
 
 SessionService::SessionService(const ArmoniK::Sdk::Common::Properties &properties,
-                               ArmoniK::Api::Common::logger::Logger &logger)
+                               armonik::api::common::logger::Logger &logger)
     : impl(new Internal::SessionServiceImpl(properties, logger)), logger_(logger.local()) {}
 
 const std::string &SessionService::getSession() const {
@@ -40,4 +42,6 @@ void SessionService::ensure_valid() const {
 }
 SessionService::SessionService(SessionService &&) noexcept = default;
 SessionService::~SessionService() = default;
-} // namespace SDK_CLIENT_NAMESPACE
+} // namespace Client
+} // namespace Sdk
+} // namespace ArmoniK

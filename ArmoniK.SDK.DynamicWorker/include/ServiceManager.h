@@ -4,7 +4,7 @@
 #include <armonik/worker/Worker/ProcessStatus.h>
 #include <armonik/worker/Worker/TaskHandler.h>
 
-namespace SDK_DYNAMICWORKER_NAMESPACE {
+namespace ArmoniK::Sdk::DynamicWorker {
 /**
  * @brief Manager of service for ArmoniK Worker
  */
@@ -69,7 +69,7 @@ public:
    * @param method_arguments Method's serialized arguments
    * @return Task execution status
    */
-  ArmoniK::Api::Worker::ProcessStatus Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
+  armonik::api::worker::ProcessStatus Execute(armonik::api::worker::TaskHandler &taskHandler,
                                               const std::string &method_name, const std::string &method_arguments);
 
   /**
@@ -115,4 +115,4 @@ private:
    */
   static void UploadResult(void *opaque_context, armonik_status_t status, const char *data, size_t data_size);
 };
-} // namespace SDK_DYNAMICWORKER_NAMESPACE
+} // namespace ArmoniK::Sdk::DynamicWorker

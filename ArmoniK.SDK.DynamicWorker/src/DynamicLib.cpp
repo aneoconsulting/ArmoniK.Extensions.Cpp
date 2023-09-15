@@ -3,7 +3,7 @@
 #include <dlfcn.h>
 #include <stdexcept>
 
-namespace SDK_DYNAMICWORKER_NAMESPACE {
+namespace ArmoniK::Sdk::DynamicWorker {
 
 DynamicLib::DynamicLib(const char *filename) {
 #ifdef LM_ID_NEWLM
@@ -56,4 +56,4 @@ void *DynamicLib::get(const char *symbol_name) const {
   return sym;
 }
 
-} // namespace SDK_DYNAMICWORKER_NAMESPACE
+} // namespace ArmoniK::Sdk::DynamicWorker

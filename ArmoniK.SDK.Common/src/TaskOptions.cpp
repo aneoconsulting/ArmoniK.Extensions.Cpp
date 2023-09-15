@@ -1,8 +1,8 @@
-#include "TaskOptions.h"
+#include "armonik/sdk/common/TaskOptions.h"
 
 #include <armonik/common/objects.pb.h>
 
-using namespace SDK_COMMON_NAMESPACE;
+using namespace ArmoniK::Sdk::Common;
 
 TaskOptions::TaskOptions(std::string applicationName, std::string applicationVersion, std::string applicationNamespace,
                          std::string applicationService, std::string partitionId, std::string engineType, int priority,

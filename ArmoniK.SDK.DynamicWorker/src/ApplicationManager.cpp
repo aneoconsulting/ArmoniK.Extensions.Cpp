@@ -3,7 +3,7 @@
 #include <armonik/sdk/common/Configuration.h>
 #include <sstream>
 
-namespace SDK_DYNAMICWORKER_NAMESPACE {
+namespace ArmoniK::Sdk::DynamicWorker {
 
 ApplicationManager &ApplicationManager::UseApplication(const AppId &appId) & {
   if (appId == currentId) {
@@ -35,7 +35,7 @@ ApplicationManager &ApplicationManager::UseSession(const std::string &sessionId)
   service_manager.UseSession(sessionId);
   return *this;
 }
-ArmoniK::Api::Worker::ProcessStatus ApplicationManager::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
+armonik::api::worker::ProcessStatus ApplicationManager::Execute(armonik::api::worker::TaskHandler &taskHandler,
                                                                 const std::string &method_name,
                                                                 const std::string &method_arguments) {
   return service_manager.Execute(taskHandler, method_name, method_arguments);
@@ -46,4 +46,4 @@ ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration
     applicationsBasePath = "/data";
   }
 }
-} // namespace SDK_DYNAMICWORKER_NAMESPACE
+} // namespace ArmoniK::Sdk::DynamicWorker

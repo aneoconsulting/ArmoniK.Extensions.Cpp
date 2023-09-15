@@ -1,7 +1,9 @@
 #pragma once
 
 #include <stdexcept>
-namespace SDK_COMMON_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
 /**
  * @brief ArmoniK SDK exception
  */
@@ -18,4 +20,6 @@ public:
    */
   explicit ArmoniKSdkException(const std::string &message) : std::runtime_error(message) {}
 };
-} // namespace SDK_COMMON_NAMESPACE
+} // namespace Common
+} // namespace Sdk
+} // namespace ArmoniK
