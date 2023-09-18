@@ -47,7 +47,7 @@ template <typename T> T hex_to_int(absl::string_view str) {
   if (errno == ERANGE) {
     throw std::runtime_error(null_terminated + " is too large for " + TypeParseTraits<T>::name);
   }
-  if (endPos != null_terminated.data()+null_terminated.size()) {
+  if (endPos != null_terminated.data() + null_terminated.size()) {
     throw std::runtime_error(null_terminated + " is not convertible to " + TypeParseTraits<T>::name);
   }
   return result;
