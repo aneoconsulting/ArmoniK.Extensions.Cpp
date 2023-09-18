@@ -60,7 +60,6 @@ COPY ./Packaging.cmake ./
 WORKDIR /app/builder/worker
 ARG WORKER_VERSION=0.1.0
 RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
-    -DINSTALL_SDK_DIR=/app/install \
     -DCMAKE_PREFIX_PATH=/usr/local/grpc \
     -DARMONIK_API_DIR=/armonik/api \
     -DBUILD_CLIENT=OFF \

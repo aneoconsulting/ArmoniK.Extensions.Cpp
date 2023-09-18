@@ -56,7 +56,7 @@ COPY ./Packaging.cmake ./
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/builder/worker
 ARG WORKER_VERSION=0.1.0
-RUN cmake -DCMAKE_INSTALL_PREFIX="/app/install" -DINSTALL_SDK_DIR="/app/install" -DBUILD_CLIENT=OFF -DBUILD_DYNAMICWORKER=ON -DBUILD_END2END=OFF -DVERSION="${WORKER_VERSION}" /app/source/ && make -j $(nproc) install && make clean
+RUN cmake -DCMAKE_INSTALL_PREFIX="/app/install" -DBUILD_CLIENT=OFF -DBUILD_DYNAMICWORKER=ON -DBUILD_END2END=OFF -DVERSION="${WORKER_VERSION}" /app/source/ && make -j $(nproc) install && make clean
 
 # Start with the latest Alpine base image for the final stage
 FROM alpine AS runner

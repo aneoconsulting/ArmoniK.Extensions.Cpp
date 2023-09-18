@@ -83,6 +83,7 @@ jobs:
     name: Build C++ Packages
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         dist: ["Alpine", "RedHat", "Ubuntu"]
     needs: [versionning]
