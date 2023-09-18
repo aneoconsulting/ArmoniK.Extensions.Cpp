@@ -76,10 +76,16 @@ public:
       std::cout << static_cast<int>(c) << ' ';
     }
     std::cout << std::endl;
+    received=true;
+    is_error=false;
   }
   void HandleError(const std::exception &e, const std::string &taskId) override {
     std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
+    received=true;
+    is_error=true;
   }
+  bool received=false;
+  bool is_error=false;
 };
 
 template <typename T> std::string StrSerialize(T a, T b) {
@@ -109,6 +115,7 @@ TEST(testSDK, testEcho) {
   // Create the task options
   ArmoniK::Sdk::Common::TaskOptions session_task_options(
       "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "EchoService");
+  session_task_options.max_retries=1;
 
   // Create the properties
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
@@ -149,6 +156,8 @@ TEST(testSDK, testEcho) {
   service.WaitResults();
 
   ASSERT_TRUE(!args.empty());
+  ASSERT_TRUE(handler->received);
+  ASSERT_FALSE(handler->is_error);
 
   std::cout << "Done" << std::endl;
 }
@@ -170,6 +179,7 @@ TEST(testSDK, testAddInt) {
   // Create the task options
   ArmoniK::Sdk::Common::TaskOptions session_task_options(
       "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService");
+  session_task_options.max_retries=1;
 
   // Create the properties
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
@@ -281,6 +291,7 @@ TEST(testSDK, testAddFloat) {
   // Create the task options
   ArmoniK::Sdk::Common::TaskOptions session_task_options(
       "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService");
+  session_task_options.max_retries=1;
 
   // Create the properties
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};

@@ -70,7 +70,7 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
 
 # Start with the latest Alpine base image for the final stage
 FROM dockerhubaneo/armonikworker_base:ubi7.9-0.0.1 AS runner
-	
+
 USER armonikuser
 
 # Copy the application files, libraries, and binaries from the builder image to the final image

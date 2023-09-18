@@ -41,14 +41,14 @@ template <typename T> std::string int_to_hex(T i) {
  * @throws std::runtime_error if the hex string is invalid or if it's too large for the given type
  */
 template <typename T> T hex_to_int(absl::string_view str) {
-  auto lastPos = str.data() + str.size();
   char *endPos;
-  T result = std::strtol(str.data(), &endPos, 16);
+  std::string null_terminated(str.data(), str.size());
+  T result = std::strtol(null_terminated.data(), &endPos, 16);
   if (errno == ERANGE) {
-    throw std::runtime_error(std::string(str) + " is too large for " + TypeParseTraits<T>::name);
+    throw std::runtime_error(null_terminated + " is too large for " + TypeParseTraits<T>::name);
   }
-  if (endPos != lastPos) {
-    throw std::runtime_error(std::string(str) + " is not convertible to " + TypeParseTraits<T>::name);
+  if (endPos != null_terminated.data()+null_terminated.size()) {
+    throw std::runtime_error(null_terminated + " is not convertible to " + TypeParseTraits<T>::name);
   }
   return result;
 }
