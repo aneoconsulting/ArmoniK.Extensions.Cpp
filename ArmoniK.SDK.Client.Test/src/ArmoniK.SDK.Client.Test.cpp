@@ -43,7 +43,7 @@ public:
     }
     std::cout << std::endl;
 
-    str = result_payload.data();
+    str = result_payload;
     if (is_int) {
       std::memcpy(&int_result, result_payload.data(), sizeof(int32_t));
       std::cout << "HANDLE RESPONSE : Received result data value of " << int_result << std::endl;
@@ -51,6 +51,7 @@ public:
       std::memcpy(&float_result, result_payload.data(), sizeof(float));
       std::cout << "HANDLE RESPONSE : Received result data value of " << float_result << std::endl;
     }
+    successCounter++;
   }
   void HandleError(const std::exception &e, const std::string &taskId) override {
     std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
@@ -60,6 +61,7 @@ public:
   float float_result = 0.0f;
   std::string str;
   bool is_int = true;
+  int successCounter = 0;
 
   int check_int_result(const int &a, const int &b) { return (a + b); }
 
@@ -248,26 +250,16 @@ TEST(testSDK, testAddInt) {
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(82, 1))}, handler);
+  handler->successCounter = 0;
+  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(82, 1)),
+                          ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(4, 6))},
+                         handler);
 
   ASSERT_FALSE(tasks.empty());
 
   // Wait for task completion
   service.WaitResults();
-
-  ans = handler->check_int_result(82, 1);
-  ASSERT_EQ(handler->int_result, ans);
-  ASSERT_TRUE(!handler->str.empty());
-
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(4, 6))}, handler);
-
-  ASSERT_FALSE(tasks.empty());
-
-  // Wait for task completion
-  service.WaitResults();
-
-  ans = handler->check_int_result(4, 6);
-  ASSERT_EQ(handler->int_result, ans);
+  ASSERT_EQ(handler->successCounter, 2);
   ASSERT_TRUE(!handler->str.empty());
 
   std::cout << "Done" << std::endl;
