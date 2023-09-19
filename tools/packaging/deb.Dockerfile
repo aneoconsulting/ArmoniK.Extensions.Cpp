@@ -14,7 +14,7 @@ RUN yes | mk-build-deps -i -r -B ./tools/packaging/debian/control
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
-ARG API_VERSION=3.12.0
+ARG API_VERSION=c8c4c5ce09dcbdc677ff5c630e49521e5141ae70
 RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cd ArmoniK.Api/packages/cpp && \
     git checkout "${API_VERSION}" && \

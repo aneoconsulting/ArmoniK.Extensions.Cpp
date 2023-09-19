@@ -4,13 +4,15 @@
 #include <armonik/worker/Worker/ProcessStatus.h>
 #include <utility>
 
-namespace SDK_DYNAMICWORKER_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 namespace {
 struct ArmonikContext {
-  ArmoniK::Api::Worker::TaskHandler &taskHandler;
-  ArmoniK::Api::Worker::ProcessStatus output;
+  armonik::api::worker::TaskHandler &taskHandler;
+  armonik::api::worker::ProcessStatus output;
 
-  explicit ArmonikContext(ArmoniK::Api::Worker::TaskHandler &taskHandler) : taskHandler(taskHandler) {}
+  explicit ArmonikContext(armonik::api::worker::TaskHandler &taskHandler) : taskHandler(taskHandler) {}
 };
 } // namespace
 
@@ -30,7 +32,7 @@ ServiceManager &ServiceManager::UseSession(const std::string &sessionId) & {
   }
   return *this;
 }
-ArmoniK::Api::Worker::ProcessStatus ServiceManager::Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
+armonik::api::worker::ProcessStatus ServiceManager::Execute(armonik::api::worker::TaskHandler &taskHandler,
                                                             const std::string &method_name,
                                                             const std::string &method_arguments) {
   ArmonikContext callContext(taskHandler);
@@ -41,7 +43,7 @@ ArmoniK::Api::Worker::ProcessStatus ServiceManager::Execute(ArmoniK::Api::Worker
                                       method_arguments.data(), method_arguments.size(), ServiceManager::UploadResult);
   if (status != ARMONIK_STATUS_OK) {
     if (callContext.output.ok()) {
-      return ArmoniK::Api::Worker::ProcessStatus("Unknown error in worker, check logs.");
+      return armonik::api::worker::ProcessStatus("Unknown error in worker, check logs.");
     }
   }
   callContext.output.set_ok();
@@ -54,7 +56,7 @@ void ServiceManager::UploadResult(void *opaque_context, armonik_status_t status,
     context->output.set_error(std::string(data, data_size));
     return;
   }
-  context->taskHandler.send_result(context->taskHandler.getExpectedResults()[0], std::string_view(data, data_size));
+  context->taskHandler.send_result(context->taskHandler.getExpectedResults()[0], absl::string_view(data, data_size));
   context->output.set_ok();
 }
 bool ServiceManager::matches(const ServiceId &other) { return other == serviceId; }
@@ -69,4 +71,6 @@ void ServiceManager::clear() {
   functionPointers.destroy_service(service_context);
   serviceId.clear();
 }
-} // namespace SDK_DYNAMICWORKER_NAMESPACE
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK

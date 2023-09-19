@@ -4,13 +4,16 @@
 #include <grpcpp/create_channel.h>
 #include <utility>
 
-namespace SDK_CLIENT_NAMESPACE::Internal {
+namespace ArmoniK {
+namespace Sdk {
+namespace Client {
+namespace Internal {
 
 std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   std::shared_ptr<grpc::Channel> channel;
   {
-    std::lock_guard _(channel_mutex_);
-    if (channel_pool_.size() != 0) {
+    std::lock_guard<std::mutex> _(channel_mutex_);
+    if (!channel_pool_.empty()) {
       channel = channel_pool_.front();
       channel_pool_.pop();
     }
@@ -18,9 +21,9 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
 
   if (channel != nullptr) {
     if (ShutdownOnFailure(channel)) {
-      logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Shutdown unhealthy channel");
+      logger_.log(armonik::api::common::logger::Level::Info, "Shutdown unhealthy channel");
     } else {
-      logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Acquired already existing channel from pool");
+      logger_.log(armonik::api::common::logger::Level::Info, "Acquired already existing channel from pool");
       return channel;
     }
   }
@@ -32,16 +35,16 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   }
   // TODO Handle TLS/mTLS
   channel = grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
-  logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Created and acquired new channel from pool");
+  logger_.log(armonik::api::common::logger::Level::Info, "Created and acquired new channel from pool");
   return channel;
 }
 
 void ChannelPool::ReleaseChannel(std::shared_ptr<grpc::Channel> channel) {
   if (ShutdownOnFailure(channel)) {
-    logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Shutdown unhealthy channel");
+    logger_.log(armonik::api::common::logger::Level::Info, "Shutdown unhealthy channel");
   } else {
-    logger_.log(ArmoniK::Api::Common::logger::Level::Info, "Released channel to pool");
-    std::lock_guard _(channel_mutex_);
+    logger_.log(armonik::api::common::logger::Level::Info, "Released channel to pool");
+    std::lock_guard<std::mutex> _(channel_mutex_);
     channel_pool_.push(channel);
   }
 }
@@ -72,7 +75,7 @@ bool ChannelPool::ShutdownOnFailure(std::shared_ptr<grpc::Channel> channel) {
   return false;
 }
 
-ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, ArmoniK::Api::Common::logger::Logger &logger)
+ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::api::common::logger::Logger &logger)
     : properties_(std::move(properties)), logger_(logger.local()) {}
 ChannelPool::~ChannelPool() = default;
 
@@ -86,4 +89,7 @@ ChannelPool::ChannelGuard::~ChannelGuard() { pool_->ReleaseChannel(channel); }
 
 ChannelPool::ChannelGuard ChannelPool::GetChannel() { return ChannelGuard(this); }
 
-} // namespace SDK_CLIENT_NAMESPACE::Internal
+} // namespace Internal
+} // namespace Client
+} // namespace Sdk
+} // namespace ArmoniK

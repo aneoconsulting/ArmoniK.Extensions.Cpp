@@ -8,9 +8,9 @@
 extern "C" void *armonik_create_service(const char *service_namespace, const char *service_name) {
   std::cout << "Creating service < " << service_namespace << "::" << service_name << " >" << std::endl;
   if (std::strcmp(service_name, "AdditionService") == 0) {
-    return new SDK_END2END_NAMESPACE::AdditionService();
+    return new ArmoniK::Sdk::Worker::Test::AdditionService();
   } else if (std::strcmp(service_name, "EchoService") == 0) {
-    return new SDK_END2END_NAMESPACE::EchoService();
+    return new ArmoniK::Sdk::Worker::Test::EchoService();
   }
 
   std::cout << "Unknown service < " << service_namespace << "::" << service_name << " >" << std::endl;

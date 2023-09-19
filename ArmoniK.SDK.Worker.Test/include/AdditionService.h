@@ -3,7 +3,10 @@
 #include <armonik/sdk/worker/ServiceBase.h>
 #include <iostream>
 #include <stdexcept>
-namespace SDK_END2END_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Worker {
+namespace Test {
 
 /**
  * \example AdditionService.h
@@ -25,23 +28,22 @@ public:
     delete sessionId;
   }
   std::string call(void *, const std::string &name, const std::string &input) override {
-    std::string output;
     if (name == "add_ints") {
-      output.resize(sizeof(int32_t));
+      char output[sizeof(int32_t)];
       int32_t a, b, c;
       std::memcpy(&a, input.data(), sizeof(int32_t));
       std::memcpy(&b, input.data() + sizeof(int32_t), sizeof(int32_t));
       c = add_ints(a, b);
-      std::memcpy(output.data(), &c, sizeof(int32_t));
-      return output;
+      std::memcpy(output, &c, sizeof(int32_t));
+      return {output, sizeof(int32_t)};
     } else if (name == "add_floats") {
-      output.resize(sizeof(float));
+      char output[sizeof(float)];
       float a, b, c;
       std::memcpy(&a, input.data(), sizeof(float));
       std::memcpy(&b, input.data() + sizeof(float), sizeof(float));
       c = add_floats(a, b);
-      std::memcpy(output.data(), &c, sizeof(float));
-      return output;
+      std::memcpy(output, &c, sizeof(float));
+      return {output, sizeof(float)};
     }
     throw std::runtime_error("Unknown method name" + name);
   }
@@ -69,4 +71,7 @@ public:
   }
 };
 
-} // namespace SDK_END2END_NAMESPACE
+} // namespace Test
+} // namespace Worker
+} // namespace Sdk
+} // namespace ArmoniK

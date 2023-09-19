@@ -4,11 +4,13 @@
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/worker/Worker/ArmoniKWorker.h>
 
-namespace SDK_DYNAMICWORKER_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 /**
  * @brief ArmoniK Worker that loads a dynamic library and executes method within it
  */
-class DynamicWorker : public ArmoniK::Api::Worker::ArmoniKWorker {
+class DynamicWorker : public armonik::api::worker::ArmoniKWorker {
 public:
   /**
    * @brief Creates a dynamic worker
@@ -23,12 +25,14 @@ public:
    * @param taskHandler Task handler
    * @return Whether the task executed successfully or not
    */
-  Api::Worker::ProcessStatus Execute(Api::Worker::TaskHandler &taskHandler) override;
+  armonik::api::worker::ProcessStatus Execute(armonik::api::worker::TaskHandler &taskHandler) override;
 
 private:
   /**
    * @brief Application manager
    */
-  SDK_DYNAMICWORKER_NAMESPACE::ApplicationManager manager;
+  ArmoniK::Sdk::DynamicWorker::ApplicationManager manager;
 };
-} // namespace SDK_DYNAMICWORKER_NAMESPACE
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK

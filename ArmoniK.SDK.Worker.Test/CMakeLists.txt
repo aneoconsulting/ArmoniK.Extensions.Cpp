@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.Worker.Test)
-set(NAMESPACE ArmoniK::Sdk::Worker::Test)
 include(CMakePackageConfigHelpers)
 
 project(${PROJECT_NAME})
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
+if(NOT TARGET ArmoniK.SDK.Worker)
+    find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
+endif()
 
 SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -26,14 +27,13 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
 setup_options(${PROJECT_NAME})
 split_version(${VERSION})
 setup_lib_version(${PROJECT_NAME})
-target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_END2END_NAMESPACE=${NAMESPACE})
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${WORKER_HEADER_DIR}>"
         )
 
-
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

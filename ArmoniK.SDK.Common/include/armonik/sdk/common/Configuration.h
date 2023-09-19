@@ -1,5 +1,6 @@
 #pragma once
 
+#include <absl/strings/string_view.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -8,16 +9,23 @@
  * @brief This file declares proxy objects for the Configuration objects
  */
 
-namespace ArmoniK::Api::Common::utils {
+namespace armonik {
+namespace api {
+namespace common {
+namespace utils {
 class Configuration;
 }
-
-namespace ArmoniK::Api::Common::options {
+namespace options {
 class ComputePlane;
 class ControlPlane;
-} // namespace ArmoniK::Api::Common::options
+} // namespace options
+} // namespace common
+} // namespace api
+} // namespace armonik
 
-namespace SDK_COMMON_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
 class Configuration;
 
 /**
@@ -61,31 +69,31 @@ public:
    * @brief ArmoniK control plane endpoint
    * @return Endpoint address
    */
-  [[nodiscard]] std::string_view getEndpoint() const;
+  [[nodiscard]] absl::string_view getEndpoint() const;
 
   /**
    * @brief Path to the client's certificate in PEM format
    * @return Client certificate's path
    */
-  [[nodiscard]] std::string_view getUserCertPemPath() const;
+  [[nodiscard]] absl::string_view getUserCertPemPath() const;
 
   /**
    * @brief Path to the client's key in PEM format (PKCS#1 or PKCS#8)
    * @return Client key path
    */
-  [[nodiscard]] std::string_view getUserKeyPemPath() const;
+  [[nodiscard]] absl::string_view getUserKeyPemPath() const;
 
   /**
    * @brief Path to the client's PKCS#12 certificate/key
    * @return Client P12 path
    */
-  [[nodiscard]] std::string_view getUserP12Path() const;
+  [[nodiscard]] absl::string_view getUserP12Path() const;
 
   /**
    * @brief Path to the server's CA certificate
    * @return CA certificate path
    */
-  [[nodiscard]] std::string_view getCaCertPemPath() const;
+  [[nodiscard]] absl::string_view getCaCertPemPath() const;
 
   /**
    * @brief Is SSL validation enabled ?
@@ -94,9 +102,9 @@ public:
   [[nodiscard]] bool isSslValidation() const;
 
 private:
-  std::unique_ptr<ArmoniK::Api::Common::options::ControlPlane> impl;
-  [[nodiscard]] const ArmoniK::Api::Common::options::ControlPlane &get_impl() const;
-  ArmoniK::Api::Common::options::ControlPlane &set_impl();
+  std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
+  [[nodiscard]] const armonik::api::common::options::ControlPlane &get_impl() const;
+  armonik::api::common::options::ControlPlane &set_impl();
 };
 
 /**
@@ -140,7 +148,7 @@ public:
    * @brief Returns the server address.
    * @return A reference to the server address string.
    */
-  [[nodiscard]] std::string_view get_server_address() const;
+  [[nodiscard]] absl::string_view get_server_address() const;
 
   /**
    * @brief Sets the worker address with the given socket address.
@@ -158,12 +166,12 @@ public:
    * @brief Returns the agent address.
    * @return A reference to the agent address string.
    */
-  [[nodiscard]] std::string_view get_agent_address() const;
+  [[nodiscard]] absl::string_view get_agent_address() const;
 
 private:
-  std::unique_ptr<ArmoniK::Api::Common::options::ComputePlane> impl;
-  [[nodiscard]] const ArmoniK::Api::Common::options::ComputePlane &get_impl() const;
-  ArmoniK::Api::Common::options::ComputePlane &set_impl();
+  std::unique_ptr<armonik::api::common::options::ComputePlane> impl;
+  [[nodiscard]] const armonik::api::common::options::ComputePlane &get_impl() const;
+  armonik::api::common::options::ComputePlane &set_impl();
 };
 
 /**
@@ -229,7 +237,7 @@ public:
    * @param file_path Path to the JSON file.
    * @return Reference to the current Configuration object.
    */
-  Configuration &add_json_configuration(std::string_view file_path);
+  Configuration &add_json_configuration(absl::string_view file_path);
 
   /**
    * @brief Add environment variable configuration.
@@ -253,13 +261,15 @@ public:
    * @brief Casts this configuration to its Api equivalent
    * @return Api Configuration equivalent to this
    */
-  explicit operator ArmoniK::Api::Common::utils::Configuration();
+  explicit operator armonik::api::common::utils::Configuration();
 
 private:
-  std::unique_ptr<ArmoniK::Api::Common::utils::Configuration> impl;
+  std::unique_ptr<armonik::api::common::utils::Configuration> impl;
   friend class ComputePlane;
   friend class ControlPlane;
-  [[nodiscard]] const ArmoniK::Api::Common::utils::Configuration &get_impl() const;
-  ArmoniK::Api::Common::utils::Configuration &set_impl();
+  [[nodiscard]] const armonik::api::common::utils::Configuration &get_impl() const;
+  armonik::api::common::utils::Configuration &set_impl();
 };
-} // namespace SDK_COMMON_NAMESPACE
+} // namespace Common
+} // namespace Sdk
+} // namespace ArmoniK

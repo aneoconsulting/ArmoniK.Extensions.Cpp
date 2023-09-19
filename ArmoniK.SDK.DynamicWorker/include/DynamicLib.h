@@ -2,7 +2,9 @@
 
 #include <utility>
 
-namespace SDK_DYNAMICWORKER_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 /**
  * @brief Manage external dynamic library
  */
@@ -85,4 +87,6 @@ public:
    */
   explicit operator bool() const noexcept { return handle; }
 };
-} // namespace SDK_DYNAMICWORKER_NAMESPACE
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK

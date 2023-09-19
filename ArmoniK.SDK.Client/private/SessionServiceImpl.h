@@ -1,22 +1,33 @@
 #pragma once
 
 #include "ChannelPool.h"
-#include "WaitBehavior.h"
+#include "armonik/sdk/client/WaitBehavior.h"
 #include <armonik/client/submitter/SubmitterClient.h>
 #include <armonik/sdk/common/TaskOptions.h>
+#include <mutex>
 #include <results_service.grpc.pb.h>
-#include <shared_mutex>
 
-namespace ArmoniK::Sdk::Common {
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
 struct Properties;
-class TaskPayload;
-} // namespace ArmoniK::Sdk::Common
+struct TaskPayload;
+} // namespace Common
+} // namespace Sdk
+} // namespace ArmoniK
 
-namespace SDK_CLIENT_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Client {
 class IServiceInvocationHandler;
 }
+} // namespace Sdk
+} // namespace ArmoniK
 
-namespace SDK_CLIENT_NAMESPACE::Internal {
+namespace ArmoniK {
+namespace Sdk {
+namespace Client {
+namespace Internal {
 /**
  * @brief Private implementation of the Session Service
  */
@@ -35,7 +46,7 @@ private:
   /**
    * @brief Session task options
    */
-  Common::TaskOptions taskOptions;
+  ArmoniK::Sdk::Common::TaskOptions taskOptions;
 
   /**
    * @brief Map between taskId and resultId
@@ -55,12 +66,12 @@ private:
   /**
    * @brief Maps mutex
    */
-  std::shared_mutex maps_mutex;
+  std::mutex maps_mutex;
 
   /**
    * @brief Client used for submission
    */
-  std::unique_ptr<ArmoniK::Api::Client::SubmitterClient> client;
+  std::unique_ptr<armonik::api::client::SubmitterClient> client;
 
   /**
    * @brief Client used for results handling
@@ -76,7 +87,7 @@ private:
    * @brief Local logger
    *
    */
-  ArmoniK::Api::Common::logger::LocalLogger logger_;
+  armonik::api::common::logger::LocalLogger logger_;
 
 public:
   SessionServiceImpl() = delete;
@@ -87,7 +98,7 @@ public:
    * @param properties Session properties
    */
   explicit SessionServiceImpl(const ArmoniK::Sdk::Common::Properties &properties,
-                              ArmoniK::Api::Common::logger::Logger &logger);
+                              armonik::api::common::logger::Logger &logger);
 
   /**
    * @brief Submits the given list of task requests using the session's task options
@@ -126,4 +137,7 @@ public:
   void WaitResults(std::set<std::string> task_ids = {}, WaitBehavior waitBehavior = All,
                    const WaitOptions &options = WaitOptions());
 };
-} // namespace SDK_CLIENT_NAMESPACE::Internal
+} // namespace Internal
+} // namespace Client
+} // namespace Sdk
+} // namespace ArmoniK

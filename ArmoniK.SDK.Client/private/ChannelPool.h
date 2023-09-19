@@ -8,7 +8,10 @@
 #include <mutex>
 #include <queue>
 
-namespace SDK_CLIENT_NAMESPACE::Internal {
+namespace ArmoniK {
+namespace Sdk {
+namespace Client {
+namespace Internal {
 /**
  * @brief A pool for Grpc channels
  */
@@ -18,7 +21,7 @@ public:
    * @brief Creates a channel pool from the given properties
    * @param properties Properties
    */
-  explicit ChannelPool(ArmoniK::Sdk::Common::Properties properties, ArmoniK::Api::Common::logger::Logger &logger);
+  explicit ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::api::common::logger::Logger &logger);
 
   /**
    * @brief Copy constructor
@@ -135,7 +138,10 @@ private:
   ArmoniK::Sdk::Common::Properties properties_;
   std::queue<std::shared_ptr<grpc::Channel>> channel_pool_;
   std::mutex channel_mutex_;
-  ArmoniK::Api::Common::logger::LocalLogger logger_;
+  armonik::api::common::logger::LocalLogger logger_;
 };
 
-} // namespace SDK_CLIENT_NAMESPACE::Internal
+} // namespace Internal
+} // namespace Client
+} // namespace Sdk
+} // namespace ArmoniK

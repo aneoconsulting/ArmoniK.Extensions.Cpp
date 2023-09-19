@@ -1,10 +1,11 @@
-#include "TaskPayload.h"
-#include "ArmoniKSdkException.h"
-#include <charconv>
+#include "armonik/sdk/common/TaskPayload.h"
+#include "armonik/sdk/common/ArmoniKSdkException.h"
 #include <iomanip>
 #include <string>
 
-namespace SDK_COMMON_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
 
 /**
  * @brief Type used to define the size of a field in the payload
@@ -39,20 +40,21 @@ template <typename T> std::string int_to_hex(T i) {
  * @return integer obtained from the string
  * @throws std::runtime_error if the hex string is invalid or if it's too large for the given type
  */
-template <typename T> T hex_to_int(std::string_view str) {
-  T value;
-  auto result = std::from_chars(str.data(), str.data() + str.size(), value, 16);
-  if (result.ec == std::errc::invalid_argument) {
-    throw std::runtime_error(std::string(str) + " is not convertible to " + TypeParseTraits<T>::name);
+template <typename T> T hex_to_int(absl::string_view str) {
+  char *endPos;
+  std::string null_terminated(str.data(), str.size());
+  T result = std::strtol(null_terminated.data(), &endPos, 16);
+  if (errno == ERANGE) {
+    throw std::runtime_error(null_terminated + " is too large for " + TypeParseTraits<T>::name);
   }
-  if (result.ec == std::errc::result_out_of_range) {
-    throw std::runtime_error(std::string(str) + " is too large for " + TypeParseTraits<T>::name);
+  if (endPos != null_terminated.data() + null_terminated.size()) {
+    throw std::runtime_error(null_terminated + " is not convertible to " + TypeParseTraits<T>::name);
   }
-  return value;
+  return result;
 }
 
-std::string_view advance_sv(std::string_view &sv, size_t offset) {
-  std::string_view extracted = sv.substr(0, offset);
+absl::string_view advance_sv(absl::string_view &sv, size_t offset) {
+  absl::string_view extracted = sv.substr(0, offset);
   sv = sv.substr(offset);
   return extracted;
 }
@@ -74,7 +76,7 @@ std::string TaskPayload::Serialize() const {
   return ss.str();
 }
 
-TaskPayload TaskPayload::Deserialize(std::string_view serialized) {
+TaskPayload TaskPayload::Deserialize(absl::string_view serialized) {
   constexpr size_t size_width = sizeof(field_size_t) * 2;
   field_size_t fieldSize;
   std::vector<std::string> data_dependencies;
@@ -95,4 +97,6 @@ TaskPayload TaskPayload::Deserialize(std::string_view serialized) {
 
   return {std::move(method_name), std::move(arguments), std::move(data_dependencies)};
 }
-} // namespace SDK_COMMON_NAMESPACE
+} // namespace Common
+} // namespace Sdk
+} // namespace ArmoniK

@@ -28,7 +28,7 @@ RUN echo $PATH
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
-ARG API_VERSION=3.12.0
+ARG API_VERSION=c8c4c5ce09dcbdc677ff5c630e49521e5141ae70
 RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cd ArmoniK.Api/packages/cpp && \
     git checkout "${API_VERSION}" && \
@@ -60,7 +60,6 @@ COPY ./Packaging.cmake ./
 WORKDIR /app/builder/worker
 ARG WORKER_VERSION=0.1.0
 RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
-    -DINSTALL_SDK_DIR=/app/install \
     -DCMAKE_PREFIX_PATH=/usr/local/grpc \
     -DARMONIK_API_DIR=/armonik/api \
     -DBUILD_CLIENT=OFF \
@@ -71,7 +70,7 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
 
 # Start with the latest Alpine base image for the final stage
 FROM dockerhubaneo/armonikworker_base:ubi7.9-0.0.1 AS runner
-	
+
 USER armonikuser
 
 # Copy the application files, libraries, and binaries from the builder image to the final image

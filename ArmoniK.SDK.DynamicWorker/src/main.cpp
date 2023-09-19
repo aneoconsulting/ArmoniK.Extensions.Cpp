@@ -10,8 +10,8 @@ int main() {
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
   try {
-    ArmoniK::Api::Worker::WorkerServer::create<SDK_DYNAMICWORKER_NAMESPACE::DynamicWorker>(
-        ArmoniK::Api::Common::utils::Configuration(config), config)
+    armonik::api::worker::WorkerServer::create<ArmoniK::Sdk::DynamicWorker::DynamicWorker>(
+        armonik::api::common::utils::Configuration(config), config)
         ->run();
   } catch (const std::exception &e) {
     std::cout << "Error in worker" << e.what() << std::endl;

@@ -297,12 +297,7 @@ EXPAND_ONLY_PREDEF     = NO
 SEARCH_INCLUDES        = YES
 INCLUDE_PATH           =
 INCLUDE_FILE_PATTERNS  =
-PREDEFINED             = SDK_COMMON_NAMESPACE=ArmoniK::Sdk::Common\
-						SDK_CLIENT_NAMESPACE=ArmoniK::Sdk::Client\
-						SDK_WORKER_NAMESPACE=ArmoniK::Sdk::Worker\
-						SDK_DYNAMICWORKER_NAMESPACE=ArmoniK::Sdk::DynamicWorker\
-						SDK_END2END_NAMESPACE=ArmoniK::Sdk::Worker::Test\
-						SDK_CLIENT_TEST_NAMESPACE=ArmoniK::Sdk::Client::Test
+PREDEFINED             =
 EXPAND_AS_DEFINED      =
 SKIP_FUNCTION_MACROS   = YES
 TAGFILES               =

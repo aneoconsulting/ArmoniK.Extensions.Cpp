@@ -1,9 +1,12 @@
 #pragma once
 
+#include <absl/strings/string_view.h>
 #include <sstream>
 #include <vector>
 
-namespace SDK_COMMON_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
 
 /**
  * @brief Task definition to submit
@@ -46,7 +49,9 @@ struct TaskPayload {
    * @param serialized Serialized task request
    * @return Deserialized task request
    */
-  static TaskPayload Deserialize(std::string_view serialized);
+  static TaskPayload Deserialize(absl::string_view serialized);
 };
 
-} // namespace SDK_COMMON_NAMESPACE
+} // namespace Common
+} // namespace Sdk
+} // namespace ArmoniK

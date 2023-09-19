@@ -1,10 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 set(PROJECT_NAME ArmoniK.SDK.DynamicWorker)
-set(NAMESPACE ArmoniK::Sdk::DynamicWorker)
 
 project(${PROJECT_NAME})
-
-set(CMAKE_CXX_STANDARD 17)
 
 SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -13,20 +10,21 @@ FILE(GLOB_RECURSE SRC_DYNAMICWORKER_FILES ${SOURCES_FILES_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_DYNAMICWORKER_FILES ${HEADER_FILES_DIR}/*.h)
 
 find_package(ArmoniK.Api.Worker REQUIRED CONFIG)
-find_package(ArmoniK.SDK.Common REQUIRED CONFIG)
+if(NOT TARGET ArmoniK.SDK.Common)
+    find_package(ArmoniK.SDK.Common REQUIRED CONFIG)
+endif()
 
-find_file(ARMONIK_SDK_HEADER ArmoniKSDKInterface.h PATHS /app/install PATH_SUFFIXES armonik/sdk/worker include/armonik/sdk/worker REQUIRED NO_CACHE)
-message(STATUS "Found ArmonikSDKInterface.h at location ${ARMONIK_SDK_HEADER}")
+find_file(ARMONIK_SDK_HEADER ArmoniKSDKInterface.h PATHS ${CMAKE_INSTALL_INCLUDEDIR} ${CMAKE_CURRENT_SOURCE_DIR}/../ArmoniK.SDK.Worker PATH_SUFFIXES armonik/sdk/worker include/armonik/sdk/worker REQUIRED NO_CACHE)
+message(STATUS "Found ArmoniKSDKInterface.h at location ${ARMONIK_SDK_HEADER}")
 get_filename_component(ARMONIK_SDK_HEADER_DIR ${ARMONIK_SDK_HEADER} DIRECTORY)
 
 add_executable(${PROJECT_NAME} ${SRC_DYNAMICWORKER_FILES} ${HEADER_DYNAMICWORKER_FILES})
-
-target_compile_definitions(${PROJECT_NAME} PUBLIC SDK_DYNAMICWORKER_NAMESPACE=${NAMESPACE})
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
 setup_options(${PROJECT_NAME})
 split_version(${VERSION})
 setup_lib_version(${PROJECT_NAME})
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.Api.Common ArmoniK.SDK.Common)
 

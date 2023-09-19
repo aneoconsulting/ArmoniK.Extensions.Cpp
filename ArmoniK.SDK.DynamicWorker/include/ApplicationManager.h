@@ -6,11 +6,17 @@
 #include <Worker/ProcessStatus.h>
 #include <armonik/worker/Worker/TaskHandler.h>
 
-namespace ArmoniK::Sdk::Common {
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
 class Configuration;
 }
+} // namespace Sdk
+} // namespace ArmoniK
 
-namespace SDK_DYNAMICWORKER_NAMESPACE {
+namespace ArmoniK {
+namespace Sdk {
+namespace DynamicWorker {
 /**
  * @brief Application manager to load and unload applications
  */
@@ -58,7 +64,7 @@ public:
    * @param method_arguments Serialized arguments of the method
    * @return ProcessStatus telling whether the call was successful or not
    */
-  ArmoniK::Api::Worker::ProcessStatus Execute(ArmoniK::Api::Worker::TaskHandler &taskHandler,
+  armonik::api::worker::ProcessStatus Execute(armonik::api::worker::TaskHandler &taskHandler,
                                               const std::string &method_name, const std::string &method_arguments);
 
 private:
@@ -86,4 +92,6 @@ private:
    */
   std::string applicationsBasePath;
 };
-} // namespace SDK_DYNAMICWORKER_NAMESPACE
+} // namespace DynamicWorker
+} // namespace Sdk
+} // namespace ArmoniK

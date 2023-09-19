@@ -4,7 +4,7 @@ set -x
 
 IMAGE_TAG="${1:-armonik_sdk_client_test}"
 IMAGE_VERSION="${2:-"0.1.0"}"
-API_VERSION="${3:-"3.12.0"}"
+API_VERSION="${3:-"c8c4c5ce09dcbdc677ff5c630e49521e5141ae70"}"
 
 # Get the absolute path of the current script and its directory
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
