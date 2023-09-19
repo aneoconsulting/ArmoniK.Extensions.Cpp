@@ -92,7 +92,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
       task_ids.push_back(t.task_info().task_id());
       taskId_resultId[t.task_info().task_id()] = t.task_info().expected_output_keys(0);
       resultId_taskId[t.task_info().expected_output_keys(0)] = std::move(*t.mutable_task_info()->mutable_task_id());
-      result_handlers[t.task_info().expected_output_keys(0)] = std::move(handler);
+      result_handlers[t.task_info().expected_output_keys(0)] = handler;
     }
   }
   return task_ids;
