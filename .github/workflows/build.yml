@@ -114,7 +114,7 @@ jobs:
           export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
           export CLIENT_IMG="dockerhubaneo/armonik-sdk-client-test"
           export WORKER_TEST_IMG="dockerhubaneo/armonik-sdk-worker-test"
-          export API_VERSION="866938f0b05b730ddae268c254a81fea853309a0"
+          export API_VERSION="c8c4c5ce09dcbdc677ff5c630e49521e5141ae70"
           ./tools/build-deploy-end2end.sh "${{ matrix.dist }}" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION" "$WORKER_TEST_IMG"
           ./tools/build-client.sh "$CLIENT_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION"
           echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
