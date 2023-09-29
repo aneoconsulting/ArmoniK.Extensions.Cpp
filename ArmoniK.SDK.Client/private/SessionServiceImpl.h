@@ -69,16 +69,6 @@ private:
   std::mutex maps_mutex;
 
   /**
-   * @brief Client used for submission
-   */
-  std::unique_ptr<armonik::api::client::SubmitterClient> client;
-
-  /**
-   * @brief Client used for results handling
-   */
-  std::unique_ptr<armonik::api::grpc::v1::results::Results::Stub> results;
-
-  /**
    * @brief Channel pool
    */
   ChannelPool channel_pool;
