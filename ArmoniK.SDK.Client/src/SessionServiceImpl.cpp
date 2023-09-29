@@ -19,7 +19,6 @@ namespace Client {
 namespace Internal {
 
 std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
-  grpc::ClientContext context;
   armonik::api::grpc::v1::results::CreateResultsMetaDataRequest results_request;
   armonik::api::grpc::v1::results::CreateResultsMetaDataResponse results_response;
 
@@ -38,7 +37,11 @@ std::vector<std::string> SessionServiceImpl::generate_result_ids(size_t num) {
   *results_request.mutable_session_id() = session;
 
   // Creates the results
-  auto status = results->CreateResultsMetaData(&context, results_request, &results_response);
+  auto status = channel_pool.WithChannel([&](auto &&channel) {
+    grpc::ClientContext context;
+    return armonik::api::grpc::v1::results::Results::NewStub(channel)->CreateResultsMetaData(&context, results_request,
+                                                                                             &results_response);
+  });
 
   if (!status.ok()) {
     std::stringstream message;
@@ -79,10 +82,12 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
     definitions.push_back(std::move(request));
   }
-  // Submit the tasks
-  auto reply =
-      client->create_tasks_async(session, static_cast<armonik::api::grpc::v1::TaskOptions>(task_options), definitions)
-          .get();
+  auto reply = channel_pool.WithChannel([&](auto channel) {
+    return armonik::api::client::SubmitterClient(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel))
+        .create_tasks_async(session, static_cast<armonik::api::grpc::v1::TaskOptions>(task_options), definitions)
+        .get();
+  });
+
   auto &list = *reply.mutable_creation_status_list()->mutable_creation_statuses();
   std::vector<std::string> task_ids;
   task_ids.reserve(task_requests.size());
@@ -102,23 +107,12 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                        armonik::api::common::logger::Logger &logger)
     : taskOptions(properties.taskOptions), channel_pool(properties, logger), logger_(logger.local()) {
 
-  client = channel_pool.WithChannel<std::unique_ptr<armonik::api::client::SubmitterClient>>(
-      [](std::shared_ptr<grpc::Channel> channel) {
-        std::unique_ptr<armonik::api::client::SubmitterClient> client =
-            std::make_unique<armonik::api::client::SubmitterClient>(
-                armonik::api::grpc::v1::submitter::Submitter::NewStub(channel));
-        return client;
-      });
-
-  results = channel_pool.WithChannel<std::unique_ptr<armonik::api::grpc::v1::results::Results::Stub>>(
-      [](std::shared_ptr<grpc::Channel> channel) {
-        auto client = armonik::api::grpc::v1::results::Results::NewStub(channel);
-        return client;
-      });
-
   // Creates a new session
-  session = client->create_session(static_cast<armonik::api::grpc::v1::TaskOptions>(properties.taskOptions),
-                                   {properties.taskOptions.partition_id});
+  session = channel_pool.WithChannel([&](auto &&channel) {
+    return armonik::api::client::SubmitterClient(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel))
+        .create_session(static_cast<armonik::api::grpc::v1::TaskOptions>(properties.taskOptions),
+                        {properties.taskOptions.partition_id});
+  });
 }
 
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
@@ -153,7 +147,10 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
 
     bool hasError = false;
     // Ask for the results statuses
-    auto statuses = client->get_result_status(session, resultIds);
+    auto statuses = channel_pool.WithChannel([&](auto &&channel) {
+      return armonik::api::client::SubmitterClient(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel))
+          .get_result_status(session, resultIds);
+    });
 
     std::vector<std::pair<std::string, std::string>> done;
 
@@ -176,7 +173,11 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
 
         try {
           // Get the finished result
-          auto payload = client->get_result_async(resultRequest).get();
+          auto payload = channel_pool.WithChannel([&](auto &&channel) {
+            return armonik::api::client::SubmitterClient(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel))
+                .get_result_async(resultRequest)
+                .get();
+          });
           if (rid_status.second == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
             // The above command should have failed !
             throw armonik::api::common::exceptions::ArmoniKApiException(

@@ -80,15 +80,18 @@ public:
   static bool ShutdownOnFailure(std::shared_ptr<grpc::Channel> channel);
 
   /**
-   * @brief Call func with an acquired channel
-   *
-   * @tparam T return type
-   * @param func The function to be called
-   * @return std::unique_ptr<T>
+   * Calls the function with an acquired channel
+   * The function must take a std::shared_ptr<::grpc::Channel> as a first argument
+   * @tparam F function type
+   * @tparam Args function arguments (apart from the channel)
+   * @param f function to call
+   * @param args arguments
+   * @return what the function returns
    */
-  template <typename T> T WithChannel(T (*func)(std::shared_ptr<grpc::Channel>)) {
+  template <typename F, typename... Args>
+  typename std::result_of<F(std::shared_ptr<::grpc::Channel>, Args &&...)>::type WithChannel(F f, Args &&...args) {
     auto guard = GetChannel();
-    return func(guard.channel);
+    return f(guard.channel, static_cast<Args &&>(args)...);
   }
 
   /**
