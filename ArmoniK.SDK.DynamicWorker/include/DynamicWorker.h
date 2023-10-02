@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ApplicationManager.h"
+#include <armonik/common/logger/local_logger.h>
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/worker/Worker/ArmoniKWorker.h>
 
@@ -18,7 +19,8 @@ public:
    * @param config Configuration
    */
   explicit DynamicWorker(std::unique_ptr<armonik::api::grpc::v1::agent::Agent::Stub> agent,
-                         const ArmoniK::Sdk::Common::Configuration &config);
+                         const ArmoniK::Sdk::Common::Configuration &config,
+                         const armonik::api::common::logger::Logger &logger);
 
   /**
    * @brief Executes the task given by the task handler
@@ -28,6 +30,11 @@ public:
   armonik::api::worker::ProcessStatus Execute(armonik::api::worker::TaskHandler &taskHandler) override;
 
 private:
+  /**
+   * @brief Local logger
+   */
+  armonik::api::common::logger::LocalLogger logger;
+
   /**
    * @brief Application manager
    */

@@ -4,6 +4,7 @@
 #include "DynamicLib.h"
 #include "ServiceManager.h"
 #include <Worker/ProcessStatus.h>
+#include <armonik/common/logger/Logger.h>
 #include <armonik/worker/Worker/TaskHandler.h>
 
 namespace ArmoniK {
@@ -27,7 +28,8 @@ public:
    * @brief Creates an application manager
    * @param config Configuration
    */
-  explicit ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config);
+  explicit ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config,
+                              const armonik::api::common::logger::Logger &logger);
 
   /**
    * @brief Configures the application manager to use the given application
@@ -91,6 +93,11 @@ private:
    * @brief Base path in which to look for the library to load
    */
   std::string applicationsBasePath;
+
+  /**
+   * @brief Local Logger
+   */
+  armonik::api::common::logger::LocalLogger logger;
 };
 } // namespace DynamicWorker
 } // namespace Sdk

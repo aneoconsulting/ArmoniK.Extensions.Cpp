@@ -7,8 +7,10 @@ namespace Sdk {
 namespace DynamicWorker {
 
 DynamicWorker::DynamicWorker(std::unique_ptr<armonik::api::grpc::v1::agent::Agent::Stub> agent,
-                             const ArmoniK::Sdk::Common::Configuration &config)
-    : ArmoniKWorker(std::move(agent)), manager(config) {}
+                             const ArmoniK::Sdk::Common::Configuration &config,
+                             const armonik::api::common::logger::Logger &logger)
+    : ArmoniKWorker(std::move(agent)), logger(logger.local({{"WorkerName", "DynamicWorker"}})),
+      manager(config, logger) {}
 
 armonik::api::worker::ProcessStatus
 
