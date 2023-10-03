@@ -22,8 +22,8 @@ ApplicationManager &ApplicationManager::UseApplication(const AppId &appId) & {
                                              currentLibrary.get<armonik_leave_session_t>("armonik_leave_session"),
                                              currentLibrary.get<armonik_call_t>("armonik_call")};
   currentId = appId;
-  std::cout << "Successfully loaded application " << appId.application_name << " ( " << appId.application_version
-            << " )" << std::endl;
+  logger.log(armonik::api::common::logger::Level::Info,
+             "Successfully loaded application " + appId.application_name + " ( " + appId.application_version + " )");
   return *this;
 }
 ApplicationManager &ApplicationManager::UseService(const ServiceId &serviceId) & {
@@ -42,7 +42,9 @@ armonik::api::worker::ProcessStatus ApplicationManager::Execute(armonik::api::wo
                                                                 const std::string &method_arguments) {
   return service_manager.Execute(taskHandler, method_name, method_arguments);
 }
-ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config) : functionPointers() {
+ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config,
+                                       const armonik::api::common::logger::Logger &logger)
+    : functionPointers(), logger(logger.local()) {
   applicationsBasePath = config.get("Worker__ApplicationBasePath");
   if (applicationsBasePath.empty()) {
     applicationsBasePath = "/data";

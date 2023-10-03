@@ -4,19 +4,22 @@
 #include <armonik/worker/utils/WorkerServer.h>
 
 int main() {
-  std::cout << "Starting ArmoniK SDK worker" << std::endl;
-
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_clef(), config.get_log_level()};
+
+  logger.log(armonik::api::common::logger::Level::Info, "Starting ArmoniK SDK worker");
+
   try {
     armonik::api::worker::WorkerServer::create<ArmoniK::Sdk::DynamicWorker::DynamicWorker>(
-        armonik::api::common::utils::Configuration(config), config)
+        armonik::api::common::utils::Configuration(config), config, logger)
         ->run();
   } catch (const std::exception &e) {
-    std::cout << "Error in worker" << e.what() << std::endl;
+    logger.fatal(std::string("Error in worker ") + e.what());
   }
 
-  std::cout << "Stopping ArmoniK SDK worker" << std::endl;
+  logger.info("Stopping ArmoniK SDK worker");
   return 0;
 }

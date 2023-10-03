@@ -1,6 +1,7 @@
 #pragma once
 
 #include <absl/strings/string_view.h>
+#include <armonik/common/logger/fwd.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -256,6 +257,12 @@ public:
    * @return A ControlPlane object
    */
   [[nodiscard]] ControlPlane get_control_plane() const;
+
+  /**
+   * @brief Get the configured log level
+   * @return Log level
+   */
+  [[nodiscard]] armonik::api::common::logger::Level get_log_level() const;
 
   /**
    * @brief Casts this configuration to its Api equivalent

@@ -1,4 +1,6 @@
 #include "armonik/sdk/common/Configuration.h"
+#include "armonik/sdk/common/Utils.h"
+#include <armonik/common/logger/level.h>
 #include <armonik/common/options/ComputePlane.h>
 #include <armonik/common/options/ControlPlane.h>
 #include <armonik/common/utils/Configuration.h>
@@ -133,6 +135,25 @@ const armonik::api::common::utils::Configuration &Configuration::get_impl() cons
     return *impl;
   }
   return default_config;
+}
+
+armonik::api::common::logger::Level Configuration::get_log_level() const {
+  auto rawLevel = ArmoniK::Sdk::Common::to_capitalized(get("Serilog__MinimumLevel"));
+
+  if (level_name(armonik::api::common::logger::Level::Verbose) == rawLevel) {
+    return armonik::api::common::logger::Level::Verbose;
+  } else if (level_name(armonik::api::common::logger::Level::Debug) == rawLevel) {
+    return armonik::api::common::logger::Level::Debug;
+  } else if (level_name(armonik::api::common::logger::Level::Info) == rawLevel) {
+    return armonik::api::common::logger::Level::Info;
+  } else if (level_name(armonik::api::common::logger::Level::Warning) == rawLevel) {
+    return armonik::api::common::logger::Level::Warning;
+  } else if (level_name(armonik::api::common::logger::Level::Error) == rawLevel) {
+    return armonik::api::common::logger::Level::Error;
+  } else if (level_name(armonik::api::common::logger::Level::Fatal) == rawLevel) {
+    return armonik::api::common::logger::Level::Fatal;
+  }
+  return armonik::api::common::logger::Level::Info;
 }
 
 } // namespace Common
