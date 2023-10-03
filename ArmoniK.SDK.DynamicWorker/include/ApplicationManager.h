@@ -4,7 +4,7 @@
 #include "DynamicLib.h"
 #include "ServiceManager.h"
 #include <Worker/ProcessStatus.h>
-#include <armonik/common/logger/Logger.h>
+#include <armonik/common/logger/logger.h>
 #include <armonik/worker/Worker/TaskHandler.h>
 
 namespace ArmoniK {
