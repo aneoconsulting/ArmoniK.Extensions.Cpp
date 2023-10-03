@@ -6,7 +6,7 @@ USER root
 ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
 ENV PATH="/app/install/bin:$PATH"
 
-RUN yum check-update \
+RUN yum --disableplugin=subscription-manager check-update \
     ; yum --disableplugin=subscription-manager \
         install -y git make \
         rh-python38-python-devel \
@@ -30,7 +30,8 @@ RUN echo $PATH
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
-ARG API_VERSION=3.13.0
+ARG API_VERSION
+RUN test -n "${API_VERSION}"
 RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cd ArmoniK.Api/packages/cpp && \
     git checkout "${API_VERSION}" && \
@@ -59,9 +60,9 @@ COPY ./Utils.cmake ./
 COPY ./Packaging.cmake ./
 
 WORKDIR /app/build
-ARG WORKER_VERSION=0.1.0
-
-RUN cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app/install -DINSTALL_SDK_DIR=/app/install -DCMAKE_PREFIX_PATH=/usr/local/grpc -DARMONIK_API_DIR=/armonik/api -DBUILD_DYNAMICWORKER=OFF -DBUILD_END2END=OFF -DCPACK_GENERATOR=RPM /app/source/ && make -j $(nproc) install && make package -j
+ARG VERSION
+RUN test -n "${VERSION}"
+RUN cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app/install -DINSTALL_SDK_DIR=/app/install -DCMAKE_PREFIX_PATH=/usr/local/grpc -DARMONIK_API_DIR=/armonik/api -DBUILD_DYNAMICWORKER=OFF -DBUILD_END2END=OFF -DCPACK_GENERATOR=RPM -DVERSION="${VERSION}" /app/source/ && make -j $(nproc) install && make package -j
 
 # Set the default command to build the client using CMake and make
 CMD ["bash"]

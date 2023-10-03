@@ -1,12 +1,14 @@
 #!/bin/sh
 set -ex
 
+. ./common.sh
+
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
 working_dir="$(realpath "$script_path/../" )"
 environment="${1:-"Alpine"}"
 worker_name=${2:-"armonik-sdk-cpp-dynamicworker"}
-worker_version=${3:-"0.1.0"}
-api_version="${4:-"3.13.0"}"
+worker_version=${3:-"${ARMONIK_SDK_VERSION_DEFAULT}"}
+api_version="${4:-"${ARMONIK_API_VERSION_DEFAULT}"}"
 worker_test="${5:-"armonik-sdk-worker-test"}"
 worker_tag="${worker_version}-$(echo "$environment" | awk '{print tolower($0)}')"
 lib_build_path=${6:-""}

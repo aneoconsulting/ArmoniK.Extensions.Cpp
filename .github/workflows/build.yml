@@ -110,12 +110,12 @@ jobs:
       - name: Build C++ SDK
         id: build
         run: |
+          source ./tools/common.sh
           export ARMONIK_SHARED_HOST_PATH=${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/data
           export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
           export CLIENT_IMG="dockerhubaneo/armonik-sdk-client-test"
           export WORKER_TEST_IMG="dockerhubaneo/armonik-sdk-worker-test"
-          export API_VERSION="3.13.0"
-          ./tools/build-deploy-end2end.sh "${{ matrix.dist }}" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION" "$WORKER_TEST_IMG"
+          ./tools/build-deploy-end2end.sh "${{ matrix.dist }}" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}" "$ARMONIK_API_VERSION_DEFAULT" "$WORKER_TEST_IMG"
           ./tools/build-client.sh "$CLIENT_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION"
           echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
           export WORKER_VERSION="${{ needs.versionning.outputs.version}}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')"

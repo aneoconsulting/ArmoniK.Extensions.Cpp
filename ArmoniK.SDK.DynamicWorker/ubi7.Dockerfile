@@ -6,7 +6,7 @@ USER root
 ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
 ENV PATH="/app/install/bin:$PATH"
 
-RUN yum check-update \
+RUN yum --disableplugin=subscription-manager check-update \
     ; yum --disableplugin=subscription-manager \
         install -y git make \
         rh-python38-python-devel \
@@ -28,7 +28,8 @@ RUN echo $PATH
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
-ARG API_VERSION=3.13.0
+ARG API_VERSION
+RUN test -n "${API_VERSION}"
 RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cd ArmoniK.Api/packages/cpp && \
     git checkout "${API_VERSION}" && \
@@ -43,7 +44,6 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
         "-DBUILD_CLIENT=OFF" \
         "-DBUILD_WORKER=ON" .. && \
     make -j $(nproc) install && \
-    ls -alR /armonik/api && \
     make clean
 
 
@@ -58,7 +58,8 @@ COPY ./Utils.cmake ./
 COPY ./Packaging.cmake ./
 
 WORKDIR /app/builder/worker
-ARG WORKER_VERSION=0.1.0
+ARG WORKER_VERSION
+RUN test -n "${WORKER_VERSION}"
 RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
     -DCMAKE_PREFIX_PATH=/usr/local/grpc \
     -DARMONIK_API_DIR=/armonik/api \

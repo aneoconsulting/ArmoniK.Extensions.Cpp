@@ -2,9 +2,11 @@
 
 set -x
 
+. ./common.sh
+
 IMAGE_TAG="${1:-armonik_sdk_client_test}"
-IMAGE_VERSION="${2:-"0.1.0"}"
-API_VERSION="${3:-"3.13.0"}"
+IMAGE_VERSION="${2:-"${ARMONIK_SDK_VERSION_DEFAULT}"}"
+API_VERSION="${3:-"${ARMONIK_API_VERSION_DEFAULT}"}"
 
 # Get the absolute path of the current script and its directory
 script_path="$(dirname "${BASH_SOURCE:-$0}")"

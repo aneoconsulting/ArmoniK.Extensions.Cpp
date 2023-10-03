@@ -29,7 +29,8 @@ RUN echo $PATH
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
-ARG API_VERSION=3.13.0
+ARG API_VERSION
+RUN test -n "${API_VERSION}"
 RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
     cd ArmoniK.Api/packages/cpp && \
     git checkout "${API_VERSION}" && \
@@ -55,7 +56,8 @@ COPY ./Packaging.cmake ./
 
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/build
-ARG CLIENT_VERSION=0.1.0
+ARG CLIENT_VERSION
+RUN test -n "${CLIENT_VERSION}"
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" -DVERSION=$CLIENT_VERSION /app/source/ && make -j $(nproc) install && make clean
 
 FROM alpine as runner

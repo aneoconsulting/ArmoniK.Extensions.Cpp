@@ -110,10 +110,6 @@ TEST(testSDK, testEcho) {
     config.set("Worker__Type", "End2EndTest");
   }
 
-  if (config.get("WorkerLib__Version").empty()) {
-    config.set("WorkerLib__Version", "0.1.0");
-  }
-
   // Create the task options
   ArmoniK::Sdk::Common::TaskOptions session_task_options(
       "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "EchoService");
@@ -173,9 +169,6 @@ TEST(testSDK, testAddInt) {
   std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
-  }
-  if (config.get("WorkerLib__Version").empty()) {
-    config.set("WorkerLib__Version", "0.1.0");
   }
 
   // Create the task options
@@ -274,10 +267,6 @@ TEST(testSDK, testAddFloat) {
   std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
-  }
-
-  if (config.get("WorkerLib__Version").empty()) {
-    config.set("WorkerLib__Version", "0.1.0");
   }
 
   // Create the task options
