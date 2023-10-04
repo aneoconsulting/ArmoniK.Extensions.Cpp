@@ -141,7 +141,7 @@ public:
    * @warning If the given task has not been processed, the behavior is undefined. The tasks will not be processed by
    * the client.
    */
-  void CleanupTasks(const std::vector<std::string> &task_ids);
+  void CleanupTasks(const std::set<std::string> &task_ids);
 };
 } // namespace Internal
 } // namespace Client
