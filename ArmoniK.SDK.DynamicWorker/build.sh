@@ -1,8 +1,7 @@
 #!/bin/sh
 
-. ../tools/common.sh
-
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
+. "${script_path}"/../tools/common.sh
 working_dir="$(realpath "${script_path}/.." )"
 dockerfile="${1:-"${working_dir}/ArmoniK.SDK.DynamicWorker/Dockerfile"}"
 image_tag="${2:-"armonik-sdk-cpp-dynamicworker:${ARMONIK_SDK_VERSION_DEFAULT}"}"

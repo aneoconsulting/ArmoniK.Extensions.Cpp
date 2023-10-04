@@ -2,14 +2,13 @@
 
 set -x
 
-. ../common.sh
-
-IMAGE_TAG="${1:-"armoniksdktgz:${ARMONIK_SDK_VERSION_DEFAULT}"}"
-API_VERSION="${2:-"${ARMONIK_API_VERSION_DEFAULT}"}"
-
 # Get the absolute path of the current script and its directory
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
 working_dir="$(realpath "$script_path/../../" )"
+. "${script_path}"/../common.sh
+
+IMAGE_TAG="${1:-"armoniksdktgz:${ARMONIK_SDK_VERSION_DEFAULT}"}"
+API_VERSION="${2:-"${ARMONIK_API_VERSION_DEFAULT}"}"
 
 docker build -t "${IMAGE_TAG}" -f ubi-tgz.Dockerfile --build-arg="API_VERSION=${API_VERSION}" --build-arg="VERSION=${ARMONIK_SDK_VERSION_DEFAULT}" --progress=plain "${working_dir}"
 
