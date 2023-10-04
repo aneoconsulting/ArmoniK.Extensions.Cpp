@@ -15,10 +15,8 @@ RUN yes | mk-build-deps -i -r -B ./tools/packaging/debian/control
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
 ARG API_VERSION
-RUN test -n "${API_VERSION}"
-RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
+RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSION}" && \
     cd ArmoniK.Api/packages/cpp && \
-    git checkout "${API_VERSION}" && \
     mkdir -p /app/proto && \
     mkdir -p /armonik/api && \
     cp -r ../../Protos/V1/* /app/proto && \
@@ -38,7 +36,6 @@ COPY ./Utils.cmake ./
 COPY ./Packaging.cmake ./
 
 WORKDIR /app/libarmonik/build
-ARG VERSION
-RUN test -n "${VERSION}"
-RUN cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app/install -DINSTALL_SDK_DIR=/app/install -DARMONIK_API_DIR=/armonik/api -DCPACK_GENERATOR=DEB -DBUILD_DYNAMICWORKER=OFF -DBUILD_END2END=OFF -DVERSION="${VERSION}" /app/source/ && make -j $(nproc) install && make package -j
+ARG WORKER_VERSION
+RUN cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app/install -DINSTALL_SDK_DIR=/app/install -DARMONIK_API_DIR=/armonik/api -DCPACK_GENERATOR=DEB -DBUILD_DYNAMICWORKER=OFF -DBUILD_END2END=OFF -DVERSION="${WORKER_VERSION}" /app/source/ && make -j $(nproc) install && make package -j
 ENTRYPOINT ["bash"]

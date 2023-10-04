@@ -30,10 +30,8 @@ RUN echo $PATH
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
 ARG API_VERSION
-RUN test -n "${API_VERSION}"
-RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
+RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSION}" && \
     cd ArmoniK.Api/packages/cpp && \
-    git checkout "${API_VERSION}" && \
     mkdir -p /app/proto && \
     mkdir -p /armonik/api && \
     cp -r ../../Protos/V1/* /app/proto && \
@@ -57,7 +55,6 @@ COPY ./Packaging.cmake ./
 # Build the application using the copied source files and protobuf definitions
 WORKDIR /app/builder/worker
 ARG WORKER_VERSION
-RUN test -n "${WORKER_VERSION}"
 RUN cmake -DCMAKE_INSTALL_PREFIX="/app/install" -DBUILD_CLIENT=OFF -DBUILD_DYNAMICWORKER=ON -DBUILD_END2END=OFF -DVERSION="${WORKER_VERSION}" /app/source/ && make -j $(nproc) install && make clean
 
 # Start with the latest Alpine base image for the final stage

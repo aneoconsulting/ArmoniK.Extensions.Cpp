@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
-if(NOT DEFINED VERSION)
-    set(VERSION 0.1.0)
+if(NOT DEFINED VERSION OR "${VERSION}" STREQUAL "")
+    set(VERSION "0.1.0-local")
 endif()
 string(REGEX MATCHALL "[0-9]+" version_list ${VERSION})
 list(GET version_list 0 version_major)

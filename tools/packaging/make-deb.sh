@@ -5,7 +5,7 @@ set -x
 # Get the absolute path of the current script and its directory
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
 working_dir="$(realpath "$script_path/../../" )"
-. "${script_path}"/../common.sh
+source "${script_path}"/../common.sh
 
 IMAGE_TAG="${1:-"armoniksdkdeb:${ARMONIK_SDK_VERSION_DEFAULT}"}"
 API_VERSION="${2:-"${ARMONIK_API_VERSION_DEFAULT}"}"

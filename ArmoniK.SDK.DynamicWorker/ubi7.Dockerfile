@@ -29,10 +29,8 @@ RUN echo $PATH
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
 ARG API_VERSION
-RUN test -n "${API_VERSION}"
-RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
+RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSION}" && \
     cd ArmoniK.Api/packages/cpp && \
-    git checkout "${API_VERSION}" && \
     mkdir -p /app/proto && \
     mkdir -p /armonik/api && \
     cp -r ../../Protos/V1/* /app/proto && \
@@ -59,7 +57,6 @@ COPY ./Packaging.cmake ./
 
 WORKDIR /app/builder/worker
 ARG WORKER_VERSION
-RUN test -n "${WORKER_VERSION}"
 RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
     -DCMAKE_PREFIX_PATH=/usr/local/grpc \
     -DARMONIK_API_DIR=/armonik/api \

@@ -29,10 +29,8 @@ RUN echo $PATH
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
 ARG API_VERSION
-RUN test -n "${API_VERSION}"
-RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git && \
+RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSION}" && \
     cd ArmoniK.Api/packages/cpp && \
-    git checkout "${API_VERSION}" && \
     mkdir -p /app/proto && \
     mkdir -p /armonik/api && \
     cp -r ../../Protos/V1/* /app/proto && \
@@ -58,9 +56,8 @@ COPY ./Utils.cmake ./
 COPY ./Packaging.cmake ./
 
 WORKDIR /app/build
-ARG VERSION
-RUN test -n "${VERSION}"
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app/install -DINSTALL_SDK_DIR=/app/install -DCMAKE_PREFIX_PATH=/usr/local/grpc -DARMONIK_API_DIR=/armonik/api -DBUILD_DYNAMICWORKER=OFF -DBUILD_END2END=OFF -DCPACK_GENERATOR=TGZ -DVERSION="${VERSION}" /app/source/ && make -j $(nproc) install && make package -j
+ARG WORKER_VERSION
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app/install -DINSTALL_SDK_DIR=/app/install -DCMAKE_PREFIX_PATH=/usr/local/grpc -DARMONIK_API_DIR=/armonik/api -DBUILD_DYNAMICWORKER=OFF -DBUILD_END2END=OFF -DCPACK_GENERATOR=TGZ -DVERSION="${WORKER_VERSION}" /app/source/ && make -j $(nproc) install && make package -j
 
 # Set the default command to build the client using CMake and make
 CMD ["bash"]

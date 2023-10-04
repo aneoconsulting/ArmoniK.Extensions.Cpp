@@ -1,10 +1,10 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -ex
 
 
 
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
-. "${script_path}"/common.sh
+source "${script_path}"/common.sh
 working_dir="$(realpath "$script_path/../" )"
 environment="${1:-"Alpine"}"
 worker_name=${2:-"armonik-sdk-cpp-dynamicworker"}
