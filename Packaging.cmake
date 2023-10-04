@@ -9,7 +9,7 @@ set(CPACK_PACKAGE_VERSION_MAJOR ${version_major})
 set(CPACK_PACKAGE_VERSION_MINOR ${version_minor})
 set(CPACK_PACKAGE_VERSION_PATCH ${version_patch})
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/packaging/common/DESCRIPTION")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ArmoniK API Libraries")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ArmoniK SDK Libraries")
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/aneoconsulting/ArmoniK.Extensions.Cpp")
 set(CPACK_PACKAGE_CONTACT "armonik-support@aneo.fr")
 

@@ -21,5 +21,5 @@ COPY ./ArmoniK.SDK.Worker.Test ./ArmoniK.SDK.Worker.Test
 COPY ./CMakeLists.txt ./CMakeLists.txt
 COPY ./Utils.cmake ./
 COPY ./Packaging.cmake ./
-ARG WorkerLibVersion=0.1.0
-RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_SDK=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" -DBUILD_WORKERTEST=ON -DVERSION=$WorkerLibVersion /app/source/ && make -j $(nproc) install && make clean
+ARG WorkerLibVersion
+RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_SDK=OFF" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" -DBUILD_WORKERTEST=ON -DVERSION="${WorkerLibVersion}" /app/source/ && make -j $(nproc) install && make clean

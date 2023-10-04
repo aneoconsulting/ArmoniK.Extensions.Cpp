@@ -2,13 +2,15 @@
 
 set -x
 
-IMAGE_TAG="${1:-armoniksdkdeb:0.1.0}"
-
 # Get the absolute path of the current script and its directory
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
 working_dir="$(realpath "$script_path/../../" )"
+source "${script_path}"/../common.sh
 
-docker build -t "${IMAGE_TAG}" -f deb.Dockerfile --progress=plain "${working_dir}"
+IMAGE_TAG="${1:-"armoniksdkdeb:${ARMONIK_SDK_VERSION_DEFAULT}"}"
+API_VERSION="${2:-"${ARMONIK_API_VERSION_DEFAULT}"}"
+
+docker build -t "${IMAGE_TAG}" -f deb.Dockerfile --build-arg="API_VERSION=${API_VERSION}" --build-arg="VERSION=${ARMONIK_SDK_VERSION_DEFAULT}" --progress=plain "${working_dir}"
 
 mkdir -p ${working_dir}/build
 
