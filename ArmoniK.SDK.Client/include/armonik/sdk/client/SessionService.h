@@ -99,7 +99,8 @@ public:
 
   /**
    * @brief Discards all results, cancels the tasks and cancels the session. No handler will be called.
-   * @warning The session and its data will not be recoverable. All pending tasks will be canceled.
+   * @warning The session and its data will not be recoverable.
+   * @warning Using this on a session with running or pending tasks will result in undefined behavior
    */
   void DropSession();
 

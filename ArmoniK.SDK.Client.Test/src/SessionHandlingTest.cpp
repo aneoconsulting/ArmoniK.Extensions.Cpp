@@ -13,25 +13,13 @@
 #include "armonik/sdk/common/TaskOptions.h"
 #include "armonik/sdk/common/TaskPayload.h"
 
+#include <armonik/client/results_service.grpc.pb.h>
 #include <armonik/client/sessions_service.grpc.pb.h>
 #include <armonik/client/tasks_service.grpc.pb.h>
-#include <armonik/common/session_status.pb.h>
-#include <armonik/common/sort_direction.pb.h>
 #include <armonik/common/tasks_filters.pb.h>
 
+#include "ChannelPool.h"
 #include "End2EndHandlers.h"
-
-std::unique_ptr<armonik::api::grpc::v1::sessions::Sessions::Stub>
-get_session_stub(const ArmoniK::Sdk::Common::Properties &properties) {
-  return armonik::api::grpc::v1::sessions::Sessions::NewStub(::grpc::CreateChannel(
-      std::string(properties.configuration.get_control_plane().getEndpoint()), ::grpc::InsecureChannelCredentials()));
-}
-
-std::unique_ptr<armonik::api::grpc::v1::tasks::Tasks::Stub>
-get_task_stub(const ArmoniK::Sdk::Common::Properties &properties) {
-  return armonik::api::grpc::v1::tasks::Tasks::NewStub(::grpc::CreateChannel(
-      std::string(properties.configuration.get_control_plane().getEndpoint()), ::grpc::InsecureChannelCredentials()));
-}
 
 armonik::api::grpc::v1::tasks::ListTasksRequest::Sort get_default_task_sort() {
   armonik::api::grpc::v1::tasks::ListTasksRequest_Sort sort;
@@ -86,6 +74,8 @@ TEST(SessionService, reopen_test) {
   auto p = init();
   auto properties = std::move(std::get<0>(p));
   auto logger = std::move(std::get<1>(p));
+  ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
+  auto channel_guard = pool.GetChannel();
 
   // Create service #1
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -95,7 +85,7 @@ TEST(SessionService, reopen_test) {
   // Verify it has no tasks
   armonik::api::grpc::v1::tasks::ListTasksRequest request;
   armonik::api::grpc::v1::tasks::ListTasksResponse response;
-  auto stub = get_task_stub(properties);
+  auto stub = armonik::api::grpc::v1::tasks::Tasks::NewStub(channel_guard.channel);
   *request.mutable_filters() = get_filter_for_session_id(current_session);
   *request.mutable_sort() = get_default_task_sort();
   request.set_page(0);
@@ -145,7 +135,7 @@ TEST(SessionService, reopen_test) {
   // Verify the session has 2 tasks
   *request.mutable_filters() = get_filter_for_session_id(current_session);
   status = stub->ListTasks(get_context().get(), request, &response);
-
+  std::cout << status.error_message() << std::endl;
   ASSERT_TRUE(status.ok());
   ASSERT_EQ(response.total(), 2);
 }
@@ -154,6 +144,8 @@ TEST(SessionService, drop_after_done_test) {
   auto p = init();
   auto properties = std::move(std::get<0>(p));
   auto logger = std::move(std::get<1>(p));
+  ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
+  auto channel_guard = pool.GetChannel();
 
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
   const auto &session = service.getSession();
@@ -170,12 +162,13 @@ TEST(SessionService, drop_after_done_test) {
   handler->is_error = false;
   service.DropSession();
 
-  auto session_service = get_session_stub(properties);
+  auto session_service = armonik::api::grpc::v1::sessions::Sessions::NewStub(channel_guard.channel);
 
   armonik::api::grpc::v1::sessions::GetSessionRequest request;
   request.set_session_id(session);
   armonik::api::grpc::v1::sessions::GetSessionResponse response;
   auto status = session_service->GetSession(get_context().get(), request, &response);
+
   ASSERT_TRUE(status.ok());
   ASSERT_EQ(response.session().status(), armonik::api::grpc::v1::session_status::SESSION_STATUS_CANCELLED);
 
@@ -195,19 +188,82 @@ TEST(SessionService, drop_before_done_test) {
   auto p = init();
   auto properties = std::move(std::get<0>(p));
   auto logger = std::move(std::get<1>(p));
+  ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
+  auto channel_guard = pool.GetChannel();
 
+  // Create service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
   const auto &session = service.getSession();
   ASSERT_FALSE(session.empty());
 
+  // Submit 100 tasks
   auto handler = std::make_shared<EchoServiceHandler>();
   auto task_ids = service.Submit(generate_payloads(100), handler);
   ASSERT_EQ(task_ids.size(), 100);
 
+  // Drop Session before finished
   service.DropSession();
   handler->received = false;
   handler->is_error = false;
+
+  // Shouldn't wait for anything
   service.WaitResults();
   ASSERT_FALSE(handler->received);
   ASSERT_FALSE(handler->is_error);
+}
+
+TEST(SessionService, cleanup_tasks) {
+  auto p = init();
+  auto properties = std::move(std::get<0>(p));
+  auto logger = std::move(std::get<1>(p));
+  ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
+  auto channel_guard = pool.GetChannel();
+
+  // Create service
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+  const auto &session = service.getSession();
+  ASSERT_FALSE(session.empty());
+
+  // Submit 2 tasks
+  auto handler = std::make_shared<EchoServiceHandler>();
+  auto task_ids = service.Submit(generate_payloads(2), handler);
+  ASSERT_EQ(task_ids.size(), 2);
+
+  // Wait for them to finish
+  service.WaitResults();
+  ASSERT_TRUE(handler->received);
+  ASSERT_FALSE(handler->is_error);
+
+  // Cleanup only the first one
+  service.CleanupTasks({task_ids[0]});
+  auto stub = armonik::api::grpc::v1::tasks::Tasks::NewStub(channel_guard.channel);
+  armonik::api::grpc::v1::tasks::GetResultIdsRequest request;
+  armonik::api::grpc::v1::tasks::GetResultIdsResponse response;
+  request.mutable_task_id()->Add(task_ids.begin(), task_ids.end());
+
+  // Get the result ids
+  auto status = stub->GetResultIds(get_context().get(), request, &response);
+  ASSERT_TRUE(status.ok());
+
+  auto result_stub = armonik::api::grpc::v1::results::Results::NewStub(channel_guard.channel);
+  armonik::api::grpc::v1::results::DownloadResultDataRequest download_request;
+  armonik::api::grpc::v1::results::DownloadResultDataResponse download_response;
+  *download_request.mutable_session_id() = session;
+
+  // try to download the result data
+  for (auto &&mr : response.task_results()) {
+    auto client_context = get_context();
+    *download_request.mutable_result_id() = mr.result_ids()[0];
+    auto streaming_call = result_stub->DownloadResultData(client_context.get(), download_request);
+    while (streaming_call->Read(&download_response)) {
+    }
+    if (mr.task_id() == task_ids[0]) {
+      // Should be empty for the cleaned up one
+      ASSERT_TRUE(download_response.data_chunk().empty());
+    } else {
+      // Shouldn't be empty for the non cleaned up one
+      ASSERT_FALSE(download_response.data_chunk().empty());
+    }
+    download_response.clear_data_chunk();
+  }
 }
