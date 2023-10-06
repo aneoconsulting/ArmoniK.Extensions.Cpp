@@ -40,9 +40,11 @@ public:
   /**
    * @brief Creates a SessionService from the given Properties
    * @param properties Session properties
+   * @param logger logger
+   * @param session_id session id to open, leave blank to open a new session
    */
   explicit SessionService(const ArmoniK::Sdk::Common::Properties &properties,
-                          armonik::api::common::logger::Logger &logger);
+                          armonik::api::common::logger::Logger &logger, const std::string &session_id = "");
   SessionService(const SessionService &) = delete;
   /**
    * @brief Move constructor
@@ -94,6 +96,21 @@ public:
    * @return Session Id
    */
   [[nodiscard]] const std::string &getSession() const;
+
+  /**
+   * @brief Discards all results, cancels the tasks and cancels the session. No handler will be called.
+   * @warning The session and its data will not be recoverable.
+   * @warning Using this on a session with running or pending tasks will result in undefined behavior
+   */
+  void DropSession();
+
+  /**
+   * @brief Discards the results data of the given tasks. The associated results must be completed or aborted.
+   * @param task_ids Task ids
+   * @warning The data of these results will not be recoverable. Tasks which depend on these data will fail.
+   * @warning The tasks will not be processed by the client.
+   */
+  void CleanupTasks(const std::set<std::string> &task_ids);
 };
 } // namespace Client
 } // namespace Sdk

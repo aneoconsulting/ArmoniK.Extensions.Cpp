@@ -4,8 +4,12 @@ set(PROJECT_NAME ArmoniK.SDK.Client.Test)
 project(${PROJECT_NAME})
 
 SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
+FILE(GLOB_RECURSE HEADER_CLIENT_FILES ${HEADER_FILES_DIR}/*.h)
+
+find_package(ArmoniK.Api.Client CONFIG REQUIRED)
 
 if(NOT TARGET ArmoniK.SDK.Common)
 	find_package(ArmoniK.SDK.Common CONFIG REQUIRED)
@@ -16,8 +20,12 @@ endif()
 
 add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.SDK.Common ArmoniK.SDK.Client)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common ArmoniK.SDK.Client)
 target_link_libraries(${PROJECT_NAME} PRIVATE GTest::gtest_main)
+target_include_directories(${PROJECT_NAME}
+		PUBLIC
+		"$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
+)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
 setup_options(${PROJECT_NAME})

@@ -7,8 +7,8 @@ namespace Sdk {
 namespace Client {
 
 SessionService::SessionService(const ArmoniK::Sdk::Common::Properties &properties,
-                               armonik::api::common::logger::Logger &logger)
-    : impl(new Internal::SessionServiceImpl(properties, logger)), logger_(logger.local()) {}
+                               armonik::api::common::logger::Logger &logger, const std::string &session_id)
+    : impl(new Internal::SessionServiceImpl(properties, logger, session_id)), logger_(logger.local()) {}
 
 const std::string &SessionService::getSession() const {
   ensure_valid();
@@ -40,6 +40,15 @@ void SessionService::ensure_valid() const {
     throw std::runtime_error("Use after move");
   }
 }
+void SessionService::DropSession() {
+  ensure_valid();
+  impl->DropSession();
+}
+void SessionService::CleanupTasks(const std::set<std::string> &task_ids) {
+  ensure_valid();
+  impl->CleanupTasks(task_ids);
+}
+
 SessionService::SessionService(SessionService &&) noexcept = default;
 SessionService::~SessionService() = default;
 } // namespace Client

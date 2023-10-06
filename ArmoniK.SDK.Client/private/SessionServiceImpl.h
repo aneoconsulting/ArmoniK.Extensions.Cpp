@@ -88,7 +88,7 @@ public:
    * @param properties Session properties
    */
   explicit SessionServiceImpl(const ArmoniK::Sdk::Common::Properties &properties,
-                              armonik::api::common::logger::Logger &logger);
+                              armonik::api::common::logger::Logger &logger, const std::string &session_id = "");
 
   /**
    * @brief Submits the given list of task requests using the session's task options
@@ -126,6 +126,22 @@ public:
    */
   void WaitResults(std::set<std::string> task_ids = {}, WaitBehavior waitBehavior = All,
                    const WaitOptions &options = WaitOptions());
+
+  /**
+   * @brief Discards all results, cancels the tasks and cancels the session. No handler will be called.
+   * @warning The session and its data will not be recoverable.
+   * @warning Using this on a session with running or pending tasks will result in undefined behavior
+   */
+  void DropSession();
+
+  /**
+   * @brief Discards the results data of the given tasks. The associated results must be completed or aborted.
+   * @param task_ids Task ids
+   * @warning The data of these results will not be recoverable. Tasks which depend on these data will fail.
+   * @warning If the given task has not been processed, the behavior is undefined. The tasks will not be processed by
+   * the client.
+   */
+  void CleanupTasks(const std::set<std::string> &task_ids);
 };
 } // namespace Internal
 } // namespace Client
