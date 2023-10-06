@@ -1,4 +1,5 @@
 #pragma once
+#include <climits>
 
 namespace ArmoniK {
 namespace Sdk {
@@ -11,6 +12,11 @@ struct WaitOptions {
    * @brief Time in milliseconds for result status polling
    */
   unsigned int polling_ms = 500;
+
+  /**
+   * @brief Timeout before returning in milliseconds
+   */
+  unsigned int timeout = UINT_MAX;
 };
 
 enum WaitBehavior {

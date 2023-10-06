@@ -1,6 +1,8 @@
 #pragma once
 
+#include "armonik/common/logger/logger.h"
 #include "armonik/sdk/client/IServiceInvocationHandler.h"
+#include <memory>
 
 class PythonTestWorkerHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
@@ -26,8 +28,10 @@ public:
 
 class EchoServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
+  explicit EchoServiceHandler(armonik::api::common::logger::Logger &logger);
   void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
   void HandleError(const std::exception &e, const std::string &taskId) override;
   bool received = false;
   bool is_error = false;
+  armonik::api::common::logger::LocalLogger logger;
 };

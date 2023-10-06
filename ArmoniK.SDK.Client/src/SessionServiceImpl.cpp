@@ -12,6 +12,7 @@
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskPayload.h>
+#include <chrono>
 #include <grpcpp/client_context.h>
 #include <submitter_service.grpc.pb.h>
 #include <thread>
@@ -127,6 +128,7 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 
 void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavior behavior,
                                      const WaitOptions &options) {
+  auto function_stop = std::chrono::steady_clock::now() + std::chrono::milliseconds(options.timeout);
 
   bool hasWaitList = !task_ids.empty();
   size_t initialTaskIds_size = task_ids.size();
@@ -241,7 +243,9 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
     if ((stopOnFirst && task_ids.size() < initialTaskIds_size) || (breakOnError && hasError)) {
       break;
     }
-
+    if (std::chrono::steady_clock::now() > function_stop) {
+      break;
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(options.polling_ms));
   }
 }

@@ -44,18 +44,23 @@ void AddServiceHandler::HandleError(const std::exception &e, const std::string &
   std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
 }
 void EchoServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
-  std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
-            << "\nContent : ";
-  std::cout.write(result_payload.data(), result_payload.size()) << "\nRaw : ";
+  std::stringstream ss;
+  ss << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
+     << "\nContent : ";
+  ss.write(result_payload.data(), result_payload.size()) << "\nRaw : ";
   for (char c : result_payload) {
-    std::cout << static_cast<int>(c) << ' ';
+    ss << static_cast<int>(c) << ' ';
   }
-  std::cout << std::endl;
+  ss << std::endl;
+  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
   received = true;
   is_error = false;
 }
 void EchoServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
-  std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
+  std::stringstream ss;
+  ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
+  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
   received = true;
   is_error = true;
 }
+EchoServiceHandler::EchoServiceHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}

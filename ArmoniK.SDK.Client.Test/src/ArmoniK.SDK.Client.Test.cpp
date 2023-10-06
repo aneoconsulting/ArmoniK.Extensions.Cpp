@@ -66,7 +66,7 @@ TEST(testSDK, testEcho) {
   ASSERT_EQ(args[0], 'A');
 
   // Create the handler
-  auto handler = std::make_shared<EchoServiceHandler>();
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
 
   // Submit a task
   auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("EchoService", args)}, handler);
