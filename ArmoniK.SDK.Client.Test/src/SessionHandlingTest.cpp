@@ -99,7 +99,7 @@ TEST(SessionService, reopen_test) {
   response.clear_tasks();
 
   // Send 1 task
-  auto handler = std::make_shared<EchoServiceHandler>();
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
   auto task_ids = service.Submit(generate_payloads(1), handler);
   ASSERT_EQ(task_ids.size(), 1);
 
@@ -151,7 +151,7 @@ TEST(SessionService, drop_after_done_test) {
   const auto &session = service.getSession();
   ASSERT_FALSE(session.empty());
 
-  auto handler = std::make_shared<EchoServiceHandler>();
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
   auto task_ids = service.Submit(generate_payloads(1), handler);
   ASSERT_EQ(task_ids.size(), 1);
 
@@ -197,7 +197,7 @@ TEST(SessionService, drop_before_done_test) {
   ASSERT_FALSE(session.empty());
 
   // Submit 100 tasks
-  auto handler = std::make_shared<EchoServiceHandler>();
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
   auto task_ids = service.Submit(generate_payloads(100), handler);
   ASSERT_EQ(task_ids.size(), 100);
 
@@ -225,7 +225,7 @@ TEST(SessionService, cleanup_tasks) {
   ASSERT_FALSE(session.empty());
 
   // Submit 2 tasks
-  auto handler = std::make_shared<EchoServiceHandler>();
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
   auto task_ids = service.Submit(generate_payloads(2), handler);
   ASSERT_EQ(task_ids.size(), 2);
 
@@ -261,9 +261,37 @@ TEST(SessionService, cleanup_tasks) {
       // Should be empty for the cleaned up one
       ASSERT_TRUE(download_response.data_chunk().empty());
     } else {
-      // Shouldn't be empty for the non cleaned up one
+      // Shouldn't be empty for the non-cleaned up one
       ASSERT_FALSE(download_response.data_chunk().empty());
     }
     download_response.clear_data_chunk();
   }
+}
+
+TEST(WaitOption, timeout_test) {
+  auto p = init();
+  auto properties = std::move(std::get<0>(p));
+  auto logger = std::move(std::get<1>(p));
+  ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
+  auto channel_guard = pool.GetChannel();
+
+  // Create service
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+  const auto &session = service.getSession();
+  ASSERT_FALSE(session.empty());
+
+  // Submit 500 tasks
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
+  auto task_ids = service.Submit(generate_payloads(500), handler);
+  ASSERT_EQ(task_ids.size(), 500);
+
+  // Wait with a very short delay
+  ArmoniK::Sdk::Client::WaitOptions waitOptions;
+  waitOptions.timeout = 100;
+  service.WaitResults({}, ArmoniK::Sdk::Client::All, waitOptions);
+  handler->received = false;
+
+  // Wait for the rest, should still have tasks to retrieve
+  service.WaitResults({}, ArmoniK::Sdk::Client::All);
+  ASSERT_TRUE(handler->received);
 }
