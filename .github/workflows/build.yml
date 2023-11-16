@@ -130,7 +130,6 @@ jobs:
   
       - name: Override parameters tfvars
         run: |
-          cp tools/parameters.tfvars ${{ github.workspace }}/infra/infrastructure/quick-deploy/localhost/all-in-one/parameters.tfvars
           cat ${{ github.workspace }}/infra/versions.tfvars.json | jq --arg worker "${{ steps.build.outputs.worker_img }}" --arg version "${{ steps.build.outputs.worker_version }}" '.armonik_versions.samples=$version | .armonik_images.samples+=[$worker]' > .versions.tfvars.json
           mv .versions.tfvars.json ${{ github.workspace }}/infra/versions.tfvars.json
 
@@ -145,6 +144,7 @@ jobs:
         timeout-minutes: 5
         run: |
           set -ex
+          kubectl set image deployment/compute-plane-default -n armonik worker-0=${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}
           export CPIP=$(kubectl get svc control-plane -n armonik -o custom-columns="IP:.spec.clusterIP" --no-headers=true)
           export CPPort=$(kubectl get svc control-plane -n armonik -o custom-columns="PORT:.spec.ports[*].port" --no-headers=true)
           docker run --rm -t --network host -e Grpc__EndPoint=http://$CPIP:$CPPort -e WorkerLib__Version="${{ needs.versionning.outputs.version}}" "${{ steps.build.outputs.client_img}}:${{ needs.versionning.outputs.version}}"
