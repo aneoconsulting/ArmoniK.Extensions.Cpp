@@ -139,6 +139,7 @@ jobs:
         with:
           working-directory: ${{ github.workspace }}/infra
           type: localhost
+          core-version: 0.19.3
 
       - name: Run Client tests
         timeout-minutes: 5
