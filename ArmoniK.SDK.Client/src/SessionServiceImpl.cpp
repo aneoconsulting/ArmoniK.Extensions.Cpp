@@ -1,9 +1,11 @@
 #include "SessionServiceImpl.h"
 #include "armonik/sdk/client/IServiceInvocationHandler.h"
+#include <armonik/client/results/ResultsClient.h>
 #include <armonik/client/results_common.pb.h>
 #include <armonik/client/results_service.grpc.pb.h>
+#include <armonik/client/sessions/SessionsClient.h>
 #include <armonik/client/sessions_service.grpc.pb.h>
-#include <armonik/client/submitter/ResultsClient.h>
+#include <armonik/client/tasks/TasksClient.h>
 #include <armonik/client/tasks_service.grpc.pb.h>
 #include <armonik/common/exceptions/ArmoniKApiException.h>
 #include <armonik/common/exceptions/ArmoniKTaskError.h>
@@ -70,40 +72,65 @@ const std::string &SessionServiceImpl::getSession() const { return session; }
 SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
                            std::shared_ptr<IServiceInvocationHandler> handler,
                            const Common::TaskOptions &task_options) {
-  std::vector<armonik::api::grpc::v1::TaskRequest> definitions;
-  definitions.reserve(task_requests.size());
 
-  // Creates the needed result ids
-  auto result_ids = generate_result_ids(task_requests.size());
+  std::vector<armonik::api::common::TaskCreation> task_creations;
+  task_creations.reserve(task_requests.size());
 
   for (size_t i = 0; i < task_requests.size(); i++) {
     armonik::api::grpc::v1::TaskRequest request;
+    std::map<std::string, std::string> name_payload;
     // Serialize the request in an ArmoniK format
     *request.mutable_payload() = task_requests[i].Serialize();
-    // One result per task
-    request.add_expected_output_keys(std::move(result_ids[i]));
     // Set the data dependencies
     request.mutable_data_dependencies()->Add(task_requests[i].data_dependencies.begin(),
                                              task_requests[i].data_dependencies.end());
 
-    definitions.push_back(std::move(request));
+    armonik::api::common::TaskCreation creation{};
+
+    auto result_payload = channel_pool.WithChannel([&](auto channel) {
+      auto client = armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel));
+      auto result = client.create_results_metadata(session, std::vector<std::string>{"result"})["result"];
+      auto payload = client.create_results(
+          session, std::vector<std::pair<std::string, std::string>>{
+                       {task_requests[i].method_name, request.payload()}})[task_requests[i].method_name];
+
+      return std::pair<std::string, std::string>{result, payload};
+    });
+
+    // Set payload ID
+    creation.payload_id = std::move(result_payload.second);
+    // One result per task
+    creation.expected_output_keys.push_back(std::move(result_payload.first));
+    creation.data_dependencies.insert(creation.data_dependencies.end(), task_requests[i].data_dependencies.begin(),
+                                      task_requests[i].data_dependencies.end());
+
+    task_creations.push_back(std::move(creation));
   }
+
   auto reply = channel_pool.WithChannel([&](auto channel) {
-    return armonik::api::client::SubmitterClient(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel))
-        .create_tasks_async(session, static_cast<armonik::api::grpc::v1::TaskOptions>(task_options), definitions)
-        .get();
+    return armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
+        .submit_tasks(session, task_creations, static_cast<armonik::api::grpc::v1::TaskOptions>(task_options));
   });
 
-  auto &list = *reply.mutable_creation_status_list()->mutable_creation_statuses();
+  std::stringstream message;
+  message << "Task ID " << reply[0].task_id << std::endl;
+  logger_.log(armonik::api::common::logger::Level::Error, message.str());
+
   std::vector<std::string> task_ids;
   task_ids.reserve(task_requests.size());
   {
     std::lock_guard<std::mutex> lock(maps_mutex);
-    for (auto &&t : list) {
-      task_ids.push_back(t.task_info().task_id());
-      taskId_resultId[t.task_info().task_id()] = t.task_info().expected_output_keys(0);
-      resultId_taskId[t.task_info().expected_output_keys(0)] = std::move(*t.mutable_task_info()->mutable_task_id());
-      result_handlers[t.task_info().expected_output_keys(0)] = handler;
+    for (auto &&t : reply) {
+      task_ids.push_back(std::move(t.task_id));
+    }
+    tid_rids = channel_pool.WithChannel([&](auto channel) {
+      return armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
+          .get_result_ids(task_ids);
+    });
+    for (auto &&tid_rid : tid_rids) {
+      taskId_resultId[task_ids[0]] = tid_rid.second[0];
+      resultId_taskId[tid_rid.second[0]] = tid_rid.first;
+      result_handlers[tid_rid.second[0]] = handler;
     }
   }
   return task_ids;
@@ -114,7 +141,7 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
     : taskOptions(properties.taskOptions), channel_pool(properties, logger), logger_(logger.local()) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](auto &&channel) {
-    return armonik::api::client::SubmitterClient(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel))
+    return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
         .create_session(static_cast<armonik::api::grpc::v1::TaskOptions>(properties.taskOptions),
                         {properties.taskOptions.partition_id});
   })
@@ -155,37 +182,42 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
     bool hasError = false;
     // Ask for the results statuses
     auto statuses = channel_pool.WithChannel([&](auto &&channel) {
-      return armonik::api::client::SubmitterClient(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel))
-          .get_result_status(session, resultIds);
+      std::vector<armonik::api::grpc::v1::results::ResultRaw> raws;
+      raws.reserve(resultIds.size());
+      for (auto &&resultId : resultIds) {
+        auto raw = armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                       .get_result(resultId);
+        raws.push_back(raw);
+      }
+      return raws;
     });
 
     std::vector<std::pair<std::string, std::string>> done;
 
     // For each status
-    for (auto &&rid_status : statuses) {
+    for (auto &&result_raw : statuses) {
       std::shared_ptr<IServiceInvocationHandler> handler;
       std::string task_id;
-      if (rid_status.second == armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED ||
-          rid_status.second == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
+      if (result_raw.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED ||
+          result_raw.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
         // Get the handler and taskid information
         {
           std::lock_guard<std::mutex> _(maps_mutex);
-          handler = result_handlers.at(rid_status.first);
-          task_id = resultId_taskId.at(rid_status.first);
+          handler = result_handlers.at(result_raw.result_id());
+          task_id = resultId_taskId.at(result_raw.result_id());
         }
 
         armonik::api::grpc::v1::ResultRequest resultRequest;
         resultRequest.set_session(session);
-        resultRequest.set_result_id(rid_status.first);
+        resultRequest.set_result_id(result_raw.result_id());
 
         try {
           // Get the finished result
           auto payload = channel_pool.WithChannel([&](auto &&channel) {
-            return armonik::api::client::SubmitterClient(armonik::api::grpc::v1::submitter::Submitter::NewStub(channel))
-                .get_result_async(resultRequest)
-                .get();
+            return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                .download_result_data(session, result_raw.result_id());
           });
-          if (rid_status.second == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
+          if (result_raw.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
             // The above command should have failed !
             throw armonik::api::common::exceptions::ArmoniKApiException(
                 "Result is aborted and shouldn't have been retrieved");
@@ -209,18 +241,18 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           logger_.log(armonik::api::common::logger::Level::Error, message.str());
           handler->HandleError(e, task_id);
         }
-        done.emplace_back(task_id, rid_status.first);
-      } else if (rid_status.second == armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND) {
+        done.emplace_back(task_id, result_raw.result_id());
+      } else if (result_raw.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND) {
         std::stringstream message;
-        message << "Result " << rid_status.first << " not found" << std::endl;
+        message << "Result " << result_raw.result_id() << " not found" << std::endl;
         logger_.log(armonik::api::common::logger::Level::Info, message.str());
         {
           std::lock_guard<std::mutex> _(maps_mutex);
-          if (resultId_taskId.find(rid_status.first) != resultId_taskId.end()) {
-            task_id = resultId_taskId.at(rid_status.first);
+          if (resultId_taskId.find(result_raw.result_id()) != resultId_taskId.end()) {
+            task_id = resultId_taskId.at(result_raw.result_id());
           }
         }
-        done.emplace_back(task_id, rid_status.first);
+        done.emplace_back(task_id, result_raw.result_id());
       }
     }
 
@@ -294,7 +326,7 @@ void SessionServiceImpl::DropSession() {
       }
       // Delete results
       try {
-        results.delete_results(session, ids);
+        results.delete_results_data(session, ids);
       } catch (const std::exception &e) {
         logger_.log(armonik::api::common::logger::Level::Info,
                     std::string("Couldn't completely destroy batch of results : ") + e.what());
@@ -365,7 +397,7 @@ void SessionServiceImpl::CleanupTasks(const std::set<std::string> &task_ids) {
       for (auto &&tid_rids : response.task_results()) {
         resultids.insert(resultids.end(), tid_rids.result_ids().begin(), tid_rids.result_ids().end());
       }
-      results.delete_results(session, resultids);
+      results.delete_results_data(session, resultids);
     });
   }
 }
