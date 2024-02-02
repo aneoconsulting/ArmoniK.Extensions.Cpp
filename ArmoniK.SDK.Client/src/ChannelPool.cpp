@@ -3,6 +3,7 @@
 #include <armonik/common/options/ControlPlane.h>
 #include <armonik/common/utils/ChannelArguments.h>
 #include <grpcpp/create_channel.h>
+#include <fstream>
 #include <utility>
 
 namespace ArmoniK {
@@ -33,9 +34,22 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   if (scheme_delim != std::string::npos) {
     endpoint = endpoint.substr(scheme_delim + 3);
   }
-  // TODO Handle TLS/mTLS
+  // TODO Handle TLS
+  const auto &control_plane = properties_.configuration.get_control_plane();
+  const auto get_key = [](const absl::string_view &path) -> std::string {
+    std::ifstream file(path.data(), std::ios::in | std::ios::binary);
+    std::ostringstream sstr;
+    sstr << file.rdbuf();
+    return sstr.str();
+  };
+  auto ca_cert_pem = get_key(control_plane.getCaCertPemPath());
+  auto user_key_pem = get_key(control_plane.getUserKeyPemPath());
+  auto user_cert_pem = get_key(control_plane.getUserCertPemPath());
   channel = grpc::CreateCustomChannel(
-      endpoint, grpc::InsecureChannelCredentials(),
+      endpoint,
+      control_plane.isSslValidation() ? grpc::SslCredentials(grpc::SslCredentialsOptions{
+                                            std::move(ca_cert_pem), std::move(user_key_pem), std::move(user_cert_pem)})
+                                      : grpc::InsecureChannelCredentials(),
       armonik::api::common::utils::getChannelArguments(
           static_cast<armonik::api::common::utils::Configuration>(properties_.configuration)));
   logger_.log(armonik::api::common::logger::Level::Debug, "Created and acquired new channel from pool");
