@@ -1,5 +1,5 @@
 # Start with the latest Alpine base image for the build stage
-FROM alpine AS builder
+FROM alpine:3.18.6 AS builder
 
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
@@ -57,7 +57,7 @@ WORKDIR /app/build
 ARG CLIENT_VERSION
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" -DVERSION="${CLIENT_VERSION}" /app/source/ && make -j $(nproc) install && make clean
 
-FROM alpine as runner
+FROM alpine:3.18.6 as runner
 
 RUN apk update && apk add --no-cache \
     c-ares \
