@@ -78,7 +78,6 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
   for (size_t i = 0; i < task_requests.size(); i++) {
     armonik::api::grpc::v1::TaskRequest request;
-    std::map<std::string, std::string> name_payload;
     // Serialize the request in an ArmoniK format
     *request.mutable_payload() = task_requests[i].Serialize();
     // Set the data dependencies
@@ -104,7 +103,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
     creation.data_dependencies.insert(creation.data_dependencies.end(), task_requests[i].data_dependencies.begin(),
                                       task_requests[i].data_dependencies.end());
 
-    task_creations.push_back(std::move(creation));
+    task_creations.emplace_back(std::move(creation));
   }
 
   auto reply = channel_pool.WithChannel([&](auto channel) {
@@ -121,7 +120,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   {
     std::lock_guard<std::mutex> lock(maps_mutex);
     for (auto &&t : reply) {
-      task_ids.push_back(std::move(t.task_id));
+      task_ids.emplace_back(std::move(t.task_id));
     }
     tid_rids = channel_pool.WithChannel([&](auto channel) {
       return armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
@@ -184,11 +183,10 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
     auto statuses = channel_pool.WithChannel([&](auto &&channel) {
       std::vector<armonik::api::grpc::v1::results::ResultRaw> raws;
       raws.reserve(resultIds.size());
-      for (auto &&resultId : resultIds) {
-        auto raw = armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-                       .get_result(resultId);
-        raws.push_back(raw);
-      }
+      std::transform(resultIds.cbegin(), resultIds.cend(), std::back_inserter(raws), [channel](auto &&resultId) {
+        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+            .get_result(resultId);
+      });
       return raws;
     });
 
