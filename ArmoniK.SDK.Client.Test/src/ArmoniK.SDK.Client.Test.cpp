@@ -343,7 +343,8 @@ TEST(testSDK, testStressTest) {
     std::memcpy(beginPtr, input.data(), nbInputBytes);
     return {outputVec.data(), outputVec.size()};
   }();
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("compute_workload", std::move(payload))}, handler);
+  const std::vector<ArmoniK::Sdk::Common::TaskPayload> tasks_payload(nbTasks, {"compute_workload", std::move(payload)});
+  const auto tasks = service.Submit(tasks_payload, handler);
 
   ASSERT_FALSE(tasks.empty());
 
