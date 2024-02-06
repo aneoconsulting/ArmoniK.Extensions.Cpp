@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <armonik/sdk/worker/ServiceBase.h>
 #include <chrono>
+#include <cstring>
 #include <iostream>
 #include <numeric>
 #include <vector>
@@ -27,7 +28,36 @@ public:
     std::cout << "StressTest leaving session: " << session_id << '\n';
     delete session_id;
   }
-  std::string call(void *session_ctx, const std::string &name, const std::string &input) final { return std::string(); }
+  std::string call(void *, const std::string &name, const std::string &input) final {
+    if (name == "compute_workload") {
+      const auto resultWorkload = [&]() -> std::vector<double> {
+        std::size_t nbOutputBytes = 0;
+        std::uint32_t workLoadTimeInMs = 0;
+        std::size_t sizeVector = 0;
+
+        auto beginPtr = input.data();
+        std::memcpy(&nbOutputBytes, beginPtr, sizeof(std::size_t));
+
+        beginPtr += sizeof(std::size_t);
+        std::memcpy(&workLoadTimeInMs, beginPtr, sizeof(std::uint32_t));
+
+        beginPtr += sizeof(std::uint32_t);
+        std::memcpy(&sizeVector, beginPtr, sizeof(std::size_t));
+
+        beginPtr += sizeof(std::size_t);
+        std::vector<double> inputWorkload(sizeVector, 0.0);
+        std::memcpy(inputWorkload.data(), beginPtr, sizeVector * sizeof(double));
+        return compute_workload(inputWorkload, nbOutputBytes, workLoadTimeInMs);
+      }();
+      const auto resultSize = resultWorkload.size();
+      std::vector<char> result;
+      result.resize(sizeof(std::size_t) + sizeof(double) * result.size(), 0);
+      std::memcpy(result.data(), &resultSize, sizeof(resultSize));
+      std::memcpy(result.data() + sizeof(resultSize), resultWorkload.data(), sizeof(double) * resultSize);
+      return {result.data(), result.size()};
+    }
+    throw std::runtime_error("Unknown method name: " + name);
+  }
   ~StressTest() final = default;
 
   std::vector<double> compute_workload(const std::vector<double> &input, const std::size_t nbOutputBytes,
