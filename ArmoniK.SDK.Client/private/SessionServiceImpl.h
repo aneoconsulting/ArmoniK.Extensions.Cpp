@@ -2,7 +2,7 @@
 
 #include "ChannelPool.h"
 #include "armonik/sdk/client/WaitBehavior.h"
-#include <armonik/client/submitter/SubmitterClient.h>
+#include <armonik/client/results/ResultsClient.h>
 #include <armonik/sdk/common/TaskOptions.h>
 #include <mutex>
 #include <results_service.grpc.pb.h>
@@ -57,6 +57,11 @@ private:
    * @brief Map between result id and task id
    */
   std::map<std::string, std::string> resultId_taskId;
+
+  /**
+   * @brief Map between the task id to its result ids
+   */
+  std::map<std::string, std::vector<std::string>> tid_rids;
 
   /**
    * @brief Map between a result_id and it's handler

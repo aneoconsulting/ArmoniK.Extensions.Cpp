@@ -1,6 +1,7 @@
 #pragma once
 
 #include <armonik/sdk/worker/ServiceBase.h>
+#include <cstdint>
 #include <iostream>
 #include <stdexcept>
 namespace ArmoniK {
