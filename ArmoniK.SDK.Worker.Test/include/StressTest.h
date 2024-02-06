@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <armonik/sdk/worker/ServiceBase.h>
 #include <chrono>
+#include <iostream>
 #include <numeric>
 #include <vector>
 
