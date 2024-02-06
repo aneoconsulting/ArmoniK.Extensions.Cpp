@@ -51,9 +51,8 @@ public:
       }();
       const auto resultSize = resultWorkload.size();
       std::vector<char> result;
-      result.resize(sizeof(std::size_t) + sizeof(double) * result.size(), 0);
-      std::memcpy(result.data(), &resultSize, sizeof(resultSize));
-      std::memcpy(result.data() + sizeof(resultSize), resultWorkload.data(), sizeof(double) * resultSize);
+      result.resize(sizeof(double) * resultSize, 0);
+      std::memcpy(result.data(), resultWorkload.data(), sizeof(double) * resultSize);
       return {result.data(), result.size()};
     }
     throw std::runtime_error("Unknown method name: " + name);
