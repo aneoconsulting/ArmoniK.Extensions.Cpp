@@ -10,6 +10,7 @@
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskPayload.h>
+#include <cmath>
 
 #include "End2EndHandlers.h"
 
@@ -288,4 +289,64 @@ TEST(testSDK, testAddFloat) {
   //}
 
   std::cout << "Done" << std::endl;
+}
+
+TEST(testSDK, testStressTest) {
+  std::cout << "Doing some computation!" << std::endl;
+  // Load configuration from file and environment
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  if (config.get("Worker__Type").empty()) {
+    config.set("Worker__Type", "End2EndTest");
+  }
+
+  // Create the task options
+  ArmoniK::Sdk::Common::TaskOptions session_task_options(
+      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService");
+  session_task_options.max_retries = 1;
+
+  // Create the properties
+  ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
+
+  // Create the logger
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true)};
+
+  // Create the session service
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  // Get the created session id
+  std::cout << "Session : " << service.getSession() << std::endl;
+
+  // Create the handler
+  auto handler = std::make_shared<StressTestServiceHandler>(logger);
+
+  const std::uint32_t nbTasks = 100, nbInputBytes = 64000, nbOutputBytes = 8, workloadTimeInMs = 1;
+
+  std::vector<std::string> task_ids;
+  auto payload = [nbInputBytes, nbOutputBytes, workloadTimeInMs]() -> std::string {
+    const std::vector<double> input(nbInputBytes / sizeof(double),
+                                    std::pow(42.0 * 8.0 / static_cast<double>(nbInputBytes), 1.0 / 3.0));
+    std::vector<char> outputVec(nbInputBytes + sizeof(nbOutputBytes) * 3, 0);
+    auto beginPtr = outputVec.data();
+    std::memcpy(beginPtr, &nbOutputBytes, sizeof(nbOutputBytes));
+
+    beginPtr += sizeof(nbOutputBytes);
+    std::memcpy(beginPtr, &workloadTimeInMs, sizeof(workloadTimeInMs));
+
+    beginPtr += sizeof(workloadTimeInMs);
+    std::memcpy(beginPtr, &nbInputBytes, sizeof(nbInputBytes));
+
+    beginPtr += sizeof(nbInputBytes);
+    std::memcpy(beginPtr, input.data(), nbInputBytes);
+    return {outputVec.data(), outputVec.size()};
+  }();
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("compute_workload", std::move(payload))}, handler);
+
+  ASSERT_FALSE(tasks.empty());
+
+  // Wait for task completion
+  service.WaitResults();
 }
