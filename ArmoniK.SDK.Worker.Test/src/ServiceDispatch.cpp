@@ -4,6 +4,7 @@
 
 #include "AdditionService.h"
 #include "EchoService.h"
+#include "StressTest.h"
 
 extern "C" void *armonik_create_service(const char *service_namespace, const char *service_name) {
   std::cout << "Creating service < " << service_namespace << "::" << service_name << " >" << std::endl;
@@ -11,6 +12,8 @@ extern "C" void *armonik_create_service(const char *service_namespace, const cha
     return new ArmoniK::Sdk::Worker::Test::AdditionService();
   } else if (std::strcmp(service_name, "EchoService") == 0) {
     return new ArmoniK::Sdk::Worker::Test::EchoService();
+  } else if (std::strcmp(service_name, "StressTest") == 0) {
+    return new ArmoniK::Sdk::Worker::Test::StressTest();
   }
 
   std::cout << "Unknown service < " << service_namespace << "::" << service_name << " >" << std::endl;
