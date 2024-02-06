@@ -64,3 +64,21 @@ void EchoServiceHandler::HandleError(const std::exception &e, const std::string 
   is_error = true;
 }
 EchoServiceHandler::EchoServiceHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}
+
+StressTestServiceHandler::StressTestServiceHandler(armonik::api::common::logger::Logger &logger)
+    : logger(logger.local()) {}
+void StressTestServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  std::stringstream ss;
+  std::vector<double> result(result_payload.size() / sizeof(double), 0.0);
+  std::memcpy(result.data(), result_payload.data(), result_payload.size());
+  ss << "Handle response: received result of size: " << result_payload.size() << " for taskId " << taskId << "\nRaw: ";
+  ss.write(result_payload.data(), result_payload.size()) << "\nContent: ";
+  std::for_each(result.cbegin(), result.cend(), [&ss](const auto &v) { ss << v << ' '; });
+  ss << std::endl;
+  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
+}
+void StressTestServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+  std::stringstream ss;
+  ss << "Handle ERROR: Error for task id " << taskId << ": " << e.what() << '\n';
+  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
+}
