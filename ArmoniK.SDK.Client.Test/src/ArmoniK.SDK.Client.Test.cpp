@@ -331,7 +331,6 @@ TEST(testSDK, testStressTest) {
             << "number of output bytes: " << nbOutputBytes << '\n'
             << "workload time in milliseconds: " << workloadTimeInMs << std::endl;
 
-  std::vector<std::string> task_ids;
   auto payload = [nbInputBytes, nbOutputBytes, workloadTimeInMs]() -> std::string {
     const std::vector<double> input(nbInputBytes / sizeof(double),
                                     std::pow(42.0 * 8.0 / static_cast<double>(nbInputBytes), 1.0 / 3.0));
