@@ -303,8 +303,8 @@ TEST(testSDK, testStressTest) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService");
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), "End2EndTest", "StressTest");
   session_task_options.max_retries = 1;
 
   // Create the properties
