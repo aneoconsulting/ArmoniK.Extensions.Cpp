@@ -70,6 +70,9 @@ StressTestServiceHandler::StressTestServiceHandler(armonik::api::common::logger:
 void StressTestServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
   std::stringstream ss;
   nb_output_bytes = result_payload.size();
+  if (nb_output_bytes == 0) {
+    is_ok = false;
+  }
   std::vector<double> result(result_payload.size() / sizeof(double), 0.0);
   std::memcpy(result.data(), result_payload.data(), result_payload.size());
   ss << "Handle response: received result of size: " << result_payload.size() << " for taskId " << taskId << "\nRaw: ";
