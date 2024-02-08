@@ -38,6 +38,9 @@ public:
 
 class StressTestServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
+  std::uint32_t nb_output_bytes{0};
+  bool is_ok{true};
+
   explicit StressTestServiceHandler(armonik::api::common::logger::Logger &logger);
   virtual ~StressTestServiceHandler() noexcept final = default;
 
