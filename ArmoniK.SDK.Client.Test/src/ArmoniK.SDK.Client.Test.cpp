@@ -325,6 +325,12 @@ TEST(testSDK, testStressTest) {
 
   const std::uint32_t nbTasks = 100, nbInputBytes = 64000, nbOutputBytes = 8, workloadTimeInMs = 1;
 
+  std::cout << "StressTest default parameters:\n"
+            << "number of tasks: " << nbTasks << '\n'
+            << "number of input bytes: " << nbInputBytes << '\n'
+            << "number of output bytes: " << nbOutputBytes << '\n'
+            << "workload time in milliseconds: " << workloadTimeInMs << std::endl;
+
   std::vector<std::string> task_ids;
   auto payload = [nbInputBytes, nbOutputBytes, workloadTimeInMs]() -> std::string {
     const std::vector<double> input(nbInputBytes / sizeof(double),
@@ -347,7 +353,13 @@ TEST(testSDK, testStressTest) {
   const auto tasks = service.Submit(tasks_payload, handler);
 
   ASSERT_FALSE(tasks.empty());
+  ASSERT_EQ(tasks.size(), nbTasks);
 
   // Wait for task completion
   service.WaitResults();
+
+  ASSERT_TRUE(handler->is_ok);
+  ASSERT_EQ(handler->nb_output_bytes, nbOutputBytes);
+
+  std::cout << "Done" << std::endl;
 }
