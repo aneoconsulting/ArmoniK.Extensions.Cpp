@@ -1,8 +1,10 @@
 #pragma once
 
-#include "armonik/common/logger/logger.h"
-#include "armonik/sdk/client/IServiceInvocationHandler.h"
+#include <armonik/common/logger/logger.h>
+#include <armonik/sdk/client/IServiceInvocationHandler.h>
+#include <cstdint>
 #include <memory>
+#include <vector>
 
 class PythonTestWorkerHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
@@ -38,6 +40,7 @@ public:
 
 class StressTestServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
+  std::vector<double> result;
   std::uint32_t nb_output_bytes{0};
   bool is_ok{true};
 
