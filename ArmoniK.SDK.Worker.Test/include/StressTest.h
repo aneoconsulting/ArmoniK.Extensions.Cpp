@@ -70,16 +70,14 @@ public:
     }
 
     // std::transform_reduce is in C++17, here in C++14
-    const auto result = [&]() -> double {
-      auto tmp_local = input;
-      std::transform(input.cbegin(), input.cend(), tmp_local.begin(),
-                     [](const double in) -> double { return in * in * in; });
-      return std::accumulate(tmp_local.cbegin(), tmp_local.cend(), 0.0);
-    }();
     std::vector<double> output(nbOutputBytes / 8, 0);
     const std::size_t output_size = output.size();
     const auto double_output_size = static_cast<double>(output_size);
 
+    double result = 0.;
+    for (auto x : input) {
+      result += x * x * x;
+    }
     const auto end = clock::now() + milliseconds(workLoadTimeInMs);
     while (clock::now() <= end) {
       for (std::size_t i = 0; i < output_size; ++i) {
