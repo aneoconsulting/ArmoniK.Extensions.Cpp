@@ -25,7 +25,7 @@ public:
   }
   void leave_session(void *session_ctx) final {
     const auto session_id = static_cast<std::string *>(session_ctx);
-    std::cout << "StressTest leaving session: " << session_id << '\n';
+    std::cout << "StressTest leaving session: " << *session_id << '\n';
     delete session_id;
   }
   std::string call(void *, const std::string &name, const std::string &input) final {

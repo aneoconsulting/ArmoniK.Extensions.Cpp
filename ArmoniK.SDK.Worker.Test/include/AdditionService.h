@@ -20,12 +20,12 @@ namespace Test {
 class AdditionService : ServiceBase {
 public:
   void *enter_session(const char *session_id) override {
-    std::cout << "AdditionService enter session" << *session_id << std::endl;
+    std::cout << "AdditionService enter session: " << session_id << std::endl;
     return new std::string(session_id);
   }
   void leave_session(void *session_ctx) override {
     auto sessionId = static_cast<std::string *>(session_ctx);
-    std::cout << "AdditionService leave session" << *sessionId << std::endl;
+    std::cout << "AdditionService leave session: " << *sessionId << std::endl;
     delete sessionId;
   }
   std::string call(void *, const std::string &name, const std::string &input) override {
@@ -46,7 +46,7 @@ public:
       std::memcpy(output, &c, sizeof(float));
       return {output, sizeof(float)};
     }
-    throw std::runtime_error("Unknown method name" + name);
+    throw std::runtime_error("Unknown method name " + name);
   }
 
   /**
