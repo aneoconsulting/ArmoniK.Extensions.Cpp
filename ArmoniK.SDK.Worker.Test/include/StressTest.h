@@ -69,7 +69,6 @@ public:
       return std::vector<double>{};
     }
 
-    // std::transform_reduce is in C++17, here in C++14
     std::vector<double> output(nbOutputBytes / 8, 0);
     const std::size_t output_size = output.size();
     const auto double_output_size = static_cast<double>(output_size);
