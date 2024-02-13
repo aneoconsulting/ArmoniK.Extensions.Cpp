@@ -31,20 +31,21 @@ public:
   std::string call(void *, const std::string &name, const std::string &input) final {
     if (name == "compute_workload") {
       const auto resultWorkload = [&]() -> std::vector<double> {
+        const std::size_t sizeofNbOutput = sizeof(std::uint32_t);
         std::uint32_t nbOutputBytes = 0;
         std::uint32_t workLoadTimeInMs = 0;
         std::uint32_t nbInputBytes = 0;
 
         auto beginPtr = input.data();
-        std::memcpy(&nbOutputBytes, beginPtr, sizeof(nbOutputBytes));
+        std::memcpy(&nbOutputBytes, beginPtr, sizeofNbOutput);
 
-        beginPtr += sizeof(std::size_t);
-        std::memcpy(&workLoadTimeInMs, beginPtr, sizeof(workLoadTimeInMs));
+        beginPtr += sizeofNbOutput;
+        std::memcpy(&workLoadTimeInMs, beginPtr, sizeofNbOutput);
 
-        beginPtr += sizeof(std::uint32_t);
-        std::memcpy(&nbInputBytes, beginPtr, sizeof(nbInputBytes));
+        beginPtr += sizeofNbOutput;
+        std::memcpy(&nbInputBytes, beginPtr, sizeofNbOutput);
 
-        beginPtr += sizeof(std::size_t);
+        beginPtr += sizeofNbOutput;
         std::vector<double> inputWorkload(nbInputBytes, 0.0);
         std::memcpy(inputWorkload.data(), beginPtr, nbInputBytes * sizeof(double));
         return compute_workload(inputWorkload, nbOutputBytes, workLoadTimeInMs);
