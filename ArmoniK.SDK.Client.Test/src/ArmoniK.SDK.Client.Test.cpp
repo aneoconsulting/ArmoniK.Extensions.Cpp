@@ -26,6 +26,38 @@ template <typename T> std::string StrSerialize(T a, T b) {
   return std::string(payload_val, sizeof(T) * 2);
 }
 
+std::vector<double> compute_workload(const std::vector<double> &input, const std::size_t nbOutputBytes,
+                                     const std::uint32_t workLoadTimeInMs) {
+  using clock = std::chrono::high_resolution_clock;
+  using milliseconds = std::chrono::milliseconds;
+
+  if (input.empty() || nbOutputBytes <= 0) {
+    return std::vector<double>{};
+  }
+
+  // std::transform_reduce is in C++17, here in C++14
+  double result = 0.;
+  for (auto x : input) {
+    result += x * x * x;
+  }
+  std::vector<double> output(nbOutputBytes / 8, 0);
+  const std::size_t output_size = output.size();
+
+  const auto end = clock::now() + milliseconds(workLoadTimeInMs);
+  while (clock::now() <= end) {
+    for (std::size_t i = 0; i < output_size; ++i) {
+      output[i] = result / static_cast<double>(output_size);
+    }
+  }
+  return output;
+}
+
+template <typename T> void serialize_item(char *&outputVec, const T *item, const std::size_t nbItem) {
+  std::memcpy(outputVec, item, sizeof(T) * nbItem);
+  outputVec += sizeof(T) * nbItem;
+}
+template <typename T> void serialize_item(char *&outputVec, const T &item) { serialize_item(outputVec, &item, 1); }
+
 TEST(testSDK, testEcho) {
   std::cout << "Hello, World!" << std::endl;
   // Load configuration from file and environment
@@ -328,34 +360,6 @@ TEST(testSDK, testStressTest) {
 
   const std::uint32_t nbTasks = 100, nbInputBytes = 64000, nbOutputBytes = 8, workloadTimeInMs = 1;
 
-  const auto compute_workload = [](const std::vector<double> &input, const std::size_t nbOutputBytes,
-                                   const std::uint32_t workLoadTimeInMs) -> std::vector<double> {
-    using clock = std::chrono::high_resolution_clock;
-    using milliseconds = std::chrono::milliseconds;
-
-    if (input.empty() || nbOutputBytes <= 0) {
-      return std::vector<double>{};
-    }
-
-    // std::transform_reduce is in C++17, here in C++14
-    const auto result = [&]() -> double {
-      auto tmp_local = input;
-      std::transform(input.cbegin(), input.cend(), tmp_local.begin(),
-                     [](const double in) -> double { return in * in * in; });
-      return std::accumulate(tmp_local.cbegin(), tmp_local.cend(), 0.0);
-    }();
-    std::vector<double> output(nbOutputBytes / 8, 0);
-    const std::size_t output_size = output.size();
-    const auto double_output_size = static_cast<double>(output_size);
-
-    const auto end = clock::now() + milliseconds(workLoadTimeInMs);
-    while (clock::now() <= end) {
-      for (std::size_t i = 0; i < output_size; ++i) {
-        output[i] = result / double_output_size;
-      }
-    }
-    return output;
-  };
   const std::vector<double> input(nbInputBytes / sizeof(double),
                                   std::pow(42.0 * 8.0 / static_cast<double>(nbInputBytes), 1.0 / 3.0));
   std::cout << "StressTest default parameters:\n"
@@ -367,16 +371,13 @@ TEST(testSDK, testStressTest) {
   auto payload = [nbInputBytes, nbOutputBytes, workloadTimeInMs, &input]() -> std::string {
     std::vector<char> outputVec(nbInputBytes + sizeof(nbOutputBytes) * 3, 0);
     auto beginPtr = outputVec.data();
-    std::memcpy(beginPtr, &nbOutputBytes, sizeof(nbOutputBytes));
+    serialize_item(beginPtr, nbOutputBytes);
 
-    beginPtr += sizeof(nbOutputBytes);
-    std::memcpy(beginPtr, &workloadTimeInMs, sizeof(workloadTimeInMs));
+    serialize_item(beginPtr, workloadTimeInMs);
 
-    beginPtr += sizeof(workloadTimeInMs);
-    std::memcpy(beginPtr, &nbInputBytes, sizeof(nbInputBytes));
+    serialize_item(beginPtr, nbInputBytes);
 
-    beginPtr += sizeof(nbInputBytes);
-    std::memcpy(beginPtr, input.data(), nbInputBytes);
+    serialize_item(beginPtr, input.data(), nbInputBytes / sizeof(double));
     return {outputVec.data(), outputVec.size()};
   }();
   const std::vector<ArmoniK::Sdk::Common::TaskPayload> tasks_payload(nbTasks, {"compute_workload", std::move(payload)});
