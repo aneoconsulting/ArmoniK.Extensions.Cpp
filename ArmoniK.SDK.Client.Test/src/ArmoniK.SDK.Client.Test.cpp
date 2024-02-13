@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+#include <algorithm>
 #include <armonik/common/logger/formatter.h>
 #include <armonik/common/logger/logger.h>
 #include <armonik/common/logger/writer.h>
@@ -10,6 +11,9 @@
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskPayload.h>
+#include <chrono>
+#include <cmath>
+#include <numeric>
 
 #include "End2EndHandlers.h"
 
@@ -286,6 +290,110 @@ TEST(testSDK, testAddFloat) {
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));
   //}
+
+  std::cout << "Done" << std::endl;
+}
+
+TEST(testSDK, testStressTest) {
+  std::cout << "Doing some computation!" << std::endl;
+  // Load configuration from file and environment
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  if (config.get("Worker__Type").empty()) {
+    config.set("Worker__Type", "End2EndTest");
+  }
+
+  // Create the task options
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), "End2EndTest", "StressTest");
+  session_task_options.max_retries = 1;
+
+  // Create the properties
+  ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
+
+  // Create the logger
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true)};
+
+  // Create the session service
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  // Get the created session id
+  std::cout << "Session : " << service.getSession() << std::endl;
+
+  // Create the handler
+  auto handler = std::make_shared<StressTestServiceHandler>(logger);
+
+  const std::uint32_t nbTasks = 100, nbInputBytes = 64000, nbOutputBytes = 8, workloadTimeInMs = 1;
+
+  const auto compute_workload = [](const std::vector<double> &input, const std::size_t nbOutputBytes,
+                                   const std::uint32_t workLoadTimeInMs) -> std::vector<double> {
+    using clock = std::chrono::high_resolution_clock;
+    using milliseconds = std::chrono::milliseconds;
+
+    if (input.empty() || nbOutputBytes <= 0) {
+      return std::vector<double>{};
+    }
+
+    // std::transform_reduce is in C++17, here in C++14
+    const auto result = [&]() -> double {
+      auto tmp_local = input;
+      std::transform(input.cbegin(), input.cend(), tmp_local.begin(),
+                     [](const double in) -> double { return in * in * in; });
+      return std::accumulate(tmp_local.cbegin(), tmp_local.cend(), 0.0);
+    }();
+    std::vector<double> output(nbOutputBytes / 8, 0);
+    const std::size_t output_size = output.size();
+    const auto double_output_size = static_cast<double>(output_size);
+
+    const auto end = clock::now() + milliseconds(workLoadTimeInMs);
+    while (clock::now() <= end) {
+      for (std::size_t i = 0; i < output_size; ++i) {
+        output[i] = result / double_output_size;
+      }
+    }
+    return output;
+  };
+  const std::vector<double> input(nbInputBytes / sizeof(double),
+                                  std::pow(42.0 * 8.0 / static_cast<double>(nbInputBytes), 1.0 / 3.0));
+  std::cout << "StressTest default parameters:\n"
+            << "number of tasks: " << nbTasks << '\n'
+            << "number of input bytes: " << nbInputBytes << '\n'
+            << "number of output bytes: " << nbOutputBytes << '\n'
+            << "workload time in milliseconds: " << workloadTimeInMs << std::endl;
+
+  auto payload = [nbInputBytes, nbOutputBytes, workloadTimeInMs, &input]() -> std::string {
+    std::vector<char> outputVec(nbInputBytes + sizeof(nbOutputBytes) * 3, 0);
+    auto beginPtr = outputVec.data();
+    std::memcpy(beginPtr, &nbOutputBytes, sizeof(nbOutputBytes));
+
+    beginPtr += sizeof(nbOutputBytes);
+    std::memcpy(beginPtr, &workloadTimeInMs, sizeof(workloadTimeInMs));
+
+    beginPtr += sizeof(workloadTimeInMs);
+    std::memcpy(beginPtr, &nbInputBytes, sizeof(nbInputBytes));
+
+    beginPtr += sizeof(nbInputBytes);
+    std::memcpy(beginPtr, input.data(), nbInputBytes);
+    return {outputVec.data(), outputVec.size()};
+  }();
+  const std::vector<ArmoniK::Sdk::Common::TaskPayload> tasks_payload(nbTasks, {"compute_workload", std::move(payload)});
+  const auto tasks = service.Submit(tasks_payload, handler);
+
+  ASSERT_FALSE(tasks.empty());
+  ASSERT_EQ(tasks.size(), nbTasks);
+
+  // Wait for task completion
+  service.WaitResults();
+
+  ASSERT_TRUE(handler->is_ok);
+  ASSERT_EQ(handler->nb_output_bytes, nbOutputBytes);
+  const auto result_out = compute_workload(input, nbOutputBytes, workloadTimeInMs);
+  for (std::size_t i = 0; i < result_out.size(); ++i) {
+    ASSERT_NEAR(handler->result.at(i), result_out.at(i), 0.0000001);
+  }
 
   std::cout << "Done" << std::endl;
 }
