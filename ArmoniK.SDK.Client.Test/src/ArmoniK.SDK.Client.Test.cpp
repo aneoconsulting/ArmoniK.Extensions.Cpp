@@ -326,7 +326,7 @@ TEST(testSDK, testStressTest) {
   // Create the handler
   auto handler = std::make_shared<StressTestServiceHandler>(logger);
 
-  const std::uint32_t nbTasks = 5, nbInputBytes = 64000, nbOutputBytes = 8, workloadTimeInMs = 1;
+  const std::uint32_t nbTasks = 100, nbInputBytes = 64000, nbOutputBytes = 8, workloadTimeInMs = 1;
 
   const auto compute_workload = [](const std::vector<double> &input, const std::size_t nbOutputBytes,
                                    const std::uint32_t workLoadTimeInMs) -> std::vector<double> {
