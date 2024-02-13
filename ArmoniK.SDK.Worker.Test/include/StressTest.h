@@ -47,7 +47,7 @@ public:
 
         beginPtr += sizeofNbOutput;
         std::vector<double> inputWorkload(nbInputBytes, 0.0);
-        std::memcpy(inputWorkload.data(), beginPtr, nbInputBytes * sizeof(double));
+        std::memcpy(inputWorkload.data(), beginPtr, nbInputBytes);
         return compute_workload(inputWorkload, nbOutputBytes, workLoadTimeInMs);
       }();
       const auto resultSize = resultWorkload.size();
