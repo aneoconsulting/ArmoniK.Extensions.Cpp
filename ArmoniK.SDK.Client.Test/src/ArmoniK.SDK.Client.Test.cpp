@@ -392,7 +392,7 @@ TEST(testSDK, testStressTest) {
   ASSERT_EQ(handler->nb_output_bytes, nbOutputBytes);
   const auto result_out = compute_workload(input, nbOutputBytes, workloadTimeInMs);
   for (std::size_t i = 0; i < result_out.size(); ++i) {
-    ASSERT_NEAR(handler->result.at(i), result_out.at(i), 0.00001);
+    ASSERT_NEAR(handler->result.at(i), result_out.at(i), 0.0000001);
   }
 
   std::cout << "Done" << std::endl;
