@@ -35,7 +35,6 @@ std::vector<double> compute_workload(const std::vector<double> &input, const std
     return std::vector<double>{};
   }
 
-  // std::transform_reduce is in C++17, here in C++14
   double result = 0.;
   for (auto x : input) {
     result += x * x * x;
