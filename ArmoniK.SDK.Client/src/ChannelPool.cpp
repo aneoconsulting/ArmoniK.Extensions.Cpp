@@ -1,15 +1,27 @@
 #include "ChannelPool.h"
 
+#include <absl/types/optional.h>
 #include <armonik/common/options/ControlPlane.h>
 #include <armonik/common/utils/ChannelArguments.h>
-#include <grpcpp/create_channel.h>
 #include <fstream>
+#include <grpcpp/create_channel.h>
 #include <utility>
 
 namespace ArmoniK {
 namespace Sdk {
 namespace Client {
 namespace Internal {
+
+absl::optional<std::string> get_key(const absl::string_view &path) {
+  std::ifstream file(path.data(), std::ios::in | std::ios::binary);
+  if (file.is_open()) {
+    std::ostringstream sstr;
+    sstr << file.rdbuf();
+    return sstr.str();
+  } else {
+    return absl::nullopt;
+  }
+}
 
 std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   std::shared_ptr<grpc::Channel> channel;
@@ -36,20 +48,15 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   }
   // TODO Handle TLS
   const auto &control_plane = properties_.configuration.get_control_plane();
-  const auto get_key = [](const absl::string_view &path) -> std::string {
-    std::ifstream file(path.data(), std::ios::in | std::ios::binary);
-    std::ostringstream sstr;
-    sstr << file.rdbuf();
-    return sstr.str();
-  };
-  auto ca_cert_pem = get_key(control_plane.getCaCertPemPath());
-  auto user_key_pem = get_key(control_plane.getUserKeyPemPath());
-  auto user_cert_pem = get_key(control_plane.getUserCertPemPath());
+  auto root_cert_pem = get_key(control_plane.getCaCertPemPath());
+  auto user_private_pem = get_key(control_plane.getUserKeyPemPath());
+  auto user_public_pem = get_key(control_plane.getUserCertPemPath());
   channel = grpc::CreateCustomChannel(
       endpoint,
-      control_plane.isSslValidation() ? grpc::SslCredentials(grpc::SslCredentialsOptions{
-                                            std::move(ca_cert_pem), std::move(user_key_pem), std::move(user_cert_pem)})
-                                      : grpc::InsecureChannelCredentials(),
+      user_private_pem.has_value() && user_public_pem.has_value()
+          ? grpc::SslCredentials(grpc::SslCredentialsOptions{root_cert_pem.has_value() ? std::move(*root_cert_pem) : "",
+                                                             std::move(*user_private_pem), std::move(*user_public_pem)})
+          : grpc::InsecureChannelCredentials(),
       armonik::api::common::utils::getChannelArguments(
           static_cast<armonik::api::common::utils::Configuration>(properties_.configuration)));
   logger_.log(armonik::api::common::logger::Level::Debug, "Created and acquired new channel from pool");
