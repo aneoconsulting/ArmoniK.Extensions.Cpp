@@ -87,3 +87,25 @@ void StressTestServiceHandler::HandleError(const std::exception &e, const std::s
   ss << "Handle ERROR: Error for task id " << taskId << ": " << e.what() << '\n';
   logger.log(armonik::api::common::logger::Level::Debug, ss.str());
 }
+
+void SegFaultServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  std::stringstream ss;
+  ss << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
+     << "\nContent : ";
+  ss.write(result_payload.data(), result_payload.size()) << "\nRaw : ";
+  for (char c : result_payload) {
+    ss << static_cast<int>(c) << ' ';
+  }
+  ss << std::endl;
+  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
+  received = true;
+  is_error = false;
+}
+void SegFaultServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+  std::stringstream ss;
+  ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
+  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
+  received = true;
+  is_error = true;
+}
+SegFaultServiceHandler::SegFaultServiceHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}
