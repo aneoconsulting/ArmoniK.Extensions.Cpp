@@ -12,17 +12,6 @@ namespace Sdk {
 namespace Client {
 namespace Internal {
 
-absl::optional<std::string> get_key(const absl::string_view &path) {
-  std::ifstream file(path.data(), std::ios::in | std::ios::binary);
-  if (file.is_open()) {
-    std::ostringstream sstr;
-    sstr << file.rdbuf();
-    return sstr.str();
-  } else {
-    return absl::nullopt;
-  }
-}
-
 std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   std::shared_ptr<grpc::Channel> channel;
   {
@@ -47,16 +36,8 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
     endpoint = endpoint.substr(scheme_delim + 3);
   }
   // TODO Handle TLS
-  const auto &control_plane = properties_.configuration.get_control_plane();
-  auto root_cert_pem = get_key(control_plane.getCaCertPemPath());
-  auto user_private_pem = get_key(control_plane.getUserKeyPemPath());
-  auto user_public_pem = get_key(control_plane.getUserCertPemPath());
   channel = grpc::CreateCustomChannel(
-      endpoint,
-      user_private_pem.has_value() && user_public_pem.has_value()
-          ? grpc::SslCredentials(grpc::SslCredentialsOptions{root_cert_pem.has_value() ? std::move(*root_cert_pem) : "",
-                                                             std::move(*user_private_pem), std::move(*user_public_pem)})
-          : grpc::InsecureChannelCredentials(),
+      endpoint, credentials_,
       armonik::api::common::utils::getChannelArguments(
           static_cast<armonik::api::common::utils::Configuration>(properties_.configuration)));
   logger_.log(armonik::api::common::logger::Level::Debug, "Created and acquired new channel from pool");
@@ -99,8 +80,33 @@ bool ChannelPool::ShutdownOnFailure(std::shared_ptr<grpc::Channel> channel) {
   return false;
 }
 
+absl::optional<std::string> get_key(const absl::string_view &path) {
+  std::ifstream file(path.data(), std::ios::in | std::ios::binary);
+  if (file.is_open()) {
+    std::ostringstream sstr;
+    sstr << file.rdbuf();
+    return sstr.str();
+  } else {
+    return absl::nullopt;
+  }
+}
+
 ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::api::common::logger::Logger &logger)
-    : properties_(std::move(properties)), logger_(logger.local()) {}
+    : properties_(std::move(properties)), logger_(logger.local()) {
+  const auto &control_plane = properties_.configuration.get_control_plane();
+  auto root_cert_pem = get_key(control_plane.getCaCertPemPath());
+  auto user_private_pem = get_key(control_plane.getUserKeyPemPath());
+  auto user_public_pem = get_key(control_plane.getUserCertPemPath());
+  if (user_public_pem && user_private_pem) {
+    if (!root_cert_pem) {
+      logger_.log(armonik::api::common::logger::Level::Info, "No path for root certificate provided.");
+    }
+    credentials_ = grpc::SslCredentials(grpc::SslCredentialsOptions{
+        root_cert_pem ? std::move(*root_cert_pem) : "", std::move(*user_private_pem), std::move(*user_public_pem)});
+  } else {
+    credentials_ = grpc::InsecureChannelCredentials();
+  }
+}
 ChannelPool::~ChannelPool() = default;
 
 ChannelPool::ChannelGuard::ChannelGuard(Internal::ChannelPool *pool) : pool_(pool) {

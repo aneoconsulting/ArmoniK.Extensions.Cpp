@@ -142,6 +142,7 @@ private:
   std::queue<std::shared_ptr<grpc::Channel>> channel_pool_;
   std::mutex channel_mutex_;
   armonik::api::common::logger::LocalLogger logger_;
+  std::shared_ptr<grpc::ChannelCredentials> credentials_{nullptr};
 };
 
 } // namespace Internal
