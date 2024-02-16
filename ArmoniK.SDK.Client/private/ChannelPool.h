@@ -143,6 +143,8 @@ private:
   std::mutex channel_mutex_;
   armonik::api::common::logger::LocalLogger logger_;
   std::shared_ptr<grpc::ChannelCredentials> credentials_{nullptr};
+  std::string endpoint;
+  bool is_https{false};
 };
 
 } // namespace Internal

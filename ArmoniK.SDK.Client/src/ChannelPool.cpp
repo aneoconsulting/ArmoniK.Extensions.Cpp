@@ -30,11 +30,7 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
       return channel;
     }
   }
-  std::string endpoint(properties_.configuration.get_control_plane().getEndpoint());
-  auto scheme_delim = endpoint.find("://");
-  if (scheme_delim != std::string::npos) {
-    endpoint = endpoint.substr(scheme_delim + 3);
-  }
+
   // TODO Handle TLS
   channel = grpc::CreateCustomChannel(
       endpoint, credentials_,
@@ -91,13 +87,32 @@ absl::optional<std::string> get_key(const absl::string_view &path) {
   }
 }
 
+void initialize_protocol_endpoint(const Common::Properties &properties_, std::string &endpoint, bool &is_https) {
+  absl::string_view endpoint_view = properties_.configuration.get_control_plane().getEndpoint();
+  std::string protocol;
+  protocol.reserve(5);
+  const auto delim = endpoint_view.find("://");
+  if (delim != absl::string_view::npos) {
+    const auto tmp = endpoint_view.substr(delim);
+    endpoint = {tmp.cbegin(), tmp.cend()};
+    endpoint_view = endpoint_view.substr(0, delim);
+
+    std::transform(endpoint_view.cbegin(), endpoint_view.cend(), std::back_inserter(protocol),
+                   [](const char c) -> char { return static_cast<char>(tolower(c)); });
+  }
+  is_https = protocol.back() == 's';
+}
+
 ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::api::common::logger::Logger &logger)
     : properties_(std::move(properties)), logger_(logger.local()) {
   const auto &control_plane = properties_.configuration.get_control_plane();
+
+  initialize_protocol_endpoint(properties_, endpoint, is_https);
+
   auto root_cert_pem = get_key(control_plane.getCaCertPemPath());
   auto user_private_pem = get_key(control_plane.getUserKeyPemPath());
   auto user_public_pem = get_key(control_plane.getUserCertPemPath());
-  if (user_public_pem && user_private_pem) {
+  if (user_public_pem && user_private_pem && is_https) {
     if (!root_cert_pem) {
       logger_.log(armonik::api::common::logger::Level::Info, "No path for root certificate provided.");
     }
