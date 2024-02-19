@@ -10,16 +10,11 @@ namespace Test {
 /**
  * @brief Example implementation of a ArmoniK::Sdk::Worker::ServiceBase
  */
-
-/**
- * @brief Example implementation of a ArmoniK::Sdk::Worker::ServiceBase
- */
 class SegFaultService : ServiceBase {
 public:
   std::string call(void *, const std::string &name, const std::string &input) override {
     std::cout << "SegFaultService method : " << name << std::endl;
-    double *compute = nullptr;
-    compute[0] = (double)std::rand() / RAND_MAX;
+    *(volatile int *)0 = 0;
     return input;
   }
 
