@@ -5,6 +5,8 @@
 #include <armonik/common/utils/ChannelArguments.h>
 #include <fstream>
 #include <grpcpp/create_channel.h>
+#include <grpcpp/security/credentials.h>
+#include <sstream>
 #include <utility>
 
 namespace ArmoniK {
