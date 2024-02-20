@@ -87,7 +87,7 @@ absl::optional<std::string> get_key(const absl::string_view &path) {
   }
 }
 
-void initialize_protocol_endpoint(const Common::Properties &properties_, std::string &endpoint, bool &is_https) {
+bool initialize_protocol_endpoint(const Common::Properties &properties_, std::string &endpoint) {
   absl::string_view endpoint_view = properties_.configuration.get_control_plane().getEndpoint();
   std::string protocol;
   protocol.reserve(5);
@@ -100,14 +100,13 @@ void initialize_protocol_endpoint(const Common::Properties &properties_, std::st
     std::transform(endpoint_view.cbegin(), endpoint_view.cend(), std::back_inserter(protocol),
                    [](const char c) -> char { return static_cast<char>(tolower(c)); });
   }
-  is_https = protocol.back() == 's';
+  return protocol.back() == 's';
 }
 
 ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::api::common::logger::Logger &logger)
     : properties_(std::move(properties)), logger_(logger.local()) {
   const auto &control_plane = properties_.configuration.get_control_plane();
-
-  initialize_protocol_endpoint(properties_, endpoint, is_https);
+  const bool is_https = initialize_protocol_endpoint(properties_, endpoint);
 
   auto root_cert_pem = get_key(control_plane.getCaCertPemPath());
   auto user_private_pem = get_key(control_plane.getUserKeyPemPath());
@@ -118,6 +117,7 @@ ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::a
     }
     credentials_ = grpc::SslCredentials(grpc::SslCredentialsOptions{
         root_cert_pem ? std::move(*root_cert_pem) : "", std::move(*user_private_pem), std::move(*user_public_pem)});
+    is_secure = true;
   } else {
     credentials_ = grpc::InsecureChannelCredentials();
   }
@@ -133,6 +133,8 @@ ChannelPool::ChannelGuard::ChannelGuard(Internal::ChannelPool *pool) : pool_(poo
 ChannelPool::ChannelGuard::~ChannelGuard() { pool_->ReleaseChannel(channel); }
 
 ChannelPool::ChannelGuard ChannelPool::GetChannel() { return ChannelGuard(this); }
+
+bool ChannelPool::isSecureChannel() const noexcept { return is_secure; }
 
 } // namespace Internal
 } // namespace Client

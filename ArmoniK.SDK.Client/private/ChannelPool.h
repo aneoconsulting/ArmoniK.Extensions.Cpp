@@ -5,6 +5,7 @@
 #include <armonik/common/logger/writer.h>
 #include <armonik/sdk/common/Properties.h>
 #include <grpcpp/channel.h>
+#include <grpcpp/security/credentials.h>
 #include <mutex>
 #include <queue>
 
@@ -62,6 +63,8 @@ public:
    * @return std::shared_ptr<grpc::Channel>
    */
   std::shared_ptr<grpc::Channel> AcquireChannel();
+
+  bool isSecureChannel() const noexcept;
 
   /**
    * @brief Releases a channel to the pool
@@ -144,7 +147,7 @@ private:
   armonik::api::common::logger::LocalLogger logger_;
   std::shared_ptr<grpc::ChannelCredentials> credentials_{nullptr};
   std::string endpoint;
-  bool is_https{false};
+  bool is_secure{false};
 };
 
 } // namespace Internal

@@ -7,11 +7,11 @@
 #include <armonik/common/logger/writer.h>
 #include <armonik/common/options/ControlPlane.h>
 
-#include "armonik/sdk/client/SessionService.h"
-#include "armonik/sdk/common/Configuration.h"
-#include "armonik/sdk/common/Properties.h"
-#include "armonik/sdk/common/TaskOptions.h"
-#include "armonik/sdk/common/TaskPayload.h"
+#include <armonik/sdk/client/SessionService.h>
+#include <armonik/sdk/common/Configuration.h>
+#include <armonik/sdk/common/Properties.h>
+#include <armonik/sdk/common/TaskOptions.h>
+#include <armonik/sdk/common/TaskPayload.h>
 
 #include <armonik/client/results_service.grpc.pb.h>
 #include <armonik/client/sessions_service.grpc.pb.h>
@@ -266,6 +266,21 @@ TEST(SessionService, cleanup_tasks) {
     }
     download_response.clear_data_chunk();
   }
+}
+
+TEST(SessionService, mTLS) {
+  auto out_init = init();
+  auto properties = std::move(std::get<0>(out_init));
+  auto logger = std::move(std::get<1>(out_init));
+  ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
+  auto channel = pool.GetChannel();
+  auto endpoint = properties.configuration.get_control_plane().getEndpoint();
+
+  const auto pos_endpoint = endpoint.find("://");
+  ASSERT_NE(pos_endpoint, absl::string_view::npos);
+  endpoint = endpoint.substr(0, pos_endpoint);
+  ASSERT_EQ(endpoint, "https");
+  ASSERT_TRUE(pool.isSecureChannel());
 }
 
 TEST(WaitOption, timeout_test) {
