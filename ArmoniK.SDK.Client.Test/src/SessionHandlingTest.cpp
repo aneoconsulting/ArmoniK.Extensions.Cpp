@@ -1,4 +1,3 @@
-#include <grpcpp/create_channel.h>
 #include <gtest/gtest.h>
 #include <iostream>
 
