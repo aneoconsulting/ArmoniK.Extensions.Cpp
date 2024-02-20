@@ -52,3 +52,13 @@ public:
 
   armonik::api::common::logger::LocalLogger logger;
 };
+
+class SegFaultServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
+public:
+  explicit SegFaultServiceHandler(armonik::api::common::logger::Logger &logger);
+  void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
+  void HandleError(const std::exception &e, const std::string &taskId) override;
+  bool received = false;
+  bool is_error = false;
+  armonik::api::common::logger::LocalLogger logger;
+};

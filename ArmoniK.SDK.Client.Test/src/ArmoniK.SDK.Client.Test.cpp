@@ -397,3 +397,51 @@ TEST(testSDK, testStressTest) {
 
   std::cout << "Done" << std::endl;
 }
+
+TEST(testSDK, testSegFault) {
+  std::cout << "Testing SegFault in worker!" << std::endl;
+  // Load configuration from file and environment
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  if (config.get("Worker__Type").empty()) {
+    config.set("Worker__Type", "End2EndTest");
+  }
+
+  // Create the task options
+  ArmoniK::Sdk::Common::TaskOptions session_task_options(
+      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "SegFaultService");
+  session_task_options.max_retries = 1;
+
+  // Create the properties
+  ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
+
+  // Create the logger
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true)};
+
+  // Create the session service
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  // Get the created session id
+  std::cout << "Session : " << service.getSession() << std::endl;
+  std::string args = "SegFault success";
+
+  // Create the handler
+  auto handler = std::make_shared<SegFaultServiceHandler>(logger);
+
+  // Submit a task
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("SegFaultService", args)}, handler);
+
+  std::cout << "Sent : " << tasks[0] << std::endl;
+
+  // Wait for task completion
+  service.WaitResults();
+
+  ASSERT_TRUE(!args.empty());
+  ASSERT_TRUE(handler->received);
+  ASSERT_TRUE(handler->is_error);
+
+  std::cout << "Done" << std::endl;
+}
