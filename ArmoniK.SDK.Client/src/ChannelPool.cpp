@@ -29,27 +29,25 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
 
   if (channel != nullptr) {
     if (ShutdownOnFailure(channel)) {
-      logger_.log(armonik::api::common::logger::Level::Debug, "Shutdown unhealthy channel");
+      logger_.log(logger::Level::Debug, "Shutdown unhealthy channel");
     } else {
-      logger_.log(armonik::api::common::logger::Level::Debug, "Acquired already existing channel from pool");
+      logger_.log(logger::Level::Debug, "Acquired already existing channel from pool");
       return channel;
     }
   }
 
   // TODO Handle TLS
   channel = grpc::CreateCustomChannel(
-      endpoint, credentials_,
-      armonik::api::common::utils::getChannelArguments(
-          static_cast<armonik::api::common::utils::Configuration>(properties_.configuration)));
-  logger_.log(armonik::api::common::logger::Level::Debug, "Created and acquired new channel from pool");
+      endpoint, credentials_, utils::getChannelArguments(static_cast<utils::Configuration>(properties_.configuration)));
+  logger_.log(logger::Level::Debug, "Created and acquired new channel from pool");
   return channel;
 }
 
 void ChannelPool::ReleaseChannel(std::shared_ptr<grpc::Channel> channel) {
   if (ShutdownOnFailure(channel)) {
-    logger_.log(armonik::api::common::logger::Level::Debug, "Shutdown unhealthy channel");
+    logger_.log(logger::Level::Debug, "Shutdown unhealthy channel");
   } else {
-    logger_.log(armonik::api::common::logger::Level::Debug, "Released channel to pool");
+    logger_.log(logger::Level::Debug, "Released channel to pool");
     std::lock_guard<std::mutex> _(channel_mutex_);
     channel_pool_.push(channel);
   }
