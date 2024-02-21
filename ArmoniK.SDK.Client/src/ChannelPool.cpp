@@ -1,11 +1,11 @@
 #include "ChannelPool.h"
 
-#include <absl/types/optional.h>
 #include <armonik/common/options/ControlPlane.h>
 #include <armonik/common/utils/ChannelArguments.h>
 #include <fstream>
 #include <grpcpp/create_channel.h>
 #include <grpcpp/security/credentials.h>
+#include <grpcpp/security/tls_credentials_options.h>
 #include <sstream>
 #include <utility>
 
@@ -13,6 +13,9 @@ namespace ArmoniK {
 namespace Sdk {
 namespace Client {
 namespace Internal {
+
+using namespace armonik::api::common;
+using namespace grpc::experimental;
 
 std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   std::shared_ptr<grpc::Channel> channel;
@@ -78,14 +81,14 @@ bool ChannelPool::ShutdownOnFailure(std::shared_ptr<grpc::Channel> channel) {
   return false;
 }
 
-absl::optional<std::string> get_key(const absl::string_view &path) {
+std::string get_key(const absl::string_view &path) {
   std::ifstream file(path.data(), std::ios::in | std::ios::binary);
   if (file.is_open()) {
     std::ostringstream sstr;
     sstr << file.rdbuf();
     return sstr.str();
   } else {
-    return absl::nullopt;
+    return {};
   }
 }
 
@@ -105,7 +108,20 @@ bool initialize_protocol_endpoint(const Common::Properties &properties_, std::st
   return protocol.back() == 's';
 }
 
-ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::api::common::logger::Logger &logger)
+std::shared_ptr<CertificateProviderInterface> create_certificate_provider(const std::string &rootCertificate,
+                                                                          const std::string &userPublicPem,
+                                                                          const std::string &userPrivatePem) {
+  if (rootCertificate.empty()) {
+    return std::make_shared<StaticDataCertificateProvider>(
+        std::vector<IdentityKeyCertPair>{IdentityKeyCertPair{userPrivatePem, userPublicPem /* certificate_chain ? */}});
+  } else {
+    return std::make_shared<StaticDataCertificateProvider>(
+        rootCertificate,
+        std::vector<IdentityKeyCertPair>{IdentityKeyCertPair{userPrivatePem, userPublicPem /* certificate_chain ? */}});
+  }
+}
+
+ChannelPool::ChannelPool(Common::Properties properties, logger::Logger &logger)
     : properties_(std::move(properties)), logger_(logger.local()) {
   const auto &control_plane = properties_.configuration.get_control_plane();
   const bool is_https = initialize_protocol_endpoint(properties_, endpoint);
@@ -113,13 +129,21 @@ ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::a
   auto root_cert_pem = get_key(control_plane.getCaCertPemPath());
   auto user_private_pem = get_key(control_plane.getUserKeyPemPath());
   auto user_public_pem = get_key(control_plane.getUserCertPemPath());
-  if (user_public_pem && user_private_pem && is_https) {
-    if (!root_cert_pem) {
-      logger_.log(armonik::api::common::logger::Level::Info, "No path for root certificate provided.");
+  if (is_https) {
+    if (!user_private_pem.empty() && !user_public_pem.empty()) {
+      if (control_plane.isSslValidation()) {
+        credentials_ = grpc::SslCredentials(grpc::SslCredentialsOptions{
+            std::move(root_cert_pem), std::move(user_private_pem), std::move(user_public_pem)});
+      } else {
+        TlsChannelCredentialsOptions tls_options;
+        tls_options.set_verify_server_certs(false);
+        tls_options.set_certificate_provider(
+            create_certificate_provider(root_cert_pem, user_public_pem, user_private_pem));
+      }
+      is_secure = true;
+    } else {
+      // TODO: certificats clients absents, le simple TLS.
     }
-    credentials_ = grpc::SslCredentials(grpc::SslCredentialsOptions{
-        root_cert_pem ? std::move(*root_cert_pem) : "", std::move(*user_private_pem), std::move(*user_public_pem)});
-    is_secure = true;
   } else {
     credentials_ = grpc::InsecureChannelCredentials();
   }
