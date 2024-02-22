@@ -92,18 +92,13 @@ std::string get_key(const absl::string_view &path) {
 
 bool initialize_protocol_endpoint(const Common::Properties &properties_, std::string &endpoint) {
   absl::string_view endpoint_view = properties_.configuration.get_control_plane().getEndpoint();
-  std::string protocol;
-  protocol.reserve(5);
   const auto delim = endpoint_view.find("://");
   if (delim != absl::string_view::npos) {
     const auto tmp = endpoint_view.substr(delim);
-    endpoint = {tmp.cbegin(), tmp.cend()};
     endpoint_view = endpoint_view.substr(0, delim);
-
-    std::transform(endpoint_view.cbegin(), endpoint_view.cend(), std::back_inserter(protocol),
-                   [](const char c) -> char { return static_cast<char>(tolower(c)); });
+    endpoint = {tmp.cbegin(), tmp.cend()};
   }
-  return protocol.back() == 's';
+  return endpoint_view.back() == 's' || endpoint_view.back() == 'S';
 }
 
 std::shared_ptr<CertificateProviderInterface> create_certificate_provider(const std::string &rootCertificate,
