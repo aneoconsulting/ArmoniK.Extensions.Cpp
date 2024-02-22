@@ -132,11 +132,17 @@ ChannelPool::ChannelPool(Common::Properties properties, logger::Logger &logger)
         tls_options.set_verify_server_certs(false);
         tls_options.set_certificate_provider(
             create_certificate_provider(root_cert_pem, user_public_pem, user_private_pem));
+        credentials_ = TlsCredentials(tls_options);
       }
-      is_secure = true;
     } else {
-      // TODO: certificats clients absents, le simple TLS.
+      TlsChannelCredentialsOptions tls_options;
+      tls_options.set_certificate_provider(
+          create_certificate_provider(root_cert_pem, user_public_pem, user_private_pem));
+      // FIXME: root certificate must be present if there is no client certificate.
+      tls_options.set_verify_server_certs(control_plane.isSslValidation());
+      credentials_ = TlsCredentials(tls_options);
     }
+    is_secure = true;
   } else {
     credentials_ = grpc::InsecureChannelCredentials();
   }
