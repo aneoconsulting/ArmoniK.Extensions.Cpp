@@ -122,7 +122,7 @@ bool initialize_protocol_endpoint(const Common::ControlPlane &controlPlane, std:
   absl::string_view endpoint_view = controlPlane.getEndpoint();
   const auto delim = endpoint_view.find("://");
   if (delim != absl::string_view::npos) {
-    const auto tmp = endpoint_view.substr(delim);
+    const auto tmp = endpoint_view.substr(delim + 3);
     endpoint_view = endpoint_view.substr(0, delim);
     endpoint = {tmp.cbegin(), tmp.cend()};
   }
