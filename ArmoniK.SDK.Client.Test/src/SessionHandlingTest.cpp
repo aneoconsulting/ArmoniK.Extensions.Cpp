@@ -269,11 +269,12 @@ TEST(SessionService, cleanup_tasks) {
 
 TEST(SessionService, mTLS) {
   auto out_init = init();
-  auto properties = std::move(std::get<0>(out_init));
-  auto logger = std::move(std::get<1>(out_init));
+  auto &properties = std::get<0>(out_init);
+  auto &logger = std::get<1>(out_init);
   ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
   auto channel = pool.GetChannel();
-  auto endpoint = properties.configuration.get_control_plane().getEndpoint();
+  const auto ctrl_plane = properties.configuration.get_control_plane();
+  auto endpoint = ctrl_plane.getEndpoint();
 
   const auto pos_endpoint = endpoint.find("://");
   ASSERT_NE(pos_endpoint, absl::string_view::npos);
