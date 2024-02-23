@@ -118,8 +118,8 @@ std::string get_key(const absl::string_view &path) {
   }
 }
 
-bool initialize_protocol_endpoint(const Common::Properties &properties_, std::string &endpoint) {
-  absl::string_view endpoint_view = properties_.configuration.get_control_plane().getEndpoint();
+bool initialize_protocol_endpoint(const Common::ControlPlane &controlPlane, std::string &endpoint) {
+  absl::string_view endpoint_view = controlPlane.getEndpoint();
   const auto delim = endpoint_view.find("://");
   if (delim != absl::string_view::npos) {
     const auto tmp = endpoint_view.substr(delim);
@@ -144,8 +144,9 @@ std::shared_ptr<CertificateProviderInterface> create_certificate_provider(const 
 
 ChannelPool::ChannelPool(Common::Properties properties, logger::Logger &logger)
     : properties_(std::move(properties)), logger_(logger.local()) {
-  const auto &control_plane = properties_.configuration.get_control_plane();
-  const bool is_https = initialize_protocol_endpoint(properties_, endpoint);
+  // WARNING: control_plane is created on the fly, it is NOT a reference.
+  const auto control_plane = properties_.configuration.get_control_plane();
+  const bool is_https = initialize_protocol_endpoint(control_plane, endpoint);
 
   auto root_cert_pem = get_key(control_plane.getCaCertPemPath());
   auto user_private_pem = get_key(control_plane.getUserKeyPemPath());
