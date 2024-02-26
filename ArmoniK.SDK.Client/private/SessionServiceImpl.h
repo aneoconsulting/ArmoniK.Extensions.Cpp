@@ -34,12 +34,6 @@ namespace Internal {
 class SessionServiceImpl {
 private:
   /**
-   * @brief Requests the control plane to create results
-   * @param num Number of results to create
-   * @return List of result ids
-   */
-  std::vector<std::string> generate_result_ids(size_t num);
-  /**
    * @brief Session
    */
   std::string session;
