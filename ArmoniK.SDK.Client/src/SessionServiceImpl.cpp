@@ -283,7 +283,7 @@ void SessionServiceImpl::DropSession() {
   } while (page * page_size < total);
 }
 
-void SessionServiceImpl::CleanupTasks(const std::set<std::string> &task_ids) {
+void SessionServiceImpl::CleanupTasks(std::vector<std::string> task_ids) {
   // Remove the given tasks from the maps
   {
     std::lock_guard<std::mutex> _(maps_mutex);
@@ -303,7 +303,7 @@ void SessionServiceImpl::CleanupTasks(const std::set<std::string> &task_ids) {
     channel_pool.WithChannel([&](const std::shared_ptr<::grpc::Channel> &channel) {
       std::vector<std::string> batched_ids;
       for (size_t i = 0; i < batch_size && tasks_iterator != task_ids.end(); ++i) {
-        batched_ids.emplace_back(*tasks_iterator);
+        batched_ids.push_back(*tasks_iterator);
         tasks_iterator++;
       }
       armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
@@ -318,7 +318,7 @@ void SessionServiceImpl::CleanupTasks(const std::set<std::string> &task_ids) {
     auto map_results = channel_pool.WithChannel([&](const std::shared_ptr<::grpc::Channel> &channel) {
       std::vector<std::string> batched_ids;
       for (size_t i = 0; i < batch_size && tasks_iterator != task_ids.end(); ++i) {
-        batched_ids.emplace_back(*tasks_iterator);
+        batched_ids.push_back(std::move(*tasks_iterator));
         tasks_iterator++;
       }
       return armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
@@ -331,7 +331,8 @@ void SessionServiceImpl::CleanupTasks(const std::set<std::string> &task_ids) {
       std::vector<std::string> resultIds;
       resultIds.reserve(map_results.size());
       for (auto &&taskId_resultIds : map_results) {
-        resultIds.insert(resultIds.end(), taskId_resultIds.second.begin(), taskId_resultIds.second.end());
+        resultIds.insert(resultIds.end(), std::make_move_iterator(taskId_resultIds.second.begin()),
+                         std::make_move_iterator(taskId_resultIds.second.end()));
       }
       results.delete_results_data(session, resultIds);
     });

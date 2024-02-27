@@ -110,7 +110,7 @@ public:
    * @warning The data of these results will not be recoverable. Tasks which depend on these data will fail.
    * @warning The tasks will not be processed by the client.
    */
-  void CleanupTasks(const std::set<std::string> &task_ids);
+  void CleanupTasks(std::vector<std::string> task_ids);
 };
 } // namespace Client
 } // namespace Sdk

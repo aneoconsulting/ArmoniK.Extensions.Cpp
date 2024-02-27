@@ -1,6 +1,7 @@
 #include "armonik/sdk/client/SessionService.h"
 #include "SessionServiceImpl.h"
 #include <string>
+#include <utility>
 
 namespace ArmoniK {
 namespace Sdk {
@@ -44,9 +45,9 @@ void SessionService::DropSession() {
   ensure_valid();
   impl->DropSession();
 }
-void SessionService::CleanupTasks(const std::set<std::string> &task_ids) {
+void SessionService::CleanupTasks(std::vector<std::string> task_ids) {
   ensure_valid();
-  impl->CleanupTasks(task_ids);
+  impl->CleanupTasks(std::move(task_ids));
 }
 
 SessionService::SessionService(SessionService &&) noexcept = default;
