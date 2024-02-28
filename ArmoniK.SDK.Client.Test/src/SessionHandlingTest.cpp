@@ -268,19 +268,48 @@ TEST(SessionService, cleanup_tasks) {
 }
 
 TEST(SessionService, mTLS) {
+  using armonik::api::common::logger::Level;
+  using armonik::api::common::options::ControlPlane;
+
   auto out_init = init();
   auto &properties = std::get<0>(out_init);
   auto &logger = std::get<1>(out_init);
+
+  {
+    const auto control_plane = properties.configuration.get_control_plane();
+    std::string secure_endpoint{"https"};
+    auto endpoint = control_plane.getEndpoint();
+    const auto pos_endpoint = endpoint.find("://");
+    ASSERT_NE(pos_endpoint, absl::string_view::npos);
+    endpoint = endpoint.substr(pos_endpoint);
+    secure_endpoint.append(endpoint.cbegin(), endpoint.cend());
+    properties.configuration.set(ControlPlane::EndpointKey, secure_endpoint);
+    logger.log(Level::Info, "New endpoint: {endpoint}", {{"endpoint", std::move(secure_endpoint)}});
+  }
+
+  const auto ctrl_plane = properties.configuration.get_control_plane();
+
   ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
   auto channel = pool.GetChannel();
-  const auto ctrl_plane = properties.configuration.get_control_plane();
-  auto endpoint = ctrl_plane.getEndpoint();
 
+  auto endpoint = ctrl_plane.getEndpoint();
   const auto pos_endpoint = endpoint.find("://");
   ASSERT_NE(pos_endpoint, absl::string_view::npos);
   endpoint = endpoint.substr(0, pos_endpoint);
   ASSERT_EQ(endpoint, "https");
   ASSERT_TRUE(pool.isSecureChannel());
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+  const auto &session = service.getSession();
+  ASSERT_FALSE(session.empty());
+
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
+  const auto task_ids = service.Submit(generate_payloads(1), handler);
+  ASSERT_EQ(task_ids.size(), 1);
+
+  service.WaitResults();
+  ASSERT_TRUE(handler->received);
+  ASSERT_FALSE(handler->is_error);
 }
 
 TEST(WaitOption, timeout_test) {
