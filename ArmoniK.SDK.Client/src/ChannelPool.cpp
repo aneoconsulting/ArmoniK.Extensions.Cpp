@@ -64,7 +64,6 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
     }
   }
 
-  // TODO Handle TLS
   channel = grpc::CreateCustomChannel(
       endpoint, credentials_, utils::getChannelArguments(static_cast<utils::Configuration>(properties_.configuration)));
   logger_.log(logger::Level::Debug, "Created and acquired new channel from pool");
