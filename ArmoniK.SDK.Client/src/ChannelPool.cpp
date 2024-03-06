@@ -133,11 +133,12 @@ std::shared_ptr<CertificateProviderInterface> create_certificate_provider(const 
                                                                           const std::string &userPrivatePem) {
   if (rootCertificate.empty()) {
     return std::make_shared<StaticDataCertificateProvider>(
-        std::vector<IdentityKeyCertPair>{IdentityKeyCertPair{userPrivatePem, userPublicPem /* certificate_chain ? */}});
+        std::vector<IdentityKeyCertPair>{IdentityKeyCertPair{userPrivatePem, userPublicPem}});
+  } else if (userPrivatePem.empty() || userPublicPem.empty()) {
+    return std::make_shared<StaticDataCertificateProvider>(rootCertificate);
   } else {
     return std::make_shared<StaticDataCertificateProvider>(
-        rootCertificate,
-        std::vector<IdentityKeyCertPair>{IdentityKeyCertPair{userPrivatePem, userPublicPem /* certificate_chain ? */}});
+        rootCertificate, std::vector<IdentityKeyCertPair>{IdentityKeyCertPair{userPrivatePem, userPublicPem}});
   }
 }
 
