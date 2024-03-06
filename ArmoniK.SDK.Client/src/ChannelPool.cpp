@@ -1,11 +1,14 @@
 #include "ChannelPool.h"
 
+#include <armonik/sdk/common/ArmoniKSdkException.h>
+
 #include <armonik/common/options/ControlPlane.h>
 #include <armonik/common/utils/ChannelArguments.h>
-#include <fstream>
 #include <grpcpp/create_channel.h>
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/security/tls_credentials_options.h>
+
+#include <fstream>
 #include <sstream>
 #include <utility>
 
@@ -157,18 +160,26 @@ ChannelPool::ChannelPool(Common::Properties properties, logger::Logger &logger)
         credentials_ = grpc::SslCredentials(grpc::SslCredentialsOptions{
             std::move(root_cert_pem), std::move(user_private_pem), std::move(user_public_pem)});
       } else {
+        // FIXME: This part is dead because this code as is does not send the client's certificate.
+        /*
         TlsChannelCredentialsOptions tls_options;
         tls_options.set_verify_server_certs(false);
         tls_options.set_certificate_provider(
             create_certificate_provider(root_cert_pem, user_public_pem, user_private_pem));
         credentials_ = TlsCredentials(tls_options);
+        */
+        throw Common::ArmoniKSdkException("mTLS without SSL validation is not supported.");
       }
     } else {
-      const std::string &root_cert = !root_cert_pem.empty() ? root_cert_pem : root_self_signed;
-      TlsChannelCredentialsOptions tls_options;
-      tls_options.set_certificate_provider(create_certificate_provider(root_cert, user_public_pem, user_private_pem));
-      tls_options.set_verify_server_certs(control_plane.isSslValidation());
-      credentials_ = TlsCredentials(tls_options);
+      if (control_plane.isSslValidation()) {
+        credentials_ = grpc::SslCredentials(grpc::SslCredentialsOptions{std::move(root_cert_pem)});
+      } else {
+        TlsChannelCredentialsOptions tls_options;
+        tls_options.set_certificate_provider(
+            create_certificate_provider(root_self_signed, user_public_pem, user_private_pem));
+        tls_options.set_verify_server_certs(control_plane.isSslValidation());
+        credentials_ = TlsCredentials(tls_options);
+      }
     }
     is_secure = true;
   } else {
