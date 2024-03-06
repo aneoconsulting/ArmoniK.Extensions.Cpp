@@ -13,6 +13,9 @@ FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_CLIENT_FILES ${HEADER_FILES_DIR}/*.h)
 FILE(GLOB_RECURSE PRIVATE_HEADERS_FILES ${PRIVATE_HEADERS_DIR}/*.h)
 
+find_package(Protobuf REQUIRED)
+find_package(gRPC CONFIG REQUIRED)
+
 find_package(ArmoniK.Api.Client CONFIG REQUIRED)
 if(NOT TARGET ArmoniK.SDK.Common)
     find_package(ArmoniK.SDK.Common CONFIG REQUIRED)
@@ -20,7 +23,7 @@ endif()
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES} ${PRIVATE_HEADERS_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common gRPC::grpc++)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
