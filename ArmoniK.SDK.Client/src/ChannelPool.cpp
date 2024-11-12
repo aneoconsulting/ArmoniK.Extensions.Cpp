@@ -1,5 +1,6 @@
 #include "ChannelPool.h"
 
+#include <armonik/client/channel/ChannelFactory.h>
 #include <armonik/common/options/ControlPlane.h>
 #include <armonik/common/utils/ChannelArguments.h>
 #include <grpcpp/create_channel.h>
@@ -28,16 +29,11 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
       return channel;
     }
   }
-  std::string endpoint(properties_.configuration.get_control_plane().getEndpoint());
-  auto scheme_delim = endpoint.find("://");
-  if (scheme_delim != std::string::npos) {
-    endpoint = endpoint.substr(scheme_delim + 3);
-  }
-  // TODO Handle TLS/mTLS
-  channel = grpc::CreateCustomChannel(
-      endpoint, grpc::InsecureChannelCredentials(),
-      armonik::api::common::utils::getChannelArguments(
-          static_cast<armonik::api::common::utils::Configuration>(properties_.configuration)));
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true)};
+  armonik::api::client::ChannelFactory channelFactory(
+      static_cast<armonik::api::common::utils::Configuration>(properties_.configuration), logger);
+  channel = channelFactory.create_channel();
   logger_.log(armonik::api::common::logger::Level::Debug, "Created and acquired new channel from pool");
   return channel;
 }
