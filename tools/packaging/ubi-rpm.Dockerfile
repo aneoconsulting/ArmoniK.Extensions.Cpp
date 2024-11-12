@@ -6,6 +6,10 @@ USER root
 ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
 ENV PATH="/app/install/bin:$PATH"
 
+RUN sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo && \
+    sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo && \
+    sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
+
 RUN yum --disableplugin=subscription-manager check-update \
     ; yum --disableplugin=subscription-manager \
         install -y git make \
