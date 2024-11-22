@@ -148,7 +148,7 @@ jobs:
           kubectl set image deployment/compute-plane-default -n armonik worker-0=${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}
           export CPIP=$(kubectl get svc control-plane -n armonik -o custom-columns="IP:.spec.clusterIP" --no-headers=true)
           export CPPort=$(kubectl get svc control-plane -n armonik -o custom-columns="PORT:.spec.ports[*].port" --no-headers=true)
-          docker run --rm -t --network host -e Grpc__EndPoint=http://$CPIP:$CPPort -e WorkerLib__Version="${{ needs.versionning.outputs.version}}" "${{ steps.build.outputs.client_img}}:${{ needs.versionning.outputs.version}}"
+          docker run --rm -t --network host -e GrpcClient__Endpoint=http://$CPIP:$CPPort -e WorkerLib__Version="${{ needs.versionning.outputs.version}}" "${{ steps.build.outputs.client_img}}:${{ needs.versionning.outputs.version}}"
 
       - name: Push Docker
         run: |
