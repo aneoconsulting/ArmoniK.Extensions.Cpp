@@ -63,7 +63,7 @@ TEST(testSDK, testEcho) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
@@ -124,7 +124,7 @@ TEST(testSDK, testAddInt) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
@@ -222,7 +222,7 @@ TEST(testSDK, testAddFloat) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
@@ -331,7 +331,7 @@ TEST(testSDK, testStressTest) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
@@ -404,7 +404,7 @@ TEST(testSDK, testSegFault) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
