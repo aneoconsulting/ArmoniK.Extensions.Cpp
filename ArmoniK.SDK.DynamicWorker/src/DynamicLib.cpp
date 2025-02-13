@@ -9,11 +9,7 @@ namespace DynamicWorker {
 
 DynamicLib::DynamicLib(const char *filename) {
 #ifdef LM_ID_NEWLM
-#ifdef NDEBUG
-  auto constexpr openmode = LM_ID_NEWLM;
-#else
   auto constexpr openmode = LM_ID_BASE;
-#endif
   handle = dlmopen(openmode, filename, RTLD_NOW | RTLD_LOCAL);
 #else
   handle = dlopen(filename, RTLD_NOW | RTLD_LOCAL);
