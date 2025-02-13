@@ -20,7 +20,7 @@ case "$environment" in
   ;;
   "Ubuntu")
     dockerfile_name="Ubuntu.Dockerfile"
-    build_base_image="ubuntu:23.04"
+    build_base_image="ubuntu:24.04"
   ;;
   "RedHat")
     dockerfile_name="ubi7.Dockerfile"
