@@ -17,7 +17,7 @@ jobs:
       release: ${{ steps.genver.outputs.release }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
       with:
         ref: ${{ github.ref }}
         fetch-depth: 0
@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0
@@ -73,7 +73,7 @@ jobs:
         if: ${{ failure() && steps.check-diff.conclusion == 'failure' }}
         run: |
           git diff > patch-cpp.diff
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a
         if: ${{ failure() && steps.check-diff.conclusion == 'failure' }}
         with:
           name: patch-cpp
@@ -89,7 +89,7 @@ jobs:
     needs: [versionning]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
         with:
           ref: ${{ github.ref }}
 
@@ -102,7 +102,7 @@ jobs:
             aws: true
 
       - name: Checkout Infra
-        uses: actions/checkout@v3
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
         with:
           repository: aneoconsulting/ArmoniK
           path: infra
@@ -165,7 +165,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
         with:
           ref: ${{ github.ref }}
       - name: Build and upload tgz, rpm and deb packages 
@@ -173,7 +173,7 @@ jobs:
           cd tools/packaging
           ./make-${{ matrix.type }}.sh
       - name: Publish package as artefact
-        uses: actions/upload-artifact@65d862660abb392b8c4a3d1195a2108db131dd05
+        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a
         with:
           if-no-files-found: error
           path: tools/packaging/*.${{ matrix.type }}
