@@ -1,5 +1,5 @@
 # Start with the latest Alpine base image for the build stage
-FROM ubuntu:23.04 AS builder
+FROM ubuntu:24.04 AS builder
 
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
@@ -16,7 +16,6 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-ge
     build-essential \
     libc-ares-dev \
     protobuf-compiler-grpc \
-    grpc-proto \
     libgrpc-dev \
     libgrpc++-dev \
     libprotobuf-dev \
@@ -60,12 +59,11 @@ ARG WORKER_VERSION
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DBUILD_CLIENT=OFF" "-DBUILD_DYNAMICWORKER=ON" "-DBUILD_END2END=OFF" -DVERSION="${WORKER_VERSION}" /app/source/ && make -j $(nproc) install && make clean
 
 # Start with the latest Alpine base image for the final stage
-FROM ubuntu:23.04 AS runner
+FROM ubuntu:24.04 AS runner
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
     libc-ares-dev \
-    grpc-proto \
     libgrpc-dev \
     libgrpc++-dev \
     libprotobuf-dev \
