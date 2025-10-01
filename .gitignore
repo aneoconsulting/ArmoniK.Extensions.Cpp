@@ -394,3 +394,5 @@ gen
 build/
 **/install
 .doxygen-warnings
+
+.docs/content/cpp/doxygen
