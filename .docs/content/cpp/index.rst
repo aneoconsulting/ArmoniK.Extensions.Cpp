@@ -1,10 +1,4 @@
-API Documentation
+Doxygen generated C++ documentation
 =====================
 
 .. doxygenindex:: 
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Doxygen API Documentation
-
-   doxygen/xml/index
