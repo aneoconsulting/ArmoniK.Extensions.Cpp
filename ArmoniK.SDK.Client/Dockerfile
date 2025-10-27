@@ -1,5 +1,5 @@
 # Start with the latest Alpine base image for the build stage
-FROM alpine:3.18.6 AS builder
+FROM alpine:3.18.12 AS builder
 
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
@@ -21,7 +21,7 @@ RUN apk update && apk add --no-cache \
     protobuf-dev
 
 # Update the PATH environment variable to include the gRPC libraries and binaries
-ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
+ENV LD_LIBRARY_PATH="/app/install/lib"
 ENV PATH="/app/install/bin:$PATH"
 
 # Display the updated PATH environment variable
@@ -41,7 +41,6 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSIO
     make -j $(nproc) install && \
     make clean
 
-
 # Copy the application source files into the image
 WORKDIR /app/source
 COPY tools/packaging/common/. ./tools/packaging/common/
@@ -57,7 +56,7 @@ WORKDIR /app/build
 ARG CLIENT_VERSION
 RUN cmake "-DCMAKE_INSTALL_PREFIX=/app/install" "-DINSTALL_SDK_DIR=/app/install" "-DBUILD_WORKER=OFF" "-DBUILD_DYNAMICWORKER=OFF" "-DBUILD_END2END=ON" -DVERSION="${CLIENT_VERSION}" /app/source/ && make -j $(nproc) install && make clean
 
-FROM alpine:3.18.6 as runner
+FROM alpine:3.18.12 AS runner
 
 RUN apk update && apk add --no-cache \
     c-ares \
@@ -65,11 +64,12 @@ RUN apk update && apk add --no-cache \
     grpc \
     grpc-cpp
 
-ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
+ENV LD_LIBRARY_PATH="/app/install/lib"
 ENV PATH="/app/install/bin:$PATH"
 
 COPY --from=builder /armonik/api/. /app/install/.
 COPY --from=builder /app/install/. /app/install/.
+
 # Set the entrypoint for the application's test executable
 # This is the command that will be executed when the container is run
 ENTRYPOINT ["/app/install/bin/ArmoniK.SDK.Client.Test"]
