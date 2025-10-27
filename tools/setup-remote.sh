@@ -8,13 +8,17 @@ IMAGE_TAG="${1:-armonik_sdk_build_visual_studio:0.1.0}"
 script_path="$(dirname "${BASH_SOURCE:-$0}")"
 working_dir="$(realpath "$script_path/../" )"
 
-ARMONIK_API_DIR="$(realpath "${working_dir}/../ArmoniK.Api/packages/cpp/install")"
+# ArmoniK.Api directory should be provided via the ARMONIK_API_DIR env var
+if [[ -z "${ARMONIK_API_DIR}" ]]; then
+    echo "Error: ARMONIK_API_DIR is not set."
+    exit 1
+fi
 
 # Create an install directory and store its absolute path
 install_dir="$(realpath "${working_dir}/install")"
 mkdir -p "${install_dir}"
 
-docker build -t "${IMAGE_TAG}" -f Dockerfile.vs "${working_dir}"
+docker build -t "${IMAGE_TAG}" -f ${script_path=}/Dockerfile.vs "${working_dir}"
 
 mkdir -p ${working_dir}/build
 

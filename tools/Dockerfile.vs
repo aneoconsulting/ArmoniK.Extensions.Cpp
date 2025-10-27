@@ -1,5 +1,4 @@
-# Use the latest version of Ubuntu 20.04 as the base image
-FROM ubuntu:23.04
+FROM ubuntu:24.04
 
 # Install dependencies
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
@@ -17,7 +16,6 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-ge
     openssh-server \
     libc-ares-dev \
     protobuf-compiler-grpc \
-    grpc-proto \
     libgrpc-dev \
     libgrpc++-dev
 
