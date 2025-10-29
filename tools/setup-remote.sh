@@ -11,7 +11,7 @@ AK_API_DEFAULT="$(realpath "${working_dir}/../ArmoniK.Api/packages/cpp/install")
 if [[ -z "${ARMONIK_API_DIR}" ]]; then
     echo "Info: ARMONIK_API_DIR is not set"
     echo "      Using default $AK_API_DEFAULT"
-    ARMONIK_API_DIR=AK_API_DEFAULT
+    ARMONIK_API_DIR=$AK_API_DEFAULT
 fi
 
 # Create an install directory and store its absolute path
