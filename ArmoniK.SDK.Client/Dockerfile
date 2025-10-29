@@ -30,7 +30,7 @@ RUN echo $PATH
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
 ARG API_VERSION
-RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSION}" && \
+RUN git clone --depth 1 https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSION}" && \
     cd ArmoniK.Api/packages/cpp && \
     mkdir -p /app/proto && \
     mkdir -p /armonik/api && \

@@ -1,9 +1,10 @@
 ARG DynamicWorkerImage
 ARG BuildBaseImage
-FROM $DynamicWorkerImage as source
+FROM $DynamicWorkerImage AS source
 
 ARG BuildBaseImage
 FROM $BuildBaseImage AS builder
+
 USER root
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code

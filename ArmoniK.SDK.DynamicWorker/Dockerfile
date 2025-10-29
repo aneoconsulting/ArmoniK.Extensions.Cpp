@@ -1,5 +1,5 @@
 # Start with the latest Alpine base image for the build stage
-FROM alpine:3.18.6 AS builder
+FROM alpine:3.18.12 AS builder
 
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
@@ -21,16 +21,17 @@ RUN apk update && apk add --no-cache \
     protobuf-dev
 
 # Update the PATH environment variable to include the gRPC libraries and binaries
-ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
+ENV LD_LIBRARY_PATH="/app/install/lib"
 ENV PATH="/app/install/bin:$PATH"
 
 # Display the updated PATH environment variable
-RUN echo $PATH
+RUN echo "LD_LIBRARY_PATH is $LD_LIBRARY_PATH"
+RUN echo "PATH is $PATH"
 
 # Get and install ArmoniK api into the image
 WORKDIR /tmp
 ARG API_VERSION
-RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSION}" && \
+RUN git clone --depth 1 https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSION}" && \
     cd ArmoniK.Api/packages/cpp && \
     mkdir -p /app/proto && \
     mkdir -p /armonik/api && \
@@ -58,7 +59,7 @@ ARG WORKER_VERSION
 RUN cmake -DCMAKE_INSTALL_PREFIX="/app/install" -DBUILD_CLIENT=OFF -DBUILD_DYNAMICWORKER=ON -DBUILD_END2END=OFF -DVERSION="${WORKER_VERSION}" /app/source/ && make -j $(nproc) install && make clean
 
 # Start with the latest Alpine base image for the final stage
-FROM alpine:3.18.6 AS runner
+FROM alpine:3.18.12 AS runner
 # Install all the necessary dependencies required for the build process
 # These include tools and libraries for building and compiling the source code
 RUN apk update && apk add --no-cache \
@@ -78,7 +79,7 @@ COPY --from=builder /app/install/lib /app/install/lib
 COPY --from=builder /app/install/include /app/install/include
 
 # Update the PATH environment variable to include the application libraries and binaries
-ENV LD_LIBRARY_PATH="/app/install/lib:$LD_LIBRARY_PATH"
+ENV LD_LIBRARY_PATH="/app/install/lib"
 ENV PATH="/app/install/bin:$PATH"
 
 # Set the entrypoint for the application's test executable
