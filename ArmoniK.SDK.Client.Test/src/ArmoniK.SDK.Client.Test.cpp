@@ -69,8 +69,9 @@ TEST(testSDK, testEcho) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), config.get("Worker__Type"), "EchoService", config.get("PartitionId"));
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), config.get("Worker__Type"),
+                                                         "EchoService", config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   // Create the properties
@@ -130,8 +131,9 @@ TEST(testSDK, testAddInt) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService", config.get("PartitionId"));
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), "End2EndTest",
+                                                         "AdditionService", config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   // Create the properties
@@ -228,8 +230,9 @@ TEST(testSDK, testAddFloat) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService", config.get("PartitionId"));
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), "End2EndTest",
+                                                         "AdditionService", config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   // Create the properties
@@ -411,8 +414,9 @@ TEST(testSDK, testSegFault) {
   }
 
   // Create the task options
-  ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "SegFaultService", config.get("PartitionId"));
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), "End2EndTest",
+                                                         "SegFaultService", config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   // Create the properties
