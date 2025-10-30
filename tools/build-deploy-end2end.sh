@@ -22,6 +22,7 @@ usage() {
     echo "  -a  API version (default: '$api_version')"
     echo "  -t  Worker test (default: '$worker_test')"
     echo "  -b  Dynamic library path (default: $default_dyn_lib_path)"
+    exit 1
 }
 
 # Parse command line options
@@ -33,8 +34,8 @@ while getopts ":e:n:v:a:t:b:" opt; do
         a) api_version="$OPTARG" ;;
         t) worker_test="$OPTARG" ;;
         b) dyn_lib_path="$OPTARG" ;;
-        \?) echo "Invalid option -$OPTARG" >&2; usage; exit 1 ;;
-        :)  echo "Option -$OPTARG requires an argument." >&2; usage; exit 1;;
+        \?) echo "Invalid option -$OPTARG" >&2; usage ;;
+        :)  echo "Option -$OPTARG requires an argument." >&2; usage ;;
     esac
 done
 
@@ -43,7 +44,6 @@ if [ -z "$dyn_lib_path" ]; then
     echo "Warning: Option [-b dyn_lib_path] was not set."
     echo "         Using default value: $default_dyn_lib_path"
     echo "         Make sure it is the correct one for your deployment"
-    usage
 fi
 
 worker_tag="${worker_version}-$(echo "$environment" | awk '{print tolower($0)}')"
