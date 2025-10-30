@@ -60,7 +60,7 @@ std::tuple<ArmoniK::Sdk::Common::Properties, armonik::api::common::logger::Logge
 
   // Create the task options
   ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "EchoService");
+      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "EchoService", config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   return std::make_tuple<ArmoniK::Sdk::Common::Properties, armonik::api::common::logger::Logger>(

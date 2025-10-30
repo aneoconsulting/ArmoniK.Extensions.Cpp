@@ -63,14 +63,14 @@ TEST(testSDK, testEcho) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
 
   // Create the task options
   ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "EchoService");
+      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), config.get("Worker__Type"), "EchoService", config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   // Create the properties
@@ -124,14 +124,14 @@ TEST(testSDK, testAddInt) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
 
   // Create the task options
   ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService");
+      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService", config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   // Create the properties
@@ -222,14 +222,14 @@ TEST(testSDK, testAddFloat) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
 
   // Create the task options
   ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService");
+      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "AdditionService", config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   // Create the properties
@@ -331,14 +331,15 @@ TEST(testSDK, testStressTest) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
 
   // Create the task options
   ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
-                                                         config.get("WorkerLib__Version"), "End2EndTest", "StressTest");
+                                                         config.get("WorkerLib__Version"), "End2EndTest", "StressTest",
+                                                         config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   // Create the properties
@@ -404,14 +405,14 @@ TEST(testSDK, testSegFault) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
 
   // Create the task options
   ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "SegFaultService");
+      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "SegFaultService", config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   // Create the properties
