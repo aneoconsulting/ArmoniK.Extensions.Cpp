@@ -105,6 +105,21 @@ public:
   void DropSession();
 
   /**
+   * Closes the session for the current service
+   */
+  void CloseSession();
+
+  /**
+   * Closes the session for the current service
+   */
+  void CancelSession();
+
+  /**
+   * Purges the session for the current service
+   */
+  void PurgeSession();
+
+  /**
    * @brief Discards the results data of the given tasks. The associated results must be completed or aborted.
    * @param task_ids Task ids
    * @warning The data of these results will not be recoverable. Tasks which depend on these data will fail.

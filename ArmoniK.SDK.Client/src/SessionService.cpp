@@ -45,6 +45,18 @@ void SessionService::DropSession() {
   ensure_valid();
   impl->DropSession();
 }
+void SessionService::CloseSession() {
+  ensure_valid();
+  impl->CloseSession();
+}
+void SessionService::CancelSession() {
+  ensure_valid();
+  impl->CancelSession();
+}
+void SessionService::PurgeSession() {
+  ensure_valid();
+  impl->PurgeSession();
+}
 void SessionService::CleanupTasks(std::vector<std::string> task_ids) {
   ensure_valid();
   impl->CleanupTasks(std::move(task_ids));
