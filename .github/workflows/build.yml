@@ -115,7 +115,7 @@ jobs:
           export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
           export CLIENT_IMG="dockerhubaneo/armonik-sdk-client-test"
           export WORKER_TEST_IMG="dockerhubaneo/armonik-sdk-worker-test"
-          ./tools/build-deploy-end2end.sh "${{ matrix.dist }}" "$WORKER_IMG" "${{ needs.versionning.outputs.version}}" "$ARMONIK_API_VERSION_DEFAULT" "$WORKER_TEST_IMG"
+          ./tools/build-deploy-end2end.sh -e "${{ matrix.dist }}" -n "$WORKER_IMG" -v "${{ needs.versionning.outputs.version}}" -a "$ARMONIK_API_VERSION_DEFAULT" -t "$WORKER_TEST_IMG"
           ./tools/build-client.sh "$CLIENT_IMG" "${{ needs.versionning.outputs.version}}" "$API_VERSION"
           export WORKER_VERSION="${{ needs.versionning.outputs.version}}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')"
           docker save "$WORKER_IMG:$WORKER_VERSION" | sudo k3s ctr images import /dev/stdin
