@@ -54,5 +54,8 @@ int main() {
 
   std::cout << "Task Processing Complete." << std::endl;
 
+  // Close sesssion
+  service.CloseSession();
+
   return 0;
 }
