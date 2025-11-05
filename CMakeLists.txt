@@ -46,6 +46,7 @@ option(BUILD_CLIENT "Build Client" ON)
 option(BUILD_DYNAMICWORKER "Build DynamicWorker" OFF)
 option(BUILD_WORKERTEST "Build Worker Test" OFF)
 option(BUILD_SDK "Build SDK" ON)
+option(BUILD_EXAMPLES "Build Examples" OFF)
 
 if(BUILD_SDK)
     add_subdirectory(ArmoniK.SDK.Common)
@@ -72,6 +73,17 @@ if(BUILD_END2END)
         add_subdirectory(ArmoniK.SDK.Worker.Test)
     endif()
 endif ()
+
+if(BUILD_EXAMPLES)
+    if(BUILD_WORKER)
+        add_subdirectory(ArmoniK.SDK.Examples/hello/worker)
+    endif()
+
+    if(BUILD_CLIENT)
+        add_subdirectory(ArmoniK.SDK.Examples/hello/client)
+    endif()
+endif()
+
 
 include(Packaging.cmake)
 include(CPack)
