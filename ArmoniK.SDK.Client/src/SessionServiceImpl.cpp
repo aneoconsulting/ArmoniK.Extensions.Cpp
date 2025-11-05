@@ -237,6 +237,27 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
   }
 }
 
+void SessionServiceImpl::CloseSession() {
+  auto reply = channel_pool.WithChannel([&](const std::shared_ptr<::grpc::Channel> &channel) {
+    return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
+        .close_session(session);
+  });
+}
+
+void SessionServiceImpl::CancelSession() {
+  auto reply = channel_pool.WithChannel([&](const std::shared_ptr<::grpc::Channel> &channel) {
+    return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
+        .cancel_session(session);
+  });
+}
+
+void SessionServiceImpl::PurgeSession() {
+  auto reply = channel_pool.WithChannel([&](const std::shared_ptr<::grpc::Channel> &channel) {
+    return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
+        .purge_session(session);
+  });
+}
+
 void SessionServiceImpl::DropSession() {
   // Clear all the maps
   {
