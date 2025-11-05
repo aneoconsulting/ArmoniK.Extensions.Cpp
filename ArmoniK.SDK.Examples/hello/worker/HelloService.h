@@ -18,7 +18,7 @@ public:
   }
   std::string call(void *, const std::string &name, const std::string &input) override {
     std::cout << "Service method : " << name << std::endl;
-    return input + " World!"; 
+    return input + " World!";
   }
   void leave_session(void *session_ctx) override {
     auto session_id = static_cast<std::string *>(session_ctx);
