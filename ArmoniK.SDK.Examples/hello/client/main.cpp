@@ -45,7 +45,7 @@ int main() {
   auto handler = std::make_shared<HelloServiceHandler>(logger);
 
   // Submit a task
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("HelloService", inputData)}, handler);
+  auto tasks = service.Submit({task_payload}, handler);
 
   std::cout << "Task Submitted: " << tasks[0] << std::endl;
 
