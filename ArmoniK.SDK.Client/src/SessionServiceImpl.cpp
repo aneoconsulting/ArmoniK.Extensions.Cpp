@@ -44,13 +44,45 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
     armonik::api::common::TaskCreation creation{};
 
     auto result_payload = channel_pool.WithChannel([&](auto channel) {
-      auto client = armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel));
-      auto result = client.create_results_metadata(session, std::vector<std::string>{"result"})["result"];
-      auto payload =
-          client.create_results(session, std::vector<std::pair<std::string, std::string>>{
-                                             {task_request.method_name, request.payload()}})[task_request.method_name];
+      armonik::api::client::ResultsClient client(armonik::api::grpc::v1::results::Results::NewStub(channel));
 
-      return std::pair<std::string, std::string>{result, payload};
+      auto result_id = client.create_results_metadata(session, {"result"}).at("result");
+      const auto &payload_data = request.payload();
+      const std::size_t max_inline_bytes = client.get_service_configuration().data_chunk_max_size;
+
+      std::string payload_id;
+
+      std::stringstream msg;
+      msg << "Preparing payload for method '" << task_request.method_name << "' (" << payload_data.size()
+          << " bytes, inline limit " << max_inline_bytes << " bytes)";
+      logger_.log(armonik::api::common::logger::Level::Debug, msg.str());
+
+      try {
+        if (payload_data.size() <= max_inline_bytes) {
+          //  small payload embeded directly as part of metadata
+          logger_.log(armonik::api::common::logger::Level::Debug, "Using inline create_results for small payload.");
+
+          payload_id =
+              client
+                  .create_results(session, std::vector<std::pair<std::string, std::string>>{{task_request.method_name,
+                                                                                             request.payload()}})
+                  .at(task_request.method_name);
+        } else {
+          // Streaming for large payload
+          logger_.log(armonik::api::common::logger::Level::Debug,
+                      "Payload exceeds inline limit, using streaming upload.");
+
+          client.upload_result_data(session, result_id, payload_data);
+          payload_id = result_id; // same ID since we uploaded into that result
+        }
+      } catch (const armonik::api::common::exceptions::ArmoniKApiException &ex) {
+        std::stringstream err;
+        err << "Error uploading payload for '" << task_request.method_name << "': " << ex.what();
+        logger_.log(armonik::api::common::logger::Level::Error, err.str());
+        throw;
+      }
+
+      return std::pair<std::string, std::string>{result_id, payload_id};
     });
 
     // Set payload ID
