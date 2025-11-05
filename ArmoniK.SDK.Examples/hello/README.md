@@ -46,6 +46,23 @@ To successfully run this example, take the following steps:
 docker run --rm -e GrpcClient__Endpoint=http://192.168.6.41:5001 -e WorkerLib_Version=0.1.0-local -e PartitionId=cppdynamic armonik-cpp-hello-client:0.1.0-sdk
 ```
 
+You should see something similar to:
+
+```bash
+Starting Hello World ArmoniK Client...
+Unable to load json file appsettings.json : IO_ERROR: Error reading the file.
+Endpoint: http://192.168.6.41:5001
+Session ID: 5a9477cf-8c08-4d36-a36e-68017de6d646
+2025-11-05T16:31:27.057879462z	[Info]	Task ID e4f54342-a631-4351-93ea-04d958123c9e
+
+Task Submitted: e4f54342-a631-4351-93ea-04d958123c9e
+2025-11-05T16:31:27.573113488z	[Info]	HANDLE RESPONSE : Received result of size 13 for taskId e4f54342-a631-4351-93ea-04d958123c9e
+Content : Hello, World!
+Raw : 72 101 108 108 111 44 32 87 111 114 108 100 33
+
+Task Processing Complete.
+```
+
 ## Notes:
 - Ensure that you replace http://192.168.6.41:5001 with the correct endpoint for your control plane.
 - The tags used for all the containers are defined in the Makefile, you can modify them by defining suitable environment variables
