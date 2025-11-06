@@ -10,7 +10,7 @@ source "${script_path}"/../common.sh
 IMAGE_TAG="${1:-"armoniksdkdeb:${ARMONIK_SDK_VERSION_DEFAULT}"}"
 API_VERSION="${2:-"${ARMONIK_API_VERSION_DEFAULT}"}"
 
-docker build -t "${IMAGE_TAG}" -f deb.Dockerfile --build-arg="API_VERSION=${API_VERSION}" --build-arg="VERSION=${ARMONIK_SDK_VERSION_DEFAULT}" --progress=plain "${working_dir}"
+docker build -t "${IMAGE_TAG}" -f deb.Dockerfile --build-arg="API_VERSION=${API_VERSION}" --build-arg="VERSION=${ARMONIK_SDK_VERSION_DEFAULT}"  "${working_dir}"
 
 mkdir -p ${working_dir}/build
 

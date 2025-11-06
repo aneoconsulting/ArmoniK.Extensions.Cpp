@@ -13,4 +13,4 @@ docker build -t "${IMAGE_TAG}:${IMAGE_VERSION}" \
   -f ${working_dir}/ArmoniK.SDK.Client/Dockerfile \
   --build-arg="API_VERSION=$API_VERSION" \
   --build-arg="CLIENT_VERSION=$IMAGE_VERSION" \
-  --progress plain "${working_dir}"
+  "${working_dir}"
