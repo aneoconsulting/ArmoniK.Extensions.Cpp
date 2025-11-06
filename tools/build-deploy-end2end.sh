@@ -10,7 +10,7 @@ worker_name="armonik-sdk-cpp-dynamicworker"
 worker_version="${ARMONIK_SDK_VERSION_DEFAULT:-default_version}"
 api_version="${ARMONIK_API_VERSION_DEFAULT:-default_api_version}"
 worker_test="armonik-sdk-worker-test"
-default_dyn_lib_path="$(realpath ${working_dir}/../ArmoniK/infrastructure/quick-deploy/localhost/data)" 
+default_dyn_lib_path="$(realpath ${working_dir}/../ArmoniK/infrastructure/quick-deploy/localhost/data)"
 
 # Display usage information with default values
 usage() {
@@ -68,7 +68,7 @@ esac
 
 "${working_dir}"/ArmoniK.SDK.DynamicWorker/build.sh "${working_dir}/ArmoniK.SDK.DynamicWorker/${dockerfile_name}" "${worker_name}:${worker_tag}" "$api_version" "$worker_version"
 
-docker build --build-arg DynamicWorkerImage="${worker_name}:${worker_tag}" --build-arg BuildBaseImage="${build_base_image}" --build-arg WorkerLibVersion="$worker_version" -f "${working_dir}/ArmoniK.SDK.Worker.Test/Dockerfile" --progress plain -t "${worker_test}:build-${environment}" ${working_dir}
+docker build --build-arg DynamicWorkerImage="${worker_name}:${worker_tag}" --build-arg BuildBaseImage="${build_base_image}" --build-arg WorkerLibVersion="$worker_version" -f "${working_dir}/ArmoniK.SDK.Worker.Test/Dockerfile" -t "${worker_test}:build-${environment}" ${working_dir}
 
 if [ -z "$dyn_lib_path" ]
 then
