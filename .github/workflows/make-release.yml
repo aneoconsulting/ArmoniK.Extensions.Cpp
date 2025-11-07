@@ -69,7 +69,7 @@ jobs:
       - name: Build the package
         run: |
           cd tools/packaging
-          ./make-${{ matrix.type }}.sh
+          ./make-${{ matrix.type }}.sh ${{ github.ref_name }}
       - name: Publish package as artefact
         uses: actions/upload-artifact@65d862660abb392b8c4a3d1195a2108db131dd05
         with:
