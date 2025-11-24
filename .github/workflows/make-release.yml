@@ -70,12 +70,6 @@ jobs:
         run: |
           cd tools/packaging
           ./make-${{ matrix.type }}.sh ${{ github.ref_name }}
-      - name: Publish package as artefact
-        uses: actions/upload-artifact@65d862660abb392b8c4a3d1195a2108db131dd05
-        with:
-          if-no-files-found: error
-          path: tools/packaging/*.${{ matrix.type }}
-          name: armoniksdk-${{ github.ref_name }}.${{ matrix.type }}
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
