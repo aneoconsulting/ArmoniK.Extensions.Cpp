@@ -46,9 +46,20 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
     auto result_payload = channel_pool.WithChannel([&](auto channel) {
       armonik::api::client::ResultsClient client(armonik::api::grpc::v1::results::Results::NewStub(channel));
 
-      auto result_id = client.create_results_metadata(session, {"result"}).at("result");
-      const auto &payload_data = request.payload();
       const std::size_t max_inline_bytes = client.get_service_configuration().data_chunk_max_size;
+
+      const auto &payload_data = request.payload();
+      std::vector<std::string> result_names = {"result"};
+
+      // If we need to upload via stream, we create an extra result for the payload.
+      // It is not required with small payloads as create_results creates the metadata for us.
+      if (payload_data.size() > max_inline_bytes) {
+        assert(task_request.method_name != "result");
+        result_names.push_back(task_request.method_name);
+      }
+
+      auto results = client.create_results_metadata(session, result_names);
+      auto result_id = results.at("result");
 
       std::string payload_id;
 
@@ -72,8 +83,8 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
           logger_.log(armonik::api::common::logger::Level::Debug,
                       "Payload exceeds inline limit, using streaming upload.");
 
-          client.upload_result_data(session, result_id, payload_data);
-          payload_id = result_id; // same ID since we uploaded into that result
+          payload_id = results.at(task_request.method_name);
+          client.upload_result_data(session, payload_id, payload_data);
         }
       } catch (const armonik::api::common::exceptions::ArmoniKApiException &ex) {
         std::stringstream err;
