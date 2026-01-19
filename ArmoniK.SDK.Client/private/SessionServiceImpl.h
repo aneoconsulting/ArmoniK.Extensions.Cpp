@@ -78,6 +78,11 @@ private:
    */
   armonik::api::common::logger::LocalLogger logger_;
 
+  /**
+   * @brief Batch size for waiting results
+   */
+  int wait_batch_size_ = 200;
+
 public:
   SessionServiceImpl() = delete;
   SessionServiceImpl(const SessionServiceImpl &) = delete;
