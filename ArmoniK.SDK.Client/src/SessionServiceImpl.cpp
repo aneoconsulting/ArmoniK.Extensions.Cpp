@@ -1,4 +1,5 @@
 #include "SessionServiceImpl.h"
+#include "Batcher.h"
 #include "armonik/sdk/client/IServiceInvocationHandler.h"
 #include <armonik/client/results/ResultsClient.h>
 #include <armonik/client/results_common.pb.h>
@@ -193,32 +194,39 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
     }
   }
 
+  // Batcher to get results in batches
+  Batcher<std::string> batcher(wait_batch_size_, [&](std::vector<std::string> &&batch) {
+    armonik::api::grpc::v1::results::Filters filters{};
+    for (auto &result_id : batch) {
+
+      auto filter = filters.add_or_()->add_and_();
+      filter->mutable_field()->mutable_result_raw_field()->set_field(
+          armonik::api::grpc::v1::results::RESULT_RAW_ENUM_FIELD_RESULT_ID);
+      filter->mutable_filter_string()->set_value(std::move(result_id));
+      filter->mutable_filter_string()->set_operator_(armonik::api::grpc::v1::FILTER_STRING_OPERATOR_EQUAL);
+    }
+
+    auto response = channel_pool.WithChannel([&](auto &&channel) {
+      armonik::api::client::ResultsClient resultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel));
+      int total = 0;
+      return resultsClient.list_results(std::move(filters), total, 0, filters.or__size());
+    });
+
+    for (auto &result : response) {
+      // threadsafe as the result is known to be present in the map and we have unique keys
+      results[result.result_id()] = std::move(result);
+    }
+  });
+
   // Wait all the specified results
   while (!results.empty()) {
     bool hasError = false;
 
     // Get all the results using batched requests
-    for (auto result_it = results.begin(); result_it != results.end();) {
-      armonik::api::grpc::v1::results::Filters filters{};
-      for (; result_it != results.end() && filters.or__size() < wait_batch_size_; ++result_it) {
-        auto filter = filters.add_or_()->add_and_();
-        filter->mutable_field()->mutable_result_raw_field()->set_field(
-            armonik::api::grpc::v1::results::RESULT_RAW_ENUM_FIELD_RESULT_ID);
-        filter->mutable_filter_string()->set_value(result_it->first);
-        filter->mutable_filter_string()->set_operator_(armonik::api::grpc::v1::FILTER_STRING_OPERATOR_EQUAL);
-      }
-
-      channel_pool.WithChannel([&results, filters = std::move(filters)](auto &&channel) {
-        armonik::api::client::ResultsClient resultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel));
-        int total = 0;
-        auto response = resultsClient.list_results(std::move(filters), total, 0, filters.or__size());
-
-        for (auto &result : response) {
-          // threadsafe as the result is known to be present in the map and we have unique keys
-          results[result.result_id()] = std::move(result);
-        }
-      });
+    for (auto &result : results) {
+      batcher.Add(result.first);
     }
+    batcher.ProcessBatch();
 
     for (auto result_it = results.begin(); result_it != results.end();) {
       auto &result = result_it->second;
