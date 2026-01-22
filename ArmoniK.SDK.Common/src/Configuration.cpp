@@ -54,13 +54,25 @@ armonik::api::common::options::ComputePlane &ComputePlane::set_impl() {
 // Control Plane
 
 ControlPlane::ControlPlane(const Configuration &config)
-    : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*config.impl)) {}
+    : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*config.impl)) {
+  auto batch_size_str = config.get("GrpcClient__BatchSize");
+  try {
+    batch_size_ = std::stoi(batch_size_str);
+  } catch (...) {
+    // Ignore invalid value and keep default
+  }
+  if (batch_size_ <= 0) {
+    batch_size_ = 1;
+  }
+}
 ControlPlane::ControlPlane(const ControlPlane &controlplane)
-    : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*controlplane.impl)) {}
+    : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*controlplane.impl)),
+      batch_size_(controlplane.batch_size_) {}
 ControlPlane::ControlPlane(ControlPlane &&) noexcept = default;
 
 ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
   impl = std::make_unique<armonik::api::common::options::ControlPlane>(*controlplane.impl);
+  batch_size_ = controlplane.batch_size_;
   return *this;
 }
 ControlPlane &ControlPlane::operator=(ControlPlane &&) noexcept = default;
@@ -71,6 +83,8 @@ absl::string_view ControlPlane::getUserKeyPemPath() const { return impl->getUser
 absl::string_view ControlPlane::getUserP12Path() const { return impl->getUserP12Path(); }
 absl::string_view ControlPlane::getCaCertPemPath() const { return impl->getCaCertPemPath(); }
 bool ControlPlane::isSslValidation() const { return impl->isSslValidation(); }
+
+int ControlPlane::getBatchSize() const { return batch_size_; }
 
 const armonik::api::common::options::ControlPlane &ControlPlane::get_impl() const {
   const static armonik::api::common::options::ControlPlane default_config =

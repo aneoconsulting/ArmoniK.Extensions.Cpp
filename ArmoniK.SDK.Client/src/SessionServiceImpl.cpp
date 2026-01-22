@@ -137,7 +137,8 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                        armonik::api::common::logger::Logger &logger, const std::string &session_id)
-    : taskOptions(properties.taskOptions), channel_pool(properties, logger), logger_(logger.local()) {
+    : taskOptions(properties.taskOptions), channel_pool(properties, logger), logger_(logger.local()),
+      wait_batch_size_(properties.configuration.get_control_plane().getBatchSize()) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](auto &&channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))

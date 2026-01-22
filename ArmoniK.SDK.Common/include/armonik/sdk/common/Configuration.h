@@ -102,10 +102,17 @@ public:
    */
   [[nodiscard]] bool isSslValidation() const;
 
+  /**
+   * @brief Batch size for waiting results
+   * @return Batch size
+   */
+  [[nodiscard]] int getBatchSize() const;
+
 private:
   std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
   [[nodiscard]] const armonik::api::common::options::ControlPlane &get_impl() const;
   armonik::api::common::options::ControlPlane &set_impl();
+  int batch_size_ = 200;
 };
 
 /**
