@@ -1,4 +1,5 @@
 #include "SessionServiceImpl.h"
+#include "Batcher.h"
 #include "armonik/sdk/client/IServiceInvocationHandler.h"
 #include <armonik/client/results/ResultsClient.h>
 #include <armonik/client/results_common.pb.h>
@@ -137,7 +138,8 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                        armonik::api::common::logger::Logger &logger, const std::string &session_id)
-    : taskOptions(properties.taskOptions), channel_pool(properties, logger), logger_(logger.local()) {
+    : taskOptions(properties.taskOptions), channel_pool(properties, logger), logger_(logger.local()),
+      wait_batch_size_(properties.configuration.get_control_plane().getBatchSize()) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](auto &&channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
@@ -161,112 +163,183 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
   bool breakOnError = behavior & WaitBehavior::BreakOnError;
   bool stopOnFirst = behavior & WaitBehavior::Any;
 
-  // While either we wait on all tasks, or on the tasks given
-  while (!hasWaitList || !task_ids.empty()) {
-    std::vector<std::string> resultIds;
+  std::map<std::string, armonik::api::grpc::v1::results::ResultRaw> results;
 
-    {
-      std::lock_guard<std::mutex> _(maps_mutex);
-      resultIds.reserve(resultId_taskId.size());
-      for (auto &&rid_tid : resultId_taskId) {
-        resultIds.push_back(rid_tid.first);
+  {
+    std::lock_guard<std::mutex> _(maps_mutex);
+
+    if (task_ids.empty()) {
+      // If the task set is empty, wait for all the results that have been submitted at the moment of the wait
+      for (auto &handler : result_handlers) {
+        armonik::api::grpc::v1::results::ResultRaw result{};
+        result.set_result_id(handler.first);
+        result.set_status(armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND);
+        results.emplace(handler.first, std::move(result));
+      }
+    } else {
+      // Otherwise, wait for the results of the specified tasks only
+      for (auto &tid : task_ids) {
+        auto result_id = taskId_resultId.find(tid);
+        if (result_id == taskId_resultId.end()) {
+          logger_.log(armonik::api::common::logger::Level::Warning,
+                      "Task ID " + tid + " has no associated result ID, skipping wait.");
+          continue;
+        }
+
+        armonik::api::grpc::v1::results::ResultRaw result{};
+        result.set_result_id(result_id->second);
+        result.set_status(armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND);
+        results.emplace(result_id->second, std::move(result));
       }
     }
+  }
 
-    // If there is no task to wait on, return
-    if (resultIds.empty()) {
-      break;
+  // Batcher to get results in batches
+  Batcher<std::string> batcher(wait_batch_size_, [&](std::vector<std::string> &&batch) {
+    armonik::api::grpc::v1::results::Filters filters{};
+    for (auto &result_id : batch) {
+
+      auto filter = filters.add_or_()->add_and_();
+      filter->mutable_field()->mutable_result_raw_field()->set_field(
+          armonik::api::grpc::v1::results::RESULT_RAW_ENUM_FIELD_RESULT_ID);
+      filter->mutable_filter_string()->set_value(std::move(result_id));
+      filter->mutable_filter_string()->set_operator_(armonik::api::grpc::v1::FILTER_STRING_OPERATOR_EQUAL);
     }
 
-    bool hasError = false;
-    // Ask for the results statuses
-    auto statuses = channel_pool.WithChannel([&](auto &&channel) {
-      std::vector<armonik::api::grpc::v1::results::ResultRaw> raws;
-      raws.reserve(resultIds.size());
-      std::transform(resultIds.cbegin(), resultIds.cend(), std::back_inserter(raws), [channel](auto &&resultId) {
-        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-            .get_result(resultId);
-      });
-      return raws;
+    auto response = channel_pool.WithChannel([&](auto &&channel) {
+      armonik::api::client::ResultsClient resultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel));
+      int total = 0;
+      return resultsClient.list_results(std::move(filters), total, 0, filters.or__size());
     });
 
-    std::vector<std::pair<std::string, std::string>> done;
+    for (auto &result : response) {
+      // threadsafe as the result is known to be present in the map and we have unique keys
+      results[result.result_id()] = std::move(result);
+    }
+  });
 
-    // For each status
-    for (auto &&result_raw : statuses) {
-      std::shared_ptr<IServiceInvocationHandler> handler;
-      std::string task_id;
-      if (result_raw.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED ||
-          result_raw.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
-        // Get the handler and taskid information
-        {
-          std::lock_guard<std::mutex> _(maps_mutex);
-          handler = result_handlers.at(result_raw.result_id());
-          task_id = resultId_taskId.at(result_raw.result_id());
+  // Wait all the specified results
+  while (!results.empty()) {
+    bool hasError = false;
+
+    // Get all the results using batched requests
+    for (auto &result : results) {
+      batcher.Add(result.first);
+    }
+    batcher.ProcessBatch();
+
+    for (auto result_it = results.begin(); result_it != results.end();) {
+      auto &result = result_it->second;
+      auto status = result.status();
+
+      // reset status to not found for next iteration if not completed or aborted
+      result.set_status(armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND);
+
+      std::shared_ptr<IServiceInvocationHandler> handler{};
+      std::string task_id{};
+
+      // Extract the handler and taskid information
+      if (status != armonik::api::grpc::v1::result_status::RESULT_STATUS_CREATED) {
+        std::lock_guard<std::mutex> _(maps_mutex);
+        auto handler_it = result_handlers.find(result.result_id());
+        if (handler_it != result_handlers.end()) {
+          handler = std::move(handler_it->second);
+          result_handlers.erase(handler_it);
         }
-
-        armonik::api::grpc::v1::ResultRequest resultRequest;
-        resultRequest.set_session(session);
-        resultRequest.set_result_id(result_raw.result_id());
-
-        try {
-          // Get the finished result
-          auto payload = channel_pool.WithChannel([&](auto &&channel) {
-            return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-                .download_result_data(session, result_raw.result_id());
-          });
-          if (result_raw.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED) {
-            // The above command should have failed !
-            throw armonik::api::common::exceptions::ArmoniKApiException(
-                "Result is aborted and shouldn't have been retrieved");
-          }
-
-          // Handle the result
-          handler->HandleResponse(payload, task_id);
-        } catch (const armonik::api::common::exceptions::ArmoniKTaskError &e) {
-          // Task is in error
-          hasError |= task_ids.find(task_id) != task_ids.end();
-          std::stringstream message;
-          message << "Task " << task_id << " is in error : " << e.what() << std::endl;
-          logger_.log(armonik::api::common::logger::Level::Error, message.str());
-          handler->HandleError(e, task_id);
-
-        } catch (const armonik::api::common::exceptions::ArmoniKApiException &e) {
-          // Internal error
-          hasError |= task_ids.find(task_id) != task_ids.end();
-          std::stringstream message;
-          message << "Internal error while handling result " << e.what() << std::endl;
-          logger_.log(armonik::api::common::logger::Level::Error, message.str());
-          handler->HandleError(e, task_id);
+        auto task_id_it = resultId_taskId.find(result.result_id());
+        if (task_id_it != resultId_taskId.end()) {
+          task_id = std::move(task_id_it->second);
+          resultId_taskId.erase(task_id_it);
+          taskId_resultId.erase(task_id);
         }
-        done.emplace_back(task_id, result_raw.result_id());
-      } else if (result_raw.status() == armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND) {
+      }
+
+      // function to be called upon errors
+      auto handle_error = [&](const std::exception &e, const std::string &reason = {}) {
+        hasError = true;
         std::stringstream message;
-        message << "Result " << result_raw.result_id() << " not found" << std::endl;
-        logger_.log(armonik::api::common::logger::Level::Info, message.str());
-        {
-          std::lock_guard<std::mutex> _(maps_mutex);
-          if (resultId_taskId.find(result_raw.result_id()) != resultId_taskId.end()) {
-            task_id = resultId_taskId.at(result_raw.result_id());
-          }
+        message << "Error while handling result " << result.result_id() << " for task "
+                << (task_id.empty() ? "[UNKNOWN]" : task_id);
+        if (!reason.empty()) {
+          message << " : " << reason;
         }
-        done.emplace_back(task_id, result_raw.result_id());
-      }
-    }
+        message << " : " << e.what();
+        logger_.log(armonik::api::common::logger::Level::Error, message.str());
+        if (handler) {
+          handler->HandleError(e, task_id);
+        }
+      };
 
-    {
-      // Remove all finished tasks and results from the global lists
-      std::lock_guard<std::mutex> _(maps_mutex);
-      for (auto &&tid_rid : done) {
-        taskId_resultId.erase(tid_rid.first);
-        resultId_taskId.erase(tid_rid.second);
-        result_handlers.erase(tid_rid.second);
-      }
-    }
+      std::string payload, owner_task_id;
+      switch (status) {
+      // If the result is created, we should wait for the next turn
+      case armonik::api::grpc::v1::result_status::RESULT_STATUS_CREATED:
+        ++result_it;
+        continue;
 
-    // Remove all finished task_ids from the waiting list
-    for (auto &&tid_rid : done) {
-      task_ids.erase(tid_rid.first);
+      // If the result is completed, we download it
+      case armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED:
+        // Download the payload
+        try {
+          payload = channel_pool.WithChannel([&](auto &&channel) {
+            return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                .download_result_data(session, result.result_id());
+          });
+        } catch (const std::exception &e) {
+          handle_error(e, "Failed to download result data");
+        }
+
+        // Call the response handler with the payload
+        try {
+          handler->HandleResponse(payload, task_id);
+        } catch (const std::exception &e) {
+          handle_error(e, "Failed to execute result handler");
+        }
+        break;
+
+      // If the result is aborted, we retrieve the task error
+      case armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED:
+        // The considered task is either the owner task of the result, or the original task
+        owner_task_id = result.owner_task_id();
+        if (result.owner_task_id().empty()) {
+          owner_task_id = task_id;
+        }
+
+        if (owner_task_id.empty()) {
+          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result is aborted"));
+        } else {
+          armonik::api::grpc::v1::TaskError error{};
+          error.set_task_id(owner_task_id);
+
+          // Retrieve the task error details
+          try {
+            channel_pool.WithChannel([&](auto &&channel) {
+              auto task = armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
+                              .get_task(owner_task_id);
+              auto task_error = error.add_errors();
+              task_error->set_detail(std::move(task.output().error()));
+              task_error->set_task_status(task.status());
+            });
+          } catch (const std::exception &e) {
+            error.add_errors()->set_detail(e.what());
+          }
+          handle_error(armonik::api::common::exceptions::ArmoniKTaskError("Result is aborted", error));
+        }
+        break;
+
+      // In all other cases, we just call the handler on a generic error
+      case armonik::api::grpc::v1::result_status::RESULT_STATUS_DELETED:
+        handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result is deleted"));
+        break;
+      case armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND:
+        handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result was not found"));
+        break;
+      default:
+        handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result status is unknown"));
+        break;
+      }
+
+      result_it = results.erase(result_it);
     }
 
     // If we wait for any and at least one is done, or if we break on error and had an error, then return

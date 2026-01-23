@@ -67,6 +67,11 @@ public:
   ControlPlane &operator=(ControlPlane &&other) noexcept;
 
   /**
+   * @brief Destroy the ControlPlane object
+   */
+  ~ControlPlane();
+
+  /**
    * @brief ArmoniK control plane endpoint
    * @return Endpoint address
    */
@@ -102,10 +107,17 @@ public:
    */
   [[nodiscard]] bool isSslValidation() const;
 
+  /**
+   * @brief Batch size for waiting results
+   * @return Batch size
+   */
+  [[nodiscard]] int getBatchSize() const;
+
 private:
   std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
   [[nodiscard]] const armonik::api::common::options::ControlPlane &get_impl() const;
   armonik::api::common::options::ControlPlane &set_impl();
+  int batch_size_ = 200;
 };
 
 /**
@@ -144,6 +156,11 @@ public:
    * @return this
    */
   ComputePlane &operator=(ComputePlane &&other) noexcept;
+
+  /**
+   * @brief Destroy the ComputePlane object
+   */
+  ~ComputePlane();
 
   /**
    * @brief Returns the server address.
