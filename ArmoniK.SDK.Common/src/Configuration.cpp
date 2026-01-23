@@ -54,26 +54,33 @@ armonik::api::common::options::ComputePlane &ComputePlane::set_impl() {
 
 // Control Plane
 
-ControlPlane::ControlPlane(const Configuration &config)
-    : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*config.impl)) {
-  auto batch_size_str = config.get("GrpcClient__BatchSize");
+namespace {
+int getBatchSize(const Configuration &config, const std::string &key) {
+  auto batch_size_str = config.get(key);
+  int batch_size = 1; // Default value
   try {
-    batch_size_ = std::stoi(batch_size_str);
+    batch_size = std::stoi(batch_size_str);
   } catch (...) {
     // Ignore invalid value and keep default
   }
-  if (batch_size_ <= 0) {
-    batch_size_ = 1;
-  }
+  return batch_size > 0 ? batch_size : 1; // Ensure positive value
 }
+} // namespace
+
+ControlPlane::ControlPlane(const Configuration &config)
+    : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*config.impl)),
+      wait_batch_size_(getBatchSize(config, "GrpcClient__WaitBatchSize")),
+      submit_batch_size_(getBatchSize(config, "GrpcClient__SubmitBatchSize")) {}
+
 ControlPlane::ControlPlane(const ControlPlane &controlplane)
     : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*controlplane.impl)),
-      batch_size_(controlplane.batch_size_) {}
+      wait_batch_size_(controlplane.wait_batch_size_), submit_batch_size_(controlplane.submit_batch_size_) {}
 ControlPlane::ControlPlane(ControlPlane &&) noexcept = default;
 
 ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
   impl = std::make_unique<armonik::api::common::options::ControlPlane>(*controlplane.impl);
-  batch_size_ = controlplane.batch_size_;
+  wait_batch_size_ = controlplane.wait_batch_size_;
+  submit_batch_size_ = controlplane.submit_batch_size_;
   return *this;
 }
 ControlPlane &ControlPlane::operator=(ControlPlane &&) noexcept = default;
@@ -86,7 +93,8 @@ absl::string_view ControlPlane::getUserP12Path() const { return impl->getUserP12
 absl::string_view ControlPlane::getCaCertPemPath() const { return impl->getCaCertPemPath(); }
 bool ControlPlane::isSslValidation() const { return impl->isSslValidation(); }
 
-int ControlPlane::getBatchSize() const { return batch_size_; }
+int ControlPlane::getWaitBatchSize() const { return wait_batch_size_; }
+int ControlPlane::getSubmitBatchSize() const { return submit_batch_size_; }
 
 const armonik::api::common::options::ControlPlane &ControlPlane::get_impl() const {
   const static armonik::api::common::options::ControlPlane default_config =

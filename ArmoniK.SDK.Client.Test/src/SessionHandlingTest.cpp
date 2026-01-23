@@ -53,7 +53,7 @@ std::tuple<ArmoniK::Sdk::Common::Properties, armonik::api::common::logger::Logge
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }

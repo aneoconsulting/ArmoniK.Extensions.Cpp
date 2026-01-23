@@ -462,8 +462,9 @@ TEST(testSDK, testLargePayload) {
     config.set("Worker__Type", "End2EndTest");
   }
 
-  ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "EchoService");
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), "End2EndTest", "EchoService",
+                                                         config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};

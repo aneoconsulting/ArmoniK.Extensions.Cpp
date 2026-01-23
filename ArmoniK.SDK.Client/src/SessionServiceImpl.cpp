@@ -31,8 +31,31 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
                            std::shared_ptr<IServiceInvocationHandler> handler,
                            const Common::TaskOptions &task_options) {
 
-  std::vector<armonik::api::common::TaskCreation> task_creations;
-  task_creations.reserve(task_requests.size());
+  std::vector<std::string> task_ids;
+  task_ids.reserve(task_requests.size());
+
+  std::mutex task_ids_mutex;
+
+  Batcher<armonik::api::common::TaskCreation> submit_batcher(
+      submit_batch_size_, [&](std::vector<armonik::api::common::TaskCreation> &&batch) {
+        auto reply = channel_pool.WithChannel([&](auto channel) {
+          return armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
+              .submit_tasks(session, batch, static_cast<armonik::api::grpc::v1::TaskOptions>(task_options));
+        });
+
+        {
+          std::lock_guard<std::mutex> lock(task_ids_mutex);
+          for (auto &&t : reply) {
+            task_ids.emplace_back(std::move(t.task_id));
+          }
+        }
+
+        for (auto &&t : reply) {
+          taskId_resultId[t.task_id] = t.expected_output_ids[0];
+          resultId_taskId[t.expected_output_ids[0]] = t.task_id;
+          result_handlers[t.expected_output_ids[0]] = handler;
+        }
+      });
 
   for (const auto &task_request : task_requests) {
     armonik::api::grpc::v1::TaskRequest request;
@@ -104,42 +127,20 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
     creation.data_dependencies.insert(creation.data_dependencies.end(), task_request.data_dependencies.begin(),
                                       task_request.data_dependencies.end());
 
-    task_creations.emplace_back(std::move(creation));
+    // Add to batch, if number of requests in the batch attains the submitt_batch_size_ then
+    // the Batcher will process them
+    submit_batcher.Add(std::move(creation));
   }
 
-  auto reply = channel_pool.WithChannel([&](auto channel) {
-    return armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
-        .submit_tasks(session, task_creations, static_cast<armonik::api::grpc::v1::TaskOptions>(task_options));
-  });
-
-  std::stringstream message;
-  message << "Task ID " << reply[0].task_id << std::endl;
-  logger_.log(armonik::api::common::logger::Level::Error, message.str());
-
-  std::vector<std::string> task_ids;
-  task_ids.reserve(task_requests.size());
-  {
-    std::lock_guard<std::mutex> lock(maps_mutex);
-    for (auto &&t : reply) {
-      task_ids.emplace_back(std::move(t.task_id));
-    }
-    tid_rids = channel_pool.WithChannel([&](auto channel) {
-      return armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
-          .get_result_ids(task_ids);
-    });
-    for (auto &&tid_rid : tid_rids) {
-      taskId_resultId[task_ids[0]] = tid_rid.second[0];
-      resultId_taskId[tid_rid.second[0]] = tid_rid.first;
-      result_handlers[tid_rid.second[0]] = handler;
-    }
-  }
+  // Remaining requests are automatically flushed by Batcher destructor
   return task_ids;
 }
 
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                        armonik::api::common::logger::Logger &logger, const std::string &session_id)
     : taskOptions(properties.taskOptions), channel_pool(properties, logger), logger_(logger.local()),
-      wait_batch_size_(properties.configuration.get_control_plane().getBatchSize()) {
+      wait_batch_size_(properties.configuration.get_control_plane().getWaitBatchSize()),
+      submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](auto &&channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))

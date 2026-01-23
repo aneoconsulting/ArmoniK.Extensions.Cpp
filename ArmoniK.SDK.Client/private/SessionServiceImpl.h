@@ -83,6 +83,11 @@ private:
    */
   int wait_batch_size_ = 200;
 
+  /**
+   * @brief Batch size for task submission
+   */
+  int submit_batch_size_ = 200;
+
 public:
   SessionServiceImpl() = delete;
   SessionServiceImpl(const SessionServiceImpl &) = delete;
