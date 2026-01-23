@@ -27,6 +27,7 @@ ComputePlane &ComputePlane::operator=(const ComputePlane &computeplane) {
   return *this;
 }
 ComputePlane &ComputePlane::operator=(ComputePlane &&) noexcept = default;
+ComputePlane::~ComputePlane() = default;
 
 absl::string_view ComputePlane::get_server_address() const { return impl->get_server_address(); }
 void ComputePlane::set_worker_address(std::string socket_address) {
@@ -76,6 +77,7 @@ ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
   return *this;
 }
 ControlPlane &ControlPlane::operator=(ControlPlane &&) noexcept = default;
+ControlPlane::~ControlPlane() = default;
 
 absl::string_view ControlPlane::getEndpoint() const { return impl->getEndpoint(); }
 absl::string_view ControlPlane::getUserCertPemPath() const { return impl->getUserCertPemPath(); }

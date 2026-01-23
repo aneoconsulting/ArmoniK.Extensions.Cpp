@@ -67,7 +67,7 @@ public:
    * @param request The request to add
    */
   void Add(Request request) {
-    requests_.push_back(static_cast<Request>(request));
+    requests_.push_back(static_cast<Request &&>(request));
     if (requests_.size() >= batch_size_) {
       ProcessBatch();
     }

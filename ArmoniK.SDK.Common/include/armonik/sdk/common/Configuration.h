@@ -67,6 +67,11 @@ public:
   ControlPlane &operator=(ControlPlane &&other) noexcept;
 
   /**
+   * @brief Destroy the ControlPlane object
+   */
+  ~ControlPlane();
+
+  /**
    * @brief ArmoniK control plane endpoint
    * @return Endpoint address
    */
@@ -151,6 +156,11 @@ public:
    * @return this
    */
   ComputePlane &operator=(ComputePlane &&other) noexcept;
+
+  /**
+   * @brief Destroy the ComputePlane object
+   */
+  ~ComputePlane();
 
   /**
    * @brief Returns the server address.
