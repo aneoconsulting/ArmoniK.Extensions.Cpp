@@ -139,6 +139,9 @@ TEST(SessionService, reopen_test) {
   std::cout << status.error_message() << std::endl;
   ASSERT_TRUE(status.ok());
   ASSERT_EQ(response.total(), 2);
+
+  service.CloseSession();
+  service_new.CloseSession();
 }
 
 TEST(SessionService, drop_after_done_test) {
@@ -267,6 +270,8 @@ TEST(SessionService, cleanup_tasks) {
     }
     download_response.clear_data_chunk();
   }
+
+  service.CloseSession();
 }
 
 TEST(WaitOption, timeout_test) {
@@ -295,4 +300,6 @@ TEST(WaitOption, timeout_test) {
   // Wait for the rest, should still have tasks to retrieve
   service.WaitResults({}, ArmoniK::Sdk::Client::All);
   ASSERT_TRUE(handler->received);
+
+  service.CloseSession();
 }
