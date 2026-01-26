@@ -4,6 +4,7 @@
 #include <armonik/common/logger/logger.h>
 #include <armonik/common/logger/writer.h>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -16,6 +17,18 @@ namespace Internal {
  * @brief A thread pool to execute tasks in background
  */
 class ThreadPool {
+private:
+  /**
+   * @brief A task to execute
+   */
+  class Task;
+
+public:
+  /**
+   * @brief A join set to wait for a set of tasks to finish
+   */
+  class JoinSet;
+
 private:
   /**
    * @brief The maximum number of threads in the pool
@@ -40,7 +53,7 @@ private:
   /**
    * @brief Logger
    */
-  armonik::api::common::logger::Logger *logger_;
+  armonik::api::common::logger::Logger &logger_;
 
   /**
    * @brief The threads in the pool
@@ -48,9 +61,9 @@ private:
   std::vector<std::thread> threads_;
 
   /**
-   * @brief The task queue
+   * @brief The pending tasks waiting to be executed by the pool
    */
-  std::vector<std::function<void()>> queue_;
+  std::vector<Task> pending_tasks_;
 
   /**
    * @brief Flag to stop the pool
@@ -59,9 +72,21 @@ private:
 
 private:
   /**
+   * @brief Create a local logger for the thread pool
+   */
+  armonik::api::common::logger::Logger Logger(armonik::api::common::logger::Context context = {});
+
+  /**
    * @brief The main loop for each thread
    */
   void Run();
+
+  /**
+   * @brief Spawn a task on the pool
+   *
+   * @param f The task to execute
+   */
+  void Spawn(Task);
 
 public:
   /**
@@ -86,26 +111,77 @@ public:
   ThreadPool &operator=(const ThreadPool &) = delete;
 
   /**
-   * @brief Move constructor
-   *
-   * @param other Other thread pool
-   */
-  ThreadPool(ThreadPool &&other) noexcept;
-  /**
-   * @brief Move assignment constructor
-   *
-   * @param other Other thread pool
-   */
-  ThreadPool &operator=(ThreadPool &&other) noexcept;
-
-  /**
    * @brief Destroy the thread Pool object, waiting for all threads to finish
    *
    */
   ~ThreadPool();
 
   /**
-   * @brief Spawn a task ont the pool
+   * @brief Spawn a task on the pool
+   *
+   * @param f The task to execute
+   */
+  void Spawn(std::function<void()> f);
+};
+
+/**
+ * @brief A join set to wait for a set of tasks to finish
+ */
+class ThreadPool::JoinSet {
+private:
+  friend class ThreadPool;
+
+private:
+  /**
+   * @brief The thread pool on which tasks are spawned
+   */
+  ThreadPool &thread_pool_;
+  /**
+   * @brief The number of unfinished tasks in the join set
+   */
+  std::size_t task_count_;
+
+  /**
+   * @brief Mutex to protect the join set
+   */
+  std::mutex mutex_;
+
+  /**
+   * @brief Condition variable to wait for tasks to finish
+   */
+  std::condition_variable wake_condition_;
+
+private:
+  /**
+   * @brief Create a local logger for the join set
+   */
+  armonik::api::common::logger::Logger Logger(armonik::api::common::logger::Context context = {});
+
+public:
+  /**
+   * @brief Creates a join set on the given thread pool
+   *
+   * @param thread_pool The thread pool
+   */
+  explicit JoinSet(ThreadPool &);
+
+  /**
+   * @brief Copy constructor
+   */
+  JoinSet(const JoinSet &) = delete;
+
+  /**
+   * @brief Copy assignment operator
+   */
+  JoinSet &operator=(const JoinSet &) = delete;
+
+  /**
+   * @brief Destroy the Join Set object, waiting for all tasks to finish
+   */
+  ~JoinSet();
+
+  /**
+   * @brief Spawn a task on the associated thread pool and add it to the join set
    *
    * @param f The task to execute
    */
