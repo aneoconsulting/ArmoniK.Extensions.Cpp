@@ -132,7 +132,9 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
     submit_batcher.Add(std::move(creation));
   }
 
-  // Remaining requests are automatically flushed by Batcher destructor
+  // Manually flush remaining requests before returning
+  submit_batcher.ProcessBatch();
+
   return task_ids;
 }
 
