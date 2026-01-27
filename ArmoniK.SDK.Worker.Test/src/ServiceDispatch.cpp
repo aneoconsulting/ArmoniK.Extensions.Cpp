@@ -5,6 +5,7 @@
 #include "AdditionService.h"
 #include "EchoService.h"
 #include "SegFaultService.h"
+#include "SleepService.h"
 #include "StressTest.h"
 
 extern "C" void *armonik_create_service(const char *service_namespace, const char *service_name) {
@@ -17,6 +18,8 @@ extern "C" void *armonik_create_service(const char *service_namespace, const cha
     return new ArmoniK::Sdk::Worker::Test::StressTest();
   } else if (std::strcmp(service_name, "SegFaultService") == 0) {
     return new ArmoniK::Sdk::Worker::Test::SegFaultService();
+  } else if (std::strcmp(service_name, "SleepService") == 0) {
+    return new ArmoniK::Sdk::Worker::Test::SleepService();
   }
 
   std::cout << "Unknown service < " << service_namespace << "::" << service_name << " >" << std::endl;
