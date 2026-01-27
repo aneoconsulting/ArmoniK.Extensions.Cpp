@@ -214,6 +214,13 @@ armonik::api::common::logger::LocalLogger ThreadPool::JoinSet::Logger(armonik::a
 
 void ThreadPool::JoinSet::Spawn(Function<void()> f) { thread_pool_.Spawn(Task(std::move(f), this)); }
 
+void ThreadPool::JoinSet::Wait() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  wake_condition_.wait(lock, [this]() { return task_count_ == 0; });
+
+  Logger().debug("JoinSet emptied");
+}
+
 } // namespace Internal
 } // namespace Client
 } // namespace Sdk

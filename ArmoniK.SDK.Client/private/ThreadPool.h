@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Function.h"
 #include <armonik/common/logger/formatter.h>
 #include <armonik/common/logger/logger.h>
 #include <armonik/common/logger/writer.h>
@@ -8,7 +9,6 @@
 #include <mutex>
 #include <thread>
 #include <vector>
-#include "Function.h"
 
 namespace ArmoniK {
 namespace Sdk {
@@ -187,6 +187,11 @@ public:
    * @param f The task to execute
    */
   void Spawn(Function<void()> f);
+
+  /**
+   * @brief Wait for all tasks in the join set to finish
+   */
+  void Wait();
 };
 
 } // namespace Internal
