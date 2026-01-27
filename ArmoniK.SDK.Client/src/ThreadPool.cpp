@@ -8,15 +8,15 @@ namespace Sdk {
 namespace Client {
 namespace Internal {
 
-  /**
-   * @brief A task to execute
-   */
+/**
+ * @brief A task to execute
+ */
 class ThreadPool::Task {
 private:
   /**
    * @brief The function to execute
    */
-  std::function<void()> func_;
+  Function<void()> func_;
 
   /**
    * @brief The join set this task belongs to, optional
@@ -27,16 +27,15 @@ private:
   friend class ThreadPool;
 
 public:
-/**
- * @brief Default constructor
- */
+  /**
+   * @brief Default constructor
+   */
   Task() = default;
 
   /**
    * @brief Creates a task with the given function and optional join set
    */
-  Task(std::function<void()> func, ThreadPool::JoinSet *join_set = nullptr)
-      : func_(std::move(func)), join_set_(join_set) {
+  Task(Function<void()> func, ThreadPool::JoinSet *join_set = nullptr) : func_(std::move(func)), join_set_(join_set) {
     if (join_set_) {
       // Increment the task count in the join set
       std::unique_lock<std::mutex> lock(join_set_->thread_pool_.mutex_);
@@ -195,7 +194,7 @@ void ThreadPool::Spawn(Task task) {
   condition_.notify_one();
 }
 
-void ThreadPool::Spawn(std::function<void()> f) { Spawn(Task(std::move(f))); }
+void ThreadPool::Spawn(Function<void()> f) { Spawn(Task(std::move(f))); }
 
 ThreadPool::JoinSet::JoinSet(ThreadPool &thread_pool) : thread_pool_(thread_pool), task_count_(0) {
   Logger().debug("JoinSet created");
@@ -213,7 +212,7 @@ armonik::api::common::logger::LocalLogger ThreadPool::JoinSet::Logger(armonik::a
   return thread_pool_.Logger(std::move(context));
 }
 
-void ThreadPool::JoinSet::Spawn(std::function<void()> f) { thread_pool_.Spawn(Task(std::move(f), this)); }
+void ThreadPool::JoinSet::Spawn(Function<void()> f) { thread_pool_.Spawn(Task(std::move(f), this)); }
 
 } // namespace Internal
 } // namespace Client

@@ -8,6 +8,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include "Function.h"
 
 namespace ArmoniK {
 namespace Sdk {
@@ -121,7 +122,7 @@ public:
    *
    * @param f The task to execute
    */
-  void Spawn(std::function<void()> f);
+  void Spawn(Function<void()> f);
 };
 
 /**
@@ -185,7 +186,7 @@ public:
    *
    * @param f The task to execute
    */
-  void Spawn(std::function<void()> f);
+  void Spawn(Function<void()> f);
 };
 
 } // namespace Internal
