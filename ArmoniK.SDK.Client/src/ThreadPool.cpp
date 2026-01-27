@@ -75,13 +75,10 @@ public:
    */
   ~Task() {
     if (join_set_) {
-      bool notify = false;
-      { // Decrement the task count in the join set
-        std::unique_lock<std::mutex> lock(join_set_->mutex_);
-        join_set_->task_count_ -= 1;
-        notify = (join_set_->task_count_ == 0);
-      }
-      if (notify) {
+      // Decrement the task count in the join set
+      std::unique_lock<std::mutex> lock(join_set_->mutex_);
+      join_set_->task_count_ -= 1;
+      if (join_set_->task_count_ == 0) {
         join_set_->wake_condition_.notify_all();
       }
     }
@@ -105,9 +102,10 @@ ThreadPool::~ThreadPool() {
   { // Notify all threads to stop
     std::unique_lock<std::mutex> lock(mutex_);
     stop_ = true;
+
+    logger.verbose("Notifying all threads to stop...");
+    condition_.notify_all();
   }
-  logger.verbose("Notifying all threads to stop...");
-  condition_.notify_all();
 
   // Wait for all threads to finish
   for (std::thread &thread : threads_) {
@@ -188,10 +186,10 @@ void ThreadPool::Spawn(Task task) {
     if (sleeping_threads_ == 0 && threads_.size() < max_threads_) {
       threads_.emplace_back([this]() { Run(); });
     }
-  }
 
-  // Notify one thread that there is a new task available
-  condition_.notify_one();
+    // Notify one thread that there is a new task available
+    condition_.notify_one();
+  }
 }
 
 void ThreadPool::Spawn(Function<void()> f) { Spawn(Task(std::move(f))); }
