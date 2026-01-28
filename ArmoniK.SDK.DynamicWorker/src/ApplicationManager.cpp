@@ -22,7 +22,7 @@ ApplicationManager &ApplicationManager::UseApplication(const AppId &appId) & {
                                              currentLibrary.get<armonik_leave_session_t>("armonik_leave_session"),
                                              currentLibrary.get<armonik_call_t>("armonik_call")};
   currentId = appId;
-  logger.log(armonik::api::common::logger::Level::Info,
+  logger.info(
              "Successfully loaded application " + appId.application_name + " ( " + appId.application_version + " )");
   return *this;
 }

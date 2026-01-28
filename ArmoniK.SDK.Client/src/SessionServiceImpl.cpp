@@ -90,12 +90,12 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
       std::stringstream msg;
       msg << "Preparing payload for method '" << task_request.method_name << "' (" << payload_data.size()
           << " bytes, inline limit " << max_inline_bytes << " bytes)";
-      logger_.log(armonik::api::common::logger::Level::Debug, msg.str());
+      logger_.debug(msg.str());
 
       try {
         if (payload_data.size() <= max_inline_bytes) {
           //  small payload embeded directly as part of metadata
-          logger_.log(armonik::api::common::logger::Level::Debug, "Using inline create_results for small payload.");
+          logger_.debug("Using inline create_results for small payload.");
 
           payload_id =
               client
@@ -104,8 +104,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
                   .at(task_request.method_name);
         } else {
           // Streaming for large payload
-          logger_.log(armonik::api::common::logger::Level::Debug,
-                      "Payload exceeds inline limit, using streaming upload.");
+          logger_.debug("Payload exceeds inline limit, using streaming upload.");
 
           payload_id = results.at(task_request.method_name);
           client.upload_result_data(session, payload_id, payload_data);
@@ -113,7 +112,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
       } catch (const armonik::api::common::exceptions::ArmoniKApiException &ex) {
         std::stringstream err;
         err << "Error uploading payload for '" << task_request.method_name << "': " << ex.what();
-        logger_.log(armonik::api::common::logger::Level::Error, err.str());
+        logger_.error(err.str());
         throw;
       }
 
@@ -184,8 +183,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
       for (auto &tid : task_ids) {
         auto result_id = taskId_resultId.find(tid);
         if (result_id == taskId_resultId.end()) {
-          logger_.log(armonik::api::common::logger::Level::Warning,
-                      "Task ID " + tid + " has no associated result ID, skipping wait.");
+          logger_.warning("Task ID " + tid + " has no associated result ID, skipping wait.");
           continue;
         }
 
@@ -267,7 +265,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           message << " : " << reason;
         }
         message << " : " << e.what();
-        logger_.log(armonik::api::common::logger::Level::Error, message.str());
+        logger_.error(message.str());
         if (handler) {
           handler->HandleError(e, task_id);
         }
@@ -416,8 +414,7 @@ void SessionServiceImpl::DropSession() {
       try {
         results.delete_results_data(session, ids);
       } catch (const std::exception &e) {
-        logger_.log(armonik::api::common::logger::Level::Info,
-                    std::string("Couldn't completely destroy batch of results : ") + e.what());
+        logger_.info(std::string("Couldn't completely destroy batch of results : ") + e.what());
       }
     });
   } while (page * page_size < total);

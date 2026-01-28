@@ -30,7 +30,7 @@ void HelloServiceHandler::HandleResponse(const std::string &result_payload, cons
   }
 
   ss << std::endl;
-  logger.log(armonik::api::common::logger::Level::Info, ss.str());
+  logger.info(ss.str());
   received = true;
   is_error = false;
 }
@@ -39,7 +39,7 @@ void HelloServiceHandler::HandleResponse(const std::string &result_payload, cons
 void HelloServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
   std::stringstream ss;
   ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
-  logger.log(armonik::api::common::logger::Level::Error, ss.str());
+  logger.error(ss.str());
   received = true;
   is_error = true;
 }

@@ -74,7 +74,7 @@ private:
   /**
    * @brief Create a local logger for the thread pool
    */
-  armonik::api::common::logger::Logger Logger(armonik::api::common::logger::Context context = {});
+  armonik::api::common::logger::LocalLogger Logger(armonik::api::common::logger::Context context = {});
 
   /**
    * @brief The main loop for each thread
@@ -155,7 +155,7 @@ private:
   /**
    * @brief Create a local logger for the join set
    */
-  armonik::api::common::logger::Logger Logger(armonik::api::common::logger::Context context = {});
+  armonik::api::common::logger::LocalLogger Logger(armonik::api::common::logger::Context context = {});
 
 public:
   /**

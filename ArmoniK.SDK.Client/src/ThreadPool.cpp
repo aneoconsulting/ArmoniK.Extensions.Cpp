@@ -1,17 +1,40 @@
 #include "ThreadPool.h"
 
+#include <sstream>
+#include <string>
+
 namespace ArmoniK {
 namespace Sdk {
 namespace Client {
 namespace Internal {
 
+  /**
+   * @brief A task to execute
+   */
 class ThreadPool::Task {
 private:
+  /**
+   * @brief The function to execute
+   */
   std::function<void()> func_;
+
+  /**
+   * @brief The join set this task belongs to, optional
+   */
   ThreadPool::JoinSet *join_set_ = nullptr;
 
+private:
+  friend class ThreadPool;
+
 public:
+/**
+ * @brief Default constructor
+ */
   Task() = default;
+
+  /**
+   * @brief Creates a task with the given function and optional join set
+   */
   Task(std::function<void()> func, ThreadPool::JoinSet *join_set = nullptr)
       : func_(std::move(func)), join_set_(join_set) {
     if (join_set_) {
@@ -21,9 +44,24 @@ public:
     }
   }
 
+  /**
+   * @brief Copy constructor
+   */
   Task(const Task &) = delete;
+
+  /**
+   * @brief Copy assignment operator
+   */
   Task &operator=(const Task &) = delete;
+
+  /**
+   * @brief Move constructor
+   */
   Task(Task &&other) noexcept : func_(std::move(other.func_)), join_set_(other.join_set_) { other.join_set_ = nullptr; }
+
+  /**
+   * @brief Move assignment operator
+   */
   Task &operator=(Task &&other) noexcept {
     if (this != &other) {
       func_ = std::move(other.func_);
@@ -32,6 +70,10 @@ public:
     }
     return *this;
   }
+
+  /**
+   * @brief Destroy the Task object, updating the join set if applicable
+   */
   ~Task() {
     if (join_set_) {
       bool notify = false;
@@ -46,6 +88,9 @@ public:
     }
   }
 
+  /**
+   * @brief Execute the task
+   */
   void Execute() { func_(); }
 };
 
@@ -75,13 +120,15 @@ ThreadPool::~ThreadPool() {
   logger.debug("ThreadPool stopped");
 }
 
-armonik::api::common::logger::Logger ThreadPool::Logger(armonik::api::common::logger::Context context) {
-  context.emplace_back("thread_pool_id", std::to_string(reinterpret_cast<std::uintptr_t>(this)));
-  return logger_->local(std::move(context));
+armonik::api::common::logger::LocalLogger ThreadPool::Logger(armonik::api::common::logger::Context context) {
+  context.emplace("thread_pool_id", std::to_string(reinterpret_cast<std::uintptr_t>(this)));
+  return logger_.local(std::move(context));
 }
 
 void ThreadPool::Run() {
-  armonik::api::common::logger::Context context{{"thread_id", std::to_string(std::this_thread::get_id())}};
+  std::stringstream ss;
+  ss << std::this_thread::get_id();
+  armonik::api::common::logger::Context context{{"thread_id", ss.str()}};
   auto logger = Logger(context);
 
   logger.debug("Thread started");
@@ -161,8 +208,8 @@ ThreadPool::JoinSet::~JoinSet() {
   Logger().debug("JoinSet destroyed");
 }
 
-armonik::api::common::logger::Logger ThreadPool::JoinSet::Logger(armonik::api::common::logger::Context context) {
-  context.emplace_back("join_set_id", std::to_string(reinterpret_cast<std::uintptr_t>(this)));
+armonik::api::common::logger::LocalLogger ThreadPool::JoinSet::Logger(armonik::api::common::logger::Context context) {
+  context.emplace("join_set_id", std::to_string(reinterpret_cast<std::uintptr_t>(this)));
   return thread_pool_.Logger(std::move(context));
 }
 
