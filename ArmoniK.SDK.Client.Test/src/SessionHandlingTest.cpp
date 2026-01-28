@@ -293,7 +293,8 @@ TEST(WaitOption, timeout_test) {
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
 

@@ -79,7 +79,8 @@ TEST(testSDK, testEcho) {
 
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -142,7 +143,8 @@ TEST(testSDK, testAddInt) {
 
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -242,7 +244,8 @@ TEST(testSDK, testAddFloat) {
 
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -353,7 +356,8 @@ TEST(testSDK, testStressTest) {
 
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -428,7 +432,8 @@ TEST(testSDK, testSegFault) {
 
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -475,7 +480,8 @@ TEST(testSDK, testLargePayload) {
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
 
