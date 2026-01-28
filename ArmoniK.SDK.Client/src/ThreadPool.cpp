@@ -35,10 +35,10 @@ public:
   /**
    * @brief Creates a task with the given function and optional join set
    */
-  Task(Function<void()> func, ThreadPool::JoinSet *join_set = nullptr) : func_(std::move(func)), join_set_(join_set) {
+  Task(Function<void()> &&func, ThreadPool::JoinSet *join_set = nullptr) : func_(std::move(func)), join_set_(join_set) {
     if (join_set_) {
       // Increment the task count in the join set
-      std::unique_lock<std::mutex> lock(join_set_->thread_pool_.mutex_);
+      std::unique_lock<std::mutex> lock(join_set_->mutex_);
       join_set_->task_count_ += 1;
     }
   }
@@ -143,7 +143,7 @@ void ThreadPool::Run() {
 
       // If the stopping of the pool has been requested and there is no more task, exit the thread
       if (stop_ && pending_tasks_.empty()) {
-        return;
+        break;
       }
 
       // Get the next task
@@ -169,7 +169,7 @@ void ThreadPool::Run() {
   logger.debug("Thread stopped");
 }
 
-void ThreadPool::Spawn(Task task) {
+void ThreadPool::Spawn(Task &&task) {
   auto logger = task.join_set_ ? task.join_set_->Logger() : Logger();
   logger.verbose("Spawning new task");
 
@@ -192,7 +192,7 @@ void ThreadPool::Spawn(Task task) {
   }
 }
 
-void ThreadPool::Spawn(Function<void()> f) { Spawn(Task(std::move(f))); }
+void ThreadPool::Spawn(Function<void()> &&f) { Spawn(Task(std::move(f))); }
 
 ThreadPool::JoinSet::JoinSet(ThreadPool &thread_pool) : thread_pool_(thread_pool), task_count_(0) {
   Logger().debug("JoinSet created");
@@ -210,7 +210,7 @@ armonik::api::common::logger::LocalLogger ThreadPool::JoinSet::Logger(armonik::a
   return thread_pool_.Logger(std::move(context));
 }
 
-void ThreadPool::JoinSet::Spawn(Function<void()> f) { thread_pool_.Spawn(Task(std::move(f), this)); }
+void ThreadPool::JoinSet::Spawn(Function<void()> &&f) { thread_pool_.Spawn(Task(std::move(f), this)); }
 
 void ThreadPool::JoinSet::Wait() {
   std::unique_lock<std::mutex> lock(mutex_);

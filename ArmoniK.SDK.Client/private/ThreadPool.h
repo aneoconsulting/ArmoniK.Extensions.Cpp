@@ -87,7 +87,7 @@ private:
    *
    * @param f The task to execute
    */
-  void Spawn(Task);
+  void Spawn(Task &&);
 
 public:
   /**
@@ -122,7 +122,7 @@ public:
    *
    * @param f The task to execute
    */
-  void Spawn(Function<void()> f);
+  void Spawn(Function<void()> &&f);
 };
 
 /**
@@ -186,7 +186,7 @@ public:
    *
    * @param f The task to execute
    */
-  void Spawn(Function<void()> f);
+  void Spawn(Function<void()> &&f);
 
   /**
    * @brief Wait for all tasks in the join set to finish
