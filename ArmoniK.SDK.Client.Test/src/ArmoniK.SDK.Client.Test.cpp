@@ -116,6 +116,7 @@ TEST(testSDK, testEcho) {
   ASSERT_TRUE(handler->received);
   ASSERT_FALSE(handler->is_error);
 
+  service.CloseSession();
   std::cout << "Done" << std::endl;
 }
 
@@ -215,6 +216,7 @@ TEST(testSDK, testAddInt) {
   ASSERT_EQ(handler->successCounter, 2);
   ASSERT_TRUE(!handler->str.empty());
 
+  service.CloseSession();
   std::cout << "Done" << std::endl;
 }
 
@@ -325,6 +327,7 @@ TEST(testSDK, testAddFloat) {
   ASSERT_EQ(handler->str.size(), sizeof(float));
   //}
 
+  service.CloseSession();
   std::cout << "Done" << std::endl;
 }
 
@@ -399,6 +402,7 @@ TEST(testSDK, testStressTest) {
     ASSERT_NEAR(handler->result.at(i), result_out.at(i), 0.0000001);
   }
 
+  service.CloseSession();
   std::cout << "Done" << std::endl;
 }
 
@@ -448,6 +452,7 @@ TEST(testSDK, testSegFault) {
   ASSERT_TRUE(handler->received);
   ASSERT_TRUE(handler->is_error);
 
+  service.CloseSession();
   std::cout << "Done" << std::endl;
 }
 
@@ -462,8 +467,9 @@ TEST(testSDK, testLargePayload) {
     config.set("Worker__Type", "End2EndTest");
   }
 
-  ArmoniK::Sdk::Common::TaskOptions session_task_options(
-      "libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"), "End2EndTest", "EchoService");
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), "End2EndTest", "EchoService",
+                                                         config.get("PartitionId"));
   session_task_options.max_retries = 1;
 
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
@@ -493,5 +499,6 @@ TEST(testSDK, testLargePayload) {
   ASSERT_TRUE(handler->received);
   ASSERT_FALSE(handler->is_error);
 
+  service.CloseSession();
   std::cout << "Large payload test done!" << std::endl;
 }

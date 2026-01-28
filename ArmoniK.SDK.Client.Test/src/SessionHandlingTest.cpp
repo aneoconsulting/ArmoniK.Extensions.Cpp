@@ -53,7 +53,7 @@ std::tuple<ArmoniK::Sdk::Common::Properties, armonik::api::common::logger::Logge
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
 
-  std::cout << "Endpoint : " << config.get("Grpc__EndPoint") << std::endl;
+  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
   if (config.get("Worker__Type").empty()) {
     config.set("Worker__Type", "End2EndTest");
   }
@@ -139,6 +139,9 @@ TEST(SessionService, reopen_test) {
   std::cout << status.error_message() << std::endl;
   ASSERT_TRUE(status.ok());
   ASSERT_EQ(response.total(), 2);
+
+  service.CloseSession();
+  service_new.CloseSession();
 }
 
 TEST(SessionService, drop_after_done_test) {
@@ -267,32 +270,54 @@ TEST(SessionService, cleanup_tasks) {
     }
     download_response.clear_data_chunk();
   }
+
+  service.CloseSession();
 }
 
 TEST(WaitOption, timeout_test) {
-  auto p = init();
-  auto properties = std::move(std::get<0>(p));
-  auto logger = std::move(std::get<1>(p));
-  ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
-  auto channel_guard = pool.GetChannel();
 
-  // Create service
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+  if (config.get("Worker__Type").empty()) {
+    config.set("Worker__Type", "End2EndTest");
+  }
+
+  // Create the task options
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), "End2EndTest",
+                                                         "SleepService", config.get("PartitionId"));
+  session_task_options.max_retries = 1;
+
+  ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
+
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true)};
+
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
   const auto &session = service.getSession();
   ASSERT_FALSE(session.empty());
 
-  // Submit 500 tasks
-  auto handler = std::make_shared<EchoServiceHandler>(logger);
-  auto task_ids = service.Submit(generate_payloads(500), handler);
-  ASSERT_EQ(task_ids.size(), 500);
+  // Submit 50 tasks
+  auto handler = std::make_shared<SleepServiceHandler>(logger);
+  ASSERT_EQ(handler->received_count, 0);
+  auto task_ids = service.Submit(generate_payloads(50), handler);
+  ASSERT_EQ(task_ids.size(), 50);
 
   // Wait with a very short delay
   ArmoniK::Sdk::Client::WaitOptions waitOptions;
   waitOptions.timeout = 100;
+  waitOptions.polling_ms = 50;
   service.WaitResults({}, ArmoniK::Sdk::Client::All, waitOptions);
-  handler->received = false;
+
+  // Should have only received a few tasks
+  ASSERT_LT(handler->received_count, 50);
 
   // Wait for the rest, should still have tasks to retrieve
   service.WaitResults({}, ArmoniK::Sdk::Client::All);
-  ASSERT_TRUE(handler->received);
+  ASSERT_EQ(handler->received_count, 50);
+
+  service.CloseSession();
 }

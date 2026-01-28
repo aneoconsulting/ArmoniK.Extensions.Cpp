@@ -15,7 +15,7 @@ private:
   /**
    * @brief The batch size
    */
-  int batch_size_;
+  std::size_t batch_size_;
   /**
    * @brief The current requests
    */
@@ -56,10 +56,15 @@ public:
   Batcher &operator=(Batcher &&other) noexcept = default;
 
   /**
-   * @brief Destroy the Batcher object, processing any remaining requests
+   * @brief Destroy the Batcher object
    *
+   * @details
+   * The destructor does NOT process any pending requests.
+   * Any remaining requests must be explicitly flushed by calling ProcessBatch().
+   *
+   * This avoids throwing exceptions from the destructor
    */
-  ~Batcher() { ProcessBatch(); }
+  ~Batcher() noexcept = default;
 
   /**
    * @brief Add a request to the batcher, processing the batch if full
