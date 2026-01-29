@@ -119,12 +119,19 @@ public:
    */
   [[nodiscard]] int getSubmitBatchSize() const;
 
+  /**
+   * @brief Number of threads in the thread pool to upload and download results
+   * @return Thread pool size
+   */
+  [[nodiscard]] int getThreadPoolSize() const;
+
 private:
   std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
   [[nodiscard]] const armonik::api::common::options::ControlPlane &get_impl() const;
   armonik::api::common::options::ControlPlane &set_impl();
-  int wait_batch_size_ = 200;
-  int submit_batch_size_ = 200;
+  int wait_batch_size_;
+  int submit_batch_size_;
+  int thread_pool_size_;
 };
 
 /**
