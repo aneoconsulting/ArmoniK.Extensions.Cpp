@@ -51,14 +51,14 @@ void EchoServiceHandler::HandleResponse(const std::string &result_payload, const
     ss << static_cast<int>(c) << ' ';
   }
   ss << std::endl;
-  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
+  logger.debug(ss.str());
   received = true;
   is_error = false;
 }
 void EchoServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
   std::stringstream ss;
   ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
-  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
+  logger.debug(ss.str());
   received = true;
   is_error = true;
 }
@@ -78,13 +78,13 @@ void StressTestServiceHandler::HandleResponse(const std::string &result_payload,
   ss.write(result_payload.data(), result_payload.size()) << "\nContent: ";
   std::for_each(result.cbegin(), result.cend(), [&ss](const auto &v) { ss << v << ' '; });
   ss << std::endl;
-  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
+  logger.debug(ss.str());
 }
 void StressTestServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
   is_ok = false;
   std::stringstream ss;
   ss << "Handle ERROR: Error for task id " << taskId << ": " << e.what() << '\n';
-  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
+  logger.debug(ss.str());
 }
 
 void SegFaultServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
@@ -96,14 +96,14 @@ void SegFaultServiceHandler::HandleResponse(const std::string &result_payload, c
     ss << static_cast<int>(c) << ' ';
   }
   ss << std::endl;
-  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
+  logger.debug(ss.str());
   received = true;
   is_error = false;
 }
 void SegFaultServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
   std::stringstream ss;
   ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
-  logger.log(armonik::api::common::logger::Level::Debug, ss.str());
+  logger.debug(ss.str());
   received = true;
   is_error = true;
 }

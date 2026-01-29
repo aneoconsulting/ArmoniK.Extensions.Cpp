@@ -10,7 +10,7 @@ int main() {
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
                                               armonik::api::common::logger::formatter_clef(), config.get_log_level()};
 
-  logger.log(armonik::api::common::logger::Level::Info, "Starting ArmoniK SDK worker");
+  logger.info("Starting ArmoniK SDK worker");
 
   try {
     armonik::api::worker::WorkerServer::create<ArmoniK::Sdk::DynamicWorker::DynamicWorker>(

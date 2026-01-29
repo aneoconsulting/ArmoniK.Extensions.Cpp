@@ -23,9 +23,9 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
 
   if (channel != nullptr) {
     if (ShutdownOnFailure(channel)) {
-      logger_.log(armonik::api::common::logger::Level::Debug, "Shutdown unhealthy channel");
+      logger_.debug("Shutdown unhealthy channel");
     } else {
-      logger_.log(armonik::api::common::logger::Level::Debug, "Acquired already existing channel from pool");
+      logger_.debug("Acquired already existing channel from pool");
       return channel;
     }
   }
@@ -34,15 +34,15 @@ std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   armonik::api::client::ChannelFactory channelFactory(
       static_cast<armonik::api::common::utils::Configuration>(properties_.configuration), logger);
   channel = channelFactory.create_channel();
-  logger_.log(armonik::api::common::logger::Level::Debug, "Created and acquired new channel from pool");
+  logger_.debug("Created and acquired new channel from pool");
   return channel;
 }
 
 void ChannelPool::ReleaseChannel(std::shared_ptr<grpc::Channel> channel) {
   if (ShutdownOnFailure(channel)) {
-    logger_.log(armonik::api::common::logger::Level::Debug, "Shutdown unhealthy channel");
+    logger_.debug("Shutdown unhealthy channel");
   } else {
-    logger_.log(armonik::api::common::logger::Level::Debug, "Released channel to pool");
+    logger_.debug("Released channel to pool");
     std::lock_guard<std::mutex> _(channel_mutex_);
     channel_pool_.push(channel);
   }
