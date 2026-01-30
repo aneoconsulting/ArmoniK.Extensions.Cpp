@@ -493,7 +493,7 @@ TEST(testSDK, testLargePayload) {
 
   ASSERT_EQ(large_payload.size(), large_payload_size);
 
-  auto handler = std::make_shared<EchoServiceHandler>(logger);
+  auto handler = std::make_shared<CountServiceHandler>(logger);
 
   auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("EchoService", large_payload)}, handler);
 
@@ -502,8 +502,8 @@ TEST(testSDK, testLargePayload) {
   service.WaitResults();
 
   ASSERT_TRUE(!large_payload.empty());
-  ASSERT_TRUE(handler->received);
-  ASSERT_FALSE(handler->is_error);
+  ASSERT_EQ(handler->success, 1);
+  ASSERT_EQ(handler->failure, 0);
 
   service.CloseSession();
   std::cout << "Large payload test done!" << std::endl;
