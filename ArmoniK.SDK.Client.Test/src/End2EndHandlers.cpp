@@ -131,3 +131,19 @@ void SleepServiceHandler::HandleError(const std::exception &e, const std::string
   is_error = true;
 }
 SleepServiceHandler::SleepServiceHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}
+
+CountServiceHandler::CountServiceHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}
+void CountServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  std::stringstream ss;
+  ss << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId;
+  success++;
+  logger.log(armonik::api::common::logger::Level::Debug, ss.str(),
+             {{"success", std::to_string(success)}, {"failure", std::to_string(failure)}});
+}
+void CountServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+  std::stringstream ss;
+  ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what();
+  failure++;
+  logger.log(armonik::api::common::logger::Level::Debug, ss.str(),
+             {{"success", std::to_string(success)}, {"failure", std::to_string(failure)}});
+}

@@ -55,32 +55,35 @@ armonik::api::common::options::ComputePlane &ComputePlane::set_impl() {
 // Control Plane
 
 namespace {
-int getBatchSize(const Configuration &config, const std::string &key) {
-  auto batch_size_str = config.get(key);
-  int batch_size = 1; // Default value
+int getIntFromConfig(const Configuration &config, const std::string &key, int default_value) {
+  auto value_str = config.get(key);
+  int value = default_value; // Default value
   try {
-    batch_size = std::stoi(batch_size_str);
+    value = std::stoi(value_str);
   } catch (...) {
     // Ignore invalid value and keep default
   }
-  return batch_size > 0 ? batch_size : 1; // Ensure positive value
+  return value > 0 ? value : default_value; // Ensure positive value
 }
 } // namespace
 
 ControlPlane::ControlPlane(const Configuration &config)
     : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*config.impl)),
-      wait_batch_size_(getBatchSize(config, "GrpcClient__WaitBatchSize")),
-      submit_batch_size_(getBatchSize(config, "GrpcClient__SubmitBatchSize")) {}
+      wait_batch_size_(getIntFromConfig(config, "GrpcClient__WaitBatchSize", 200)),
+      submit_batch_size_(getIntFromConfig(config, "GrpcClient__SubmitBatchSize", 200)),
+      thread_pool_size_(getIntFromConfig(config, "GrpcClient__ThreadPoolSize", 0)) {}
 
 ControlPlane::ControlPlane(const ControlPlane &controlplane)
     : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*controlplane.impl)),
-      wait_batch_size_(controlplane.wait_batch_size_), submit_batch_size_(controlplane.submit_batch_size_) {}
+      wait_batch_size_(controlplane.wait_batch_size_), submit_batch_size_(controlplane.submit_batch_size_),
+      thread_pool_size_(controlplane.thread_pool_size_) {}
 ControlPlane::ControlPlane(ControlPlane &&) noexcept = default;
 
 ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
   impl = std::make_unique<armonik::api::common::options::ControlPlane>(*controlplane.impl);
   wait_batch_size_ = controlplane.wait_batch_size_;
   submit_batch_size_ = controlplane.submit_batch_size_;
+  thread_pool_size_ = controlplane.thread_pool_size_;
   return *this;
 }
 ControlPlane &ControlPlane::operator=(ControlPlane &&) noexcept = default;
@@ -95,6 +98,7 @@ bool ControlPlane::isSslValidation() const { return impl->isSslValidation(); }
 
 int ControlPlane::getWaitBatchSize() const { return wait_batch_size_; }
 int ControlPlane::getSubmitBatchSize() const { return submit_batch_size_; }
+int ControlPlane::getThreadPoolSize() const { return thread_pool_size_; }
 
 const armonik::api::common::options::ControlPlane &ControlPlane::get_impl() const {
   const static armonik::api::common::options::ControlPlane default_config =

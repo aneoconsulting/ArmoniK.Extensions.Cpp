@@ -73,3 +73,13 @@ public:
   int received_count = 0;
   armonik::api::common::logger::LocalLogger logger;
 };
+
+class CountServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
+public:
+  explicit CountServiceHandler(armonik::api::common::logger::Logger &logger);
+  void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
+  void HandleError(const std::exception &e, const std::string &taskId) override;
+  long success = 0;
+  long failure = 0;
+  armonik::api::common::logger::LocalLogger logger;
+};
