@@ -137,10 +137,16 @@ private:
    * @brief The thread pool on which tasks are spawned
    */
   ThreadPool &thread_pool_;
+
   /**
    * @brief The number of unfinished tasks in the join set
    */
   std::size_t task_count_;
+
+  /**
+   * @brief The exception that occurred in any task of the join set, if any
+   */
+  std::exception_ptr exception_;
 
   /**
    * @brief Mutex to protect the join set
