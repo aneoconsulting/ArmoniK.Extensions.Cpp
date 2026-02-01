@@ -87,7 +87,32 @@ public:
   /**
    * @brief Execute the task
    */
-  void Execute() { func_(); }
+  void Execute(armonik::api::common::logger::ILogger &logger) {
+
+    try {
+      func_();
+    } catch (const std::exception &e) {
+      logger.error("Exception in thread pool task: " + std::string(e.what()));
+      RecordError(logger);
+    } catch (...) {
+      logger.error("Unknown exception in thread pool task");
+      RecordError(logger);
+    }
+  }
+
+  /**
+   * @brief Record current error for the join set
+   */
+  void RecordError(armonik::api::common::logger::ILogger &logger) {
+    if (!join_set_) {
+      return;
+    }
+
+    std::unique_lock lock(join_set_->mutex_);
+
+    join_set_->exception_ = std::current_exception();
+    join_set_->wake_condition_.notify_all();
+  }
 };
 
 ThreadPool::ThreadPool(int max_threads, armonik::api::common::logger::Logger &logger)
@@ -155,13 +180,7 @@ void ThreadPool::Run() {
     task_logger.verbose("Got a new task to execute");
 
     // Execute the task
-    try {
-      task.Execute();
-    } catch (const std::exception &e) {
-      task_logger.error("Exception in thread pool task: " + std::string(e.what()));
-    } catch (...) {
-      task_logger.error("Unknown exception in thread pool task");
-    }
+    task.Execute(task_logger);
 
     // Task destructor will handle JoinSet bookkeeping
   }
@@ -214,7 +233,14 @@ void ThreadPool::JoinSet::Spawn(Function<void()> &&f) { thread_pool_.Spawn(Task(
 
 void ThreadPool::JoinSet::Wait() {
   std::unique_lock<std::mutex> lock(mutex_);
-  wake_condition_.wait(lock, [this]() { return task_count_ == 0; });
+  wake_condition_.wait(lock, [this]() { return task_count_ == 0 || !exception_; });
+
+  if (exception_) {
+    Logger().debug("Rethrow JoinSet error");
+    auto e = exception_;
+    exception_ = nullptr;
+    std::rethrow_exception(exception_);
+  }
 
   Logger().debug("JoinSet emptied");
 }
