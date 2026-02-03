@@ -14,6 +14,11 @@ using namespace ArmoniK::Sdk::Client::Internal;
 constexpr auto TIMEOUT = std::chrono::seconds(1);
 
 // clang-format off
+/**
+ * @brief Try to execute a statement in a separate thread, aborting the test if it blocks for too long
+ * @param timeout The time to wait before aborting
+ * @param ... The statement to execute
+ */
 #define WITH_TIMEOUT(timeout, ...)                               \
   do {                                                           \
     if (!WithTimeout(timeout, [=]() mutable { __VA_ARGS__; })) { \
@@ -23,8 +28,8 @@ constexpr auto TIMEOUT = std::chrono::seconds(1);
 // clang-format on
 
 /**
- * @brief Try to execute f in a separate thread, aborting the test if it blocks for too long
- * @param timeout The time to wait before aborting
+ * @brief Try to execute f in a separate thread, leaking the execution of f if it takes too long
+ * @param timeout The time to wait
  * @param f The function to call
  */
 bool WithTimeout(std::chrono::milliseconds timeout, Function<void()> f) {

@@ -93,17 +93,17 @@ public:
       func_();
     } catch (const std::exception &e) {
       logger.error("Exception in thread pool task: " + std::string(e.what()));
-      RecordError(logger);
+      RecordError();
     } catch (...) {
       logger.error("Unknown exception in thread pool task");
-      RecordError(logger);
+      RecordError();
     }
   }
 
   /**
    * @brief Record current error for the join set
    */
-  void RecordError(armonik::api::common::logger::ILogger &logger) {
+  void RecordError() {
     if (!join_set_) {
       return;
     }
@@ -175,8 +175,8 @@ void ThreadPool::Run() {
       }
 
       // Get the next task
-      task = std::move(pending_tasks_.back());
-      pending_tasks_.pop_back();
+      task = std::move(pending_tasks_.front());
+      pending_tasks_.pop();
     }
 
     auto task_logger = task.join_set_ ? task.join_set_->Logger(context) : Logger(context);
@@ -202,7 +202,7 @@ void ThreadPool::Spawn(Task &&task) {
     }
 
     // Enqueue the task
-    pending_tasks_.emplace_back(std::move(task));
+    pending_tasks_.push(std::move(task));
 
     // If there are no sleeping threads and we have not reached max threads, create a new thread
     if (sleeping_threads_ == 0 && threads_.size() < max_threads_) {

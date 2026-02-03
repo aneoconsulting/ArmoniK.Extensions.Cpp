@@ -25,18 +25,29 @@ namespace Client {
 namespace Internal {
 
 namespace {
+/**
+ * @brief Upload a large result using a stream, retrying the upload in case of error
+ * @param pool The channel pool to use to perform the requests
+ * @param session Id of the session where the result has been created
+ * @param result_id Id of the result to upload
+ * @param data Content of the result to upload
+ * @param data_max_chunk_size Size of the chunks to upload the data
+ * @param logger Logger
+ */
 void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std::string session, std::string result_id,
                          absl::string_view data, std::size_t data_chunk_max_size,
                          armonik::api::common::logger::ILogger &logger) {
 
-  const int max_retry = 3;
-
   std::exception_ptr eptr;
 
+  // Retry the upload at most 3 times
+  const int max_retry = 3;
   for (int retry = 0; retry < max_retry; ++retry) {
     eptr = nullptr;
     auto remaining_data = data;
 
+    // If retry is available (not the last iteration), add prefix to the logs to indicate the upload will be retried
+    // even though there was an error, and log errors as warnings
     bool can_retry = retry + 1 < max_retry;
     const char *retry_notif = can_retry ? "Upload will be RETRIED: " : "";
     auto loglevel =
@@ -52,11 +63,13 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
       auto client = armonik::api::grpc::v1::results::Results::NewStub(channel.channel);
       auto stream = client->UploadResultData(&context, &response);
 
+      // Send message header with the result identifier
       request.mutable_id()->set_session_id(session);
       request.mutable_id()->set_result_id(result_id);
       stream->Write(request);
       request.clear_id();
 
+      // Chunk the content to send it in multiple messages
       while (!remaining_data.empty()) {
         auto chunk = remaining_data.substr(0, data_chunk_max_size);
         request.mutable_data_chunk()->assign(chunk.data(), chunk.size());
@@ -77,7 +90,7 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
 
       // If the uploaded size is different than the actual data size, upload must be retried
       // Otherwise, we are good to go.
-      if (response.result().size() == data.size()) {
+      if (response.result().size() == std::int64_t(data.size())) {
         break;
       }
 
@@ -120,8 +133,8 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
                            std::shared_ptr<IServiceInvocationHandler> handler,
                            const Common::TaskOptions &task_options) {
 
-  const int message_overhead = 128;
-  auto data_chunk_max_size =
+  const std::size_t message_overhead = 128;
+  std::size_t data_chunk_max_size =
       override_message_size_ ? override_message_size_ : channel_pool.WithChannel([](auto channel) {
         return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
             .get_service_configuration()
@@ -129,7 +142,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
       });
 
   // Number of bytes to be sent in the next CreateResult request
-  decltype(data_chunk_max_size) data_batched = 0;
+  std::size_t data_batched = 0;
 
   std::vector<std::string> input_result_ids(task_requests.size());
   std::vector<std::string> output_result_ids(task_requests.size());
@@ -137,12 +150,12 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
   ThreadPool::JoinSet join_set(thread_pool_);
 
-  // Batch Result metadata creation (for outputs and large inputs)
-  Batcher<std::pair<int, bool>> create_metadata_batcher(
-      submit_batch_size_, [&](std::vector<std::pair<int, bool>> &&batch) {
+  // Batch Result metadata creation (for outputs and large inputs) and upload inputs
+  Batcher<std::pair<std::size_t, bool>> create_metadata_and_upload_batcher(
+      submit_batch_size_, [&](std::vector<std::pair<std::size_t, bool>> &&batch) {
         join_set.Spawn([&, batch = std::move(batch)]() {
           std::vector<std::string> names(batch.size());
-          for (int j = 0; j < batch.size(); ++j) {
+          for (std::size_t j = 0; j < batch.size(); ++j) {
             int i = batch[j].first;
             bool is_output = batch[j].second;
 
@@ -155,28 +168,34 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
           });
 
           // threadsafe as the index is unique among all batches
-          for (int j = 0; j < batch.size(); ++j) {
-            int i = batch[j].first;
+          for (std::size_t j = 0; j < batch.size(); ++j) {
+            std::size_t i = batch[j].first;
             bool is_output = batch[j].second;
 
             if (is_output) {
               output_result_ids[i] = std::move(reply[names[j]]);
             } else {
               input_result_ids[i] = std::move(reply[names[j]]);
+
+              // Upload result using stream
+              join_set.Spawn([&, i]() {
+                upload_large_result(channel_pool, session, input_result_ids[i], task_requests[i].Serialize(),
+                                    data_chunk_max_size, logger_);
+              });
             }
           }
         });
       });
 
   // Batch Result data creation (for small inputs)
-  Batcher<int> create_data_batcher(submit_batch_size_, [&](std::vector<int> &&batch) {
+  Batcher<std::size_t> create_data_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
     // Reset the number of bytes to be sent in the current batch
     data_batched = 0;
 
     join_set.Spawn([&, batch = std::move(batch)]() {
       std::vector<std::pair<std::string, std::string>> results(batch.size());
-      for (int j = 0; j < batch.size(); ++j) {
-        int i = batch[j];
+      for (std::size_t j = 0; j < batch.size(); ++j) {
+        std::size_t i = batch[j];
         results[j] = {"input-" + std::to_string(i), task_requests[i].Serialize()};
       }
       auto reply = channel_pool.WithChannel([&](auto channel) {
@@ -185,19 +204,19 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
       });
 
       // threadsafe as the index is unique among all batches
-      for (int j = 0; j < batch.size(); ++j) {
-        int i = batch[j];
+      for (std::size_t j = 0; j < batch.size(); ++j) {
+        std::size_t i = batch[j];
         input_result_ids[i] = std::move(reply[results[j].first]);
       }
     });
   });
 
   // Batch task submission
-  Batcher<int> submit_batcher(submit_batch_size_, [&](std::vector<int> &&batch) {
+  Batcher<std::size_t> submit_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
     join_set.Spawn([&, batch = std::move(batch)]() {
       std::vector<armonik::api::common::TaskCreation> requests(batch.size());
-      for (int j = 0; j < batch.size(); ++j) {
-        int i = batch[j];
+      for (std::size_t j = 0; j < batch.size(); ++j) {
+        std::size_t i = batch[j];
         auto &data_dependencies = task_requests[i].data_dependencies;
         auto &request = requests[j];
 
@@ -214,8 +233,8 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
       });
 
       // threadsafe as the index is unique among all batches
-      for (int j = 0; j < batch.size(); ++j) {
-        int i = batch[j];
+      for (std::size_t j = 0; j < batch.size(); ++j) {
+        std::size_t i = batch[j];
         task_ids[i] = std::move(reply[j].task_id);
 
         std::stringstream ss;
@@ -226,13 +245,13 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   });
 
   // Create all results
-  for (int i = 0; i < task_requests.size(); ++i) {
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
     auto &task_request = task_requests[i];
     auto payload_size = task_request.arguments.size();
 
-    create_metadata_batcher.Add({i, true});
+    create_metadata_and_upload_batcher.Add({i, true});
     if (payload_size + message_overhead >= data_chunk_max_size) {
-      create_metadata_batcher.Add({i, false});
+      create_metadata_and_upload_batcher.Add({i, false});
     } else {
       // If current batch would be too large, send it right now
       if (data_batched + payload_size + message_overhead >= data_chunk_max_size) {
@@ -245,27 +264,12 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   }
 
   // Ensure all results are created
+  create_metadata_and_upload_batcher.ProcessBatch();
   create_data_batcher.ProcessBatch();
-  create_metadata_batcher.ProcessBatch();
-  join_set.Wait();
-
-  // Upload large results
-  for (int i = 0; i < task_requests.size(); ++i) {
-    auto &task_request = task_requests[i];
-    auto payload_size = task_request.arguments.size();
-
-    if (payload_size + message_overhead >= data_chunk_max_size) {
-      join_set.Spawn([&, i]() {
-        upload_large_result(channel_pool, session, input_result_ids[i], task_requests[i].Serialize(),
-                            data_chunk_max_size, logger_);
-      });
-    }
-  }
-
   join_set.Wait();
 
   // Submit all tasks
-  for (int i = 0; i < task_requests.size(); ++i) {
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
     submit_batcher.Add(i);
   }
 
@@ -275,7 +279,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
   std::lock_guard<std::mutex> lock(maps_mutex);
 
-  for (int i = 0; i < task_requests.size(); ++i) {
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
     const auto &result_id = output_result_ids[i];
     const auto &task_id = task_ids[i];
     result_handlers[result_id] = handler;
