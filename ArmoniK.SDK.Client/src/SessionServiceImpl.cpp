@@ -120,12 +120,13 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
                            std::shared_ptr<IServiceInvocationHandler> handler,
                            const Common::TaskOptions &task_options) {
 
-  const int message_overhead = 64;
-  auto data_chunk_max_size = channel_pool.WithChannel([](auto channel) {
-    return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-        .get_service_configuration()
-        .data_chunk_max_size;
-  });
+  const int message_overhead = 128;
+  auto data_chunk_max_size =
+      override_message_size_ ? override_message_size_ : channel_pool.WithChannel([](auto channel) {
+        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+            .get_service_configuration()
+            .data_chunk_max_size;
+      });
 
   // Number of bytes to be sent in the next CreateResult request
   decltype(data_chunk_max_size) data_batched = 0;
@@ -290,7 +291,8 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
     : taskOptions(properties.taskOptions), channel_pool(properties, logger),
       thread_pool_(properties.configuration.get_control_plane().getThreadPoolSize(), logger), logger_(logger.local()),
       wait_batch_size_(properties.configuration.get_control_plane().getWaitBatchSize()),
-      submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()) {
+      submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
+      override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](auto &&channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))

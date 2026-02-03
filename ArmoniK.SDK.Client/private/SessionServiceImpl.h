@@ -87,12 +87,17 @@ private:
   /**
    * @brief Batch size for waiting results
    */
-  int wait_batch_size_ = 200;
+  int wait_batch_size_;
 
   /**
    * @brief Batch size for task submission
    */
-  int submit_batch_size_ = 200;
+  int submit_batch_size_;
+
+  /**
+   * @brief Override message size for result upload and creation
+   */
+  int override_message_size_;
 
 public:
   SessionServiceImpl() = delete;

@@ -135,6 +135,14 @@ public:
    */
   [[nodiscard]] int getThreadPoolSize() const;
 
+  /**
+   * @brief Override the message size for result upload and creation
+   * @return Message size
+   * @note Configuration key: `GrpcClient__OverrideMessageSize` (default: 0)
+   * @note When 0, use the message size from the server
+   */
+  [[nodiscard]] int getOverrideMessageSize() const;
+
 private:
   std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
   [[nodiscard]] const armonik::api::common::options::ControlPlane &get_impl() const;
@@ -142,6 +150,7 @@ private:
   int wait_batch_size_;
   int submit_batch_size_;
   int thread_pool_size_;
+  int override_message_size_;
 };
 
 /**
