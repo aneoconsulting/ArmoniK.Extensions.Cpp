@@ -161,12 +161,11 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
                                      const WaitOptions &options) {
   auto function_stop = std::chrono::steady_clock::now() + std::chrono::milliseconds(options.timeout);
 
-  bool hasWaitList = !task_ids.empty();
-  size_t initialTaskIds_size = task_ids.size();
   bool breakOnError = behavior & WaitBehavior::BreakOnError;
   bool stopOnFirst = behavior & WaitBehavior::Any;
 
   std::map<std::string, armonik::api::grpc::v1::results::ResultRaw> results;
+  std::atomic<bool> hasError(false);
 
   ThreadPool::JoinSet join_set(thread_pool_);
 
@@ -197,20 +196,21 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
       }
     }
   }
+  size_t initial_result_size = results.size();
 
   // Batcher to get results in batches
   Batcher<std::string> batcher(wait_batch_size_, [&](std::vector<std::string> &&batch) {
-    armonik::api::grpc::v1::results::Filters filters{};
-    for (auto &result_id : batch) {
+    join_set.Spawn([&, batch = std::move(batch)]() mutable {
+      armonik::api::grpc::v1::results::Filters filters{};
+      for (auto &result_id : batch) {
 
-      auto filter = filters.add_or_()->add_and_();
-      filter->mutable_field()->mutable_result_raw_field()->set_field(
-          armonik::api::grpc::v1::results::RESULT_RAW_ENUM_FIELD_RESULT_ID);
-      filter->mutable_filter_string()->set_value(std::move(result_id));
-      filter->mutable_filter_string()->set_operator_(armonik::api::grpc::v1::FILTER_STRING_OPERATOR_EQUAL);
-    }
+        auto filter = filters.add_or_()->add_and_();
+        filter->mutable_field()->mutable_result_raw_field()->set_field(
+            armonik::api::grpc::v1::results::RESULT_RAW_ENUM_FIELD_RESULT_ID);
+        filter->mutable_filter_string()->set_value(std::move(result_id));
+        filter->mutable_filter_string()->set_operator_(armonik::api::grpc::v1::FILTER_STRING_OPERATOR_EQUAL);
+      }
 
-    join_set.Spawn([&, filters = std::move(filters)]() mutable {
       auto response = channel_pool.WithChannel([&](auto &&channel) {
         armonik::api::client::ResultsClient resultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel));
         int total = 0;
@@ -226,8 +226,6 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
 
   // Wait all the specified results
   while (!results.empty()) {
-    bool hasError = false;
-
     // Get all the results using batched requests
     for (auto &result : results) {
       batcher.Add(result.first);
@@ -248,7 +246,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
         continue;
       }
 
-      join_set.Spawn([&, result, status]() mutable {
+      join_set.Spawn([&, result = std::move(result), status]() mutable {
         std::shared_ptr<IServiceInvocationHandler> handler{};
         std::string task_id{};
 
@@ -269,7 +267,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
 
         // function to be called upon errors
         auto handle_error = [&](const std::exception &e, const std::string &reason = {}) {
-          hasError = true;
+          hasError.store(true, std::memory_order_relaxed);
           std::stringstream message;
           message << "Error while handling result " << result.result_id() << " for task "
                   << (task_id.empty() ? "[UNKNOWN]" : task_id);
@@ -330,7 +328,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
                 auto task = armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
                                 .get_task(owner_task_id);
                 auto task_error = error.add_errors();
-                task_error->set_detail(std::move(task.output().error()));
+                task_error->set_detail(std::move(*task.mutable_output()->mutable_error()));
                 task_error->set_task_status(task.status());
               });
             } catch (const std::exception &e) {
@@ -359,7 +357,8 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
     join_set.Wait();
 
     // If we wait for any and at least one is done, or if we break on error and had an error, then return
-    if ((stopOnFirst && results.size() < initialTaskIds_size) || (breakOnError && hasError)) {
+    if ((stopOnFirst && results.size() < initial_result_size) ||
+        (breakOnError && hasError.load(std::memory_order_relaxed))) {
       break;
     }
     if (std::chrono::steady_clock::now() > function_stop) {
