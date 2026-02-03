@@ -24,6 +24,95 @@ namespace Sdk {
 namespace Client {
 namespace Internal {
 
+namespace {
+void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std::string session, std::string result_id,
+                         absl::string_view data, std::size_t data_chunk_max_size,
+                         armonik::api::common::logger::ILogger &logger) {
+
+  const int max_retry = 3;
+
+  std::exception_ptr eptr;
+
+  for (int retry = 0; retry < max_retry; ++retry) {
+    eptr = nullptr;
+    auto remaining_data = data;
+
+    bool can_retry = retry + 1 < max_retry;
+    const char *retry_notif = can_retry ? "Upload will be RETRIED: " : "";
+    auto loglevel =
+        can_retry ? armonik::api::common::logger::Level::Warning : armonik::api::common::logger::Level::Error;
+
+    try {
+      auto channel = pool.GetChannel();
+
+      grpc::ClientContext context{};
+      armonik::api::grpc::v1::results::UploadResultDataRequest request{};
+      armonik::api::grpc::v1::results::UploadResultDataResponse response{};
+
+      auto client = armonik::api::grpc::v1::results::Results::NewStub(channel.channel);
+      auto stream = client->UploadResultData(&context, &response);
+
+      request.mutable_id()->set_session_id(session);
+      request.mutable_id()->set_result_id(result_id);
+      stream->Write(request);
+      request.clear_id();
+
+      while (!remaining_data.empty()) {
+        auto chunk = remaining_data.substr(0, data_chunk_max_size);
+        request.mutable_data_chunk()->assign(chunk.data(), chunk.size());
+        if (!stream->Write(request)) {
+          throw armonik::api::common::exceptions::ArmoniKApiException("Unable to continue upload result " + result_id);
+        }
+        remaining_data = remaining_data.substr(chunk.size());
+      }
+
+      if (!stream->WritesDone()) {
+        throw armonik::api::common::exceptions::ArmoniKApiException("Unable to upload result " + result_id);
+      }
+      auto status = stream->Finish();
+      if (!status.ok()) {
+        throw armonik::api::common::exceptions::ArmoniKApiException("Unable to finish upload result " + result_id +
+                                                                    ": " + status.error_message());
+      }
+
+      // If the uploaded size is different than the actual data size, upload must be retried
+      // Otherwise, we are good to go.
+      if (response.result().size() == data.size()) {
+        break;
+      }
+
+      // If the uploaded size is different, delete the uploaded data from the object storage
+      try {
+        pool.WithChannel([&](auto channel) {
+          armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+              .delete_results_data(session, {std::move(*response.mutable_result()->mutable_result_id())});
+        });
+      } catch (const std::exception &e) {
+        logger.warning("Unable to clean data for " + result_id + ": " + e.what());
+      } catch (...) {
+        logger.warning("Unable to clean data for " + result_id + ": unknown exception");
+      }
+
+      std::stringstream ss;
+      ss << retry_notif << "Corrupted result " << result_id << " upload: mismatched between client size ("
+         << data.size() << " B) and server size (" << response.result().size() << ")";
+
+      throw std::make_exception_ptr(armonik::api::common::exceptions::ArmoniKApiException(ss.str()));
+    } catch (const std::exception &e) {
+      logger.log(loglevel, std::string(retry_notif) + "Failed to upload result " + result_id + ": " + e.what());
+      eptr = std::current_exception();
+    } catch (...) {
+      logger.log(loglevel, std::string(retry_notif) + "Failed to upload result " + result_id + ": unknown exception");
+      eptr = std::current_exception();
+    }
+  }
+
+  if (eptr) {
+    std::rethrow_exception(eptr);
+  }
+}
+} // namespace
+
 const std::string &SessionServiceImpl::getSession() const { return session; }
 
 [[maybe_unused]] std::vector<std::string>
@@ -73,14 +162,6 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
               output_result_ids[i] = std::move(reply[names[j]]);
             } else {
               input_result_ids[i] = std::move(reply[names[j]]);
-
-              // Spawn upload of the input result
-              join_set.Spawn([&, i]() {
-                channel_pool.WithChannel([&, i](auto channel) {
-                  armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-                      .upload_result_data(session, input_result_ids[i], task_requests[i].Serialize());
-                });
-              });
             }
           }
         });
@@ -165,6 +246,21 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   // Ensure all results are created
   create_data_batcher.ProcessBatch();
   create_metadata_batcher.ProcessBatch();
+  join_set.Wait();
+
+  // Upload large results
+  for (int i = 0; i < task_requests.size(); ++i) {
+    auto &task_request = task_requests[i];
+    auto payload_size = task_request.arguments.size();
+
+    if (payload_size + message_overhead >= data_chunk_max_size) {
+      join_set.Spawn([&, i]() {
+        upload_large_result(channel_pool, session, input_result_ids[i], task_requests[i].Serialize(),
+                            data_chunk_max_size, logger_);
+      });
+    }
+  }
+
   join_set.Wait();
 
   // Submit all tasks
