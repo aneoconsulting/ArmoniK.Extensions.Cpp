@@ -79,7 +79,8 @@ TEST(testSDK, testEcho) {
 
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -142,7 +143,8 @@ TEST(testSDK, testAddInt) {
 
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -242,7 +244,8 @@ TEST(testSDK, testAddFloat) {
 
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -353,7 +356,8 @@ TEST(testSDK, testStressTest) {
 
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -428,7 +432,8 @@ TEST(testSDK, testSegFault) {
 
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -475,7 +480,8 @@ TEST(testSDK, testLargePayload) {
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
 
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
 
@@ -487,7 +493,7 @@ TEST(testSDK, testLargePayload) {
 
   ASSERT_EQ(large_payload.size(), large_payload_size);
 
-  auto handler = std::make_shared<EchoServiceHandler>(logger);
+  auto handler = std::make_shared<CountServiceHandler>(logger);
 
   auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("EchoService", large_payload)}, handler);
 
@@ -496,8 +502,8 @@ TEST(testSDK, testLargePayload) {
   service.WaitResults();
 
   ASSERT_TRUE(!large_payload.empty());
-  ASSERT_TRUE(handler->received);
-  ASSERT_FALSE(handler->is_error);
+  ASSERT_EQ(handler->success, 1);
+  ASSERT_EQ(handler->failure, 0);
 
   service.CloseSession();
   std::cout << "Large payload test done!" << std::endl;

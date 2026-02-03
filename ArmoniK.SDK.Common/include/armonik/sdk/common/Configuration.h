@@ -74,57 +74,74 @@ public:
   /**
    * @brief ArmoniK control plane endpoint
    * @return Endpoint address
+   * @note Configuration key: `GrpcClient__Endpoint`
    */
   [[nodiscard]] absl::string_view getEndpoint() const;
 
   /**
    * @brief Path to the client's certificate in PEM format
    * @return Client certificate's path
+   * @note Configuration key: `GrpcClient__CertPem` (optional)
    */
   [[nodiscard]] absl::string_view getUserCertPemPath() const;
 
   /**
    * @brief Path to the client's key in PEM format (PKCS#1 or PKCS#8)
    * @return Client key path
+   * @note Configuration key: `GrpcClient__KeyPem` (optional)
    */
   [[nodiscard]] absl::string_view getUserKeyPemPath() const;
 
   /**
    * @brief Path to the client's PKCS#12 certificate/key
    * @return Client P12 path
+   * @note Configuration key: `GrpcClient__CertP12` (optional)
    */
   [[nodiscard]] absl::string_view getUserP12Path() const;
 
   /**
    * @brief Path to the server's CA certificate
    * @return CA certificate path
+   * @note Configuration key: `GrpcClient__CaCert` (optional)
    */
   [[nodiscard]] absl::string_view getCaCertPemPath() const;
 
   /**
    * @brief Is SSL validation enabled ?
    * @return True if SSL validation is enabled, false otherwise
+   * @note Configuration key: `GrpcClient__AllowUnsafeConnection` (default: false)
    */
   [[nodiscard]] bool isSslValidation() const;
 
   /**
    * @brief Batch size for waiting results
    * @return Batch size
+   * @note Configuration key: `GrpcClient__WaitBatchSize` (default: 200)
    */
   [[nodiscard]] int getWaitBatchSize() const;
 
   /**
    * @brief Batch size for task submission
    * @return Batch size
+   * @note Configuration key: `GrpcClient__SubmitBatchSize` (default: 200)
    */
   [[nodiscard]] int getSubmitBatchSize() const;
+
+  /**
+   * @brief Number of threads in the thread pool to upload and download results
+   * @return Thread pool size
+   * @note Configuration key: `GrpcClient__ThreadPoolSize` (default: 0)
+   * @note 0 means hardware concurrency
+   */
+  [[nodiscard]] int getThreadPoolSize() const;
 
 private:
   std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
   [[nodiscard]] const armonik::api::common::options::ControlPlane &get_impl() const;
   armonik::api::common::options::ControlPlane &set_impl();
-  int wait_batch_size_ = 200;
-  int submit_batch_size_ = 200;
+  int wait_batch_size_;
+  int submit_batch_size_;
+  int thread_pool_size_;
 };
 
 /**

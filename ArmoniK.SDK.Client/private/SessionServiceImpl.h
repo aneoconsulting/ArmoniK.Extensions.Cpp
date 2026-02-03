@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ChannelPool.h"
+#include "ThreadPool.h"
 #include "armonik/sdk/client/WaitBehavior.h"
 #include <armonik/client/results/ResultsClient.h>
 #include <armonik/sdk/common/TaskOptions.h>
@@ -71,6 +72,11 @@ private:
    * @brief Channel pool
    */
   ChannelPool channel_pool;
+
+  /**
+   * @brief Thread pool
+   */
+  ThreadPool thread_pool_;
 
   /**
    * @brief Local logger
