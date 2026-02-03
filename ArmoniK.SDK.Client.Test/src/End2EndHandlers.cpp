@@ -19,6 +19,8 @@ void PythonTestWorkerHandler::HandleError(const std::exception &e, const std::st
 }
 
 void AddServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
             << "\nContent : ";
   std::cout.write(result_payload.data(), result_payload.size()) << "\nRaw : ";
@@ -43,6 +45,8 @@ void AddServiceHandler::HandleError(const std::exception &e, const std::string &
   std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
 }
 void EchoServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   std::stringstream ss;
   ss << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
      << "\nContent : ";
@@ -56,6 +60,8 @@ void EchoServiceHandler::HandleResponse(const std::string &result_payload, const
   is_error = false;
 }
 void EchoServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   std::stringstream ss;
   ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
   logger.debug(ss.str());
@@ -67,6 +73,8 @@ EchoServiceHandler::EchoServiceHandler(armonik::api::common::logger::Logger &log
 StressTestServiceHandler::StressTestServiceHandler(armonik::api::common::logger::Logger &logger)
     : logger(logger.local()) {}
 void StressTestServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   std::stringstream ss;
   nb_output_bytes = result_payload.size();
   if (nb_output_bytes == 0) {
@@ -81,6 +89,8 @@ void StressTestServiceHandler::HandleResponse(const std::string &result_payload,
   logger.debug(ss.str());
 }
 void StressTestServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   is_ok = false;
   std::stringstream ss;
   ss << "Handle ERROR: Error for task id " << taskId << ": " << e.what() << '\n';
@@ -88,6 +98,8 @@ void StressTestServiceHandler::HandleError(const std::exception &e, const std::s
 }
 
 void SegFaultServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   std::stringstream ss;
   ss << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
      << "\nContent : ";
@@ -101,6 +113,8 @@ void SegFaultServiceHandler::HandleResponse(const std::string &result_payload, c
   is_error = false;
 }
 void SegFaultServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   std::stringstream ss;
   ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
   logger.debug(ss.str());
@@ -110,6 +124,8 @@ void SegFaultServiceHandler::HandleError(const std::exception &e, const std::str
 SegFaultServiceHandler::SegFaultServiceHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}
 
 void SleepServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   std::stringstream ss;
   ss << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
      << "\nContent : ";
@@ -124,6 +140,8 @@ void SleepServiceHandler::HandleResponse(const std::string &result_payload, cons
   received_count++;
 }
 void SleepServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   std::stringstream ss;
   ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
   logger.log(armonik::api::common::logger::Level::Debug, ss.str());
@@ -134,6 +152,8 @@ SleepServiceHandler::SleepServiceHandler(armonik::api::common::logger::Logger &l
 
 CountServiceHandler::CountServiceHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}
 void CountServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   std::stringstream ss;
   ss << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId;
   success++;
@@ -141,6 +161,8 @@ void CountServiceHandler::HandleResponse(const std::string &result_payload, cons
              {{"success", std::to_string(success)}, {"failure", std::to_string(failure)}});
 }
 void CountServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
   std::stringstream ss;
   ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what();
   failure++;
