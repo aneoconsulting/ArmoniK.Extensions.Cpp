@@ -72,6 +72,7 @@ void StressTestServiceHandler::HandleResponse(const std::string &result_payload,
   if (nb_output_bytes == 0) {
     is_ok = false;
   }
+  auto &result = results[taskId];
   result.resize(result_payload.size() / sizeof(double), 0.0);
   std::memcpy(result.data(), result_payload.data(), result_payload.size());
   ss << "Handle response: received result of size: " << result_payload.size() << " for taskId " << taskId << "\nRaw: ";
