@@ -78,11 +78,11 @@ public:
       result += x * x * x;
     }
     const auto end = clock::now() + milliseconds(workLoadTimeInMs);
-    while (clock::now() <= end) {
+    do {
       for (std::size_t i = 0; i < output_size; ++i) {
         output[i] = result / double_output_size;
       }
-    }
+    } while (clock::now() <= end);
     return output;
   }
 };

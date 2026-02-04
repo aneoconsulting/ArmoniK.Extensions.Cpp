@@ -14,6 +14,7 @@
 #include <chrono>
 #include <cmath>
 #include <numeric>
+#include <thread>
 
 #include "End2EndHandlers.h"
 
@@ -43,11 +44,11 @@ std::vector<double> compute_workload(const std::vector<double> &input, const std
   const std::size_t output_size = output.size();
 
   const auto end = clock::now() + milliseconds(workLoadTimeInMs);
-  while (clock::now() <= end) {
+  do {
     for (std::size_t i = 0; i < output_size; ++i) {
       output[i] = result / static_cast<double>(output_size);
     }
-  }
+  } while (clock::now() <= end);
   return output;
 }
 
@@ -357,7 +358,7 @@ TEST(testSDK, testStressTest) {
   // Create the logger
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
                                               armonik::api::common::logger::formatter_plain(true),
-                                              armonik::api::common::logger::Level::Debug};
+                                              armonik::api::common::logger::Level::Info};
 
   // Create the session service
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
@@ -368,7 +369,7 @@ TEST(testSDK, testStressTest) {
   // Create the handler
   auto handler = std::make_shared<StressTestServiceHandler>(logger);
 
-  const std::uint32_t nbTasks = 100, nbInputBytes = 64000, nbOutputBytes = 8, workloadTimeInMs = 1;
+  const std::uint32_t nbTasks = 1000, nbInputBytes = 100000, nbOutputBytes = 8, workloadTimeInMs = 1;
 
   const std::vector<double> input(nbInputBytes / sizeof(double),
                                   std::pow(42.0 * 8.0 / static_cast<double>(nbInputBytes), 1.0 / 3.0));
@@ -391,23 +392,136 @@ TEST(testSDK, testStressTest) {
     return {outputVec.data(), outputVec.size()};
   }();
   const std::vector<ArmoniK::Sdk::Common::TaskPayload> tasks_payload(nbTasks, {"compute_workload", std::move(payload)});
+
+  auto t0 = std::chrono::high_resolution_clock::now();
   const auto tasks = service.Submit(tasks_payload, handler);
+  auto t1 = std::chrono::high_resolution_clock::now();
+
+  std::cout << "Submit: " << std::chrono::duration_cast<std::chrono::duration<float>>(t1 - t0).count() << " s"
+            << std::endl;
 
   ASSERT_FALSE(tasks.empty());
   ASSERT_EQ(tasks.size(), nbTasks);
 
   // Wait for task completion
+  auto t2 = std::chrono::high_resolution_clock::now();
   service.WaitResults();
+  auto t3 = std::chrono::high_resolution_clock::now();
+
+  std::cout << "Wait: " << std::chrono::duration_cast<std::chrono::duration<float>>(t3 - t2).count() << " s"
+            << std::endl;
 
   ASSERT_TRUE(handler->is_ok);
   ASSERT_EQ(handler->nb_output_bytes, nbOutputBytes);
   const auto result_out = compute_workload(input, nbOutputBytes, workloadTimeInMs);
-  for (std::size_t i = 0; i < result_out.size(); ++i) {
-    ASSERT_NEAR(handler->result.at(i), result_out.at(i), 0.0000001);
+  for (auto &task : tasks) {
+    for (std::size_t i = 0; i < result_out.size(); ++i) {
+      ASSERT_NEAR(handler->results.at(task).at(i), result_out.at(i), 0.0000001);
+    }
   }
 
   service.CloseSession();
   std::cout << "Done" << std::endl;
+}
+
+TEST(testSDK, parallelSubmit) {
+  // Load configuration from file and environment
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  if (config.get("Worker__Type").empty()) {
+    config.set("Worker__Type", "End2EndTest");
+  }
+
+  std::cout << std::endl;
+
+  // Create the task options
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), "End2EndTest", "StressTest",
+                                                         config.get("PartitionId"));
+  session_task_options.max_retries = 1;
+
+  // Create the properties
+  ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
+
+  // Create the logger
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Info};
+
+  // Create the session service
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  const std::uint32_t nbThreads = 10;
+  const std::uint32_t nbTasksPerThread = 100;
+  const std::uint32_t nbInputBytes = 100000;
+  const std::uint32_t nbOutputBytes = 8;
+  const std::uint32_t workloadTimeInMs = 1;
+  std::vector<std::thread> threads;
+  std::vector<std::vector<std::string>> tasks(nbThreads);
+  std::vector<std::shared_ptr<StressTestServiceHandler>> handlers;
+  handlers.reserve(nbThreads);
+
+  // Get the created session id
+  logger.info("Created session", {{"session_id", service.getSession()},
+                                  {"nbThreads", std::to_string(nbThreads)},
+                                  {"nbTasksPerThread", std::to_string(nbTasksPerThread)},
+                                  {"nbInputBytes", std::to_string(nbInputBytes)},
+                                  {"nbOutputBytes", std::to_string(nbOutputBytes)},
+                                  {"workloadTimeInMs", std::to_string(workloadTimeInMs)}});
+
+  for (std::size_t t = 0; t < nbThreads; ++t) {
+    handlers.push_back(std::make_shared<StressTestServiceHandler>(logger));
+    threads.emplace_back([&, t]() {
+      std::vector<ArmoniK::Sdk::Common::TaskPayload> payloads;
+      std::vector<double> input(nbInputBytes / sizeof(double));
+      input[0] = t;
+
+      for (std::size_t j = 0; j < nbTasksPerThread; ++j) {
+        input[1] = j;
+        std::vector<char> outputVec(nbInputBytes + sizeof(nbOutputBytes) * 3, 0);
+        auto beginPtr = outputVec.data();
+        serialize_item(beginPtr, nbOutputBytes);
+        serialize_item(beginPtr, workloadTimeInMs);
+        serialize_item(beginPtr, nbInputBytes);
+        serialize_item(beginPtr, input.data(), nbInputBytes / sizeof(double));
+        payloads.push_back({"compute_workload", {outputVec.data(), outputVec.size()}});
+      }
+
+      tasks[t] = service.Submit(payloads, handlers[t]);
+      logger.info("Tasks submitted", {{"thread", std::to_string(t)}});
+
+      service.WaitResults({tasks[t].begin(), tasks[t].end()});
+      logger.info("Tasks received", {{"thread", std::to_string(t)}});
+    });
+  }
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  std::vector<double> inputReference(2);
+  for (std::size_t t = 0; t < nbThreads; ++t) {
+    auto &handler = handlers[t];
+    inputReference[0] = t;
+
+    for (std::size_t j = 0; j < nbTasksPerThread; ++j) {
+      auto &task = tasks[t][j];
+      inputReference[1] = j;
+
+      const auto result_out = compute_workload(inputReference, nbOutputBytes, workloadTimeInMs);
+      if ((t != 0 || j != 0) && result_out[0] == 0) {
+        logger.fatal("Unexepected zero output", {{"t", std::to_string(t)}, {"j", std::to_string(j)}});
+      }
+      for (std::size_t i = 0; i < result_out.size(); ++i) {
+        ASSERT_NEAR(handler->results.at(task).at(i), result_out.at(i), 0.0000001)
+            << "\tthread: " << t << "\ttask: " << task << "\tj: " << j << "\ti: " << i;
+      }
+    }
+  }
+
+  service.CloseSession();
+  logger.info("Closed session", {{"session_id", service.getSession()}});
 }
 
 TEST(testSDK, testSegFault) {
