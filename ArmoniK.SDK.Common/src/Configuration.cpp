@@ -71,12 +71,13 @@ ControlPlane::ControlPlane(const Configuration &config)
     : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*config.impl)),
       wait_batch_size_(getIntFromConfig(config, "GrpcClient__WaitBatchSize", 200)),
       submit_batch_size_(getIntFromConfig(config, "GrpcClient__SubmitBatchSize", 200)),
-      thread_pool_size_(getIntFromConfig(config, "GrpcClient__ThreadPoolSize", 0)) {}
+      thread_pool_size_(getIntFromConfig(config, "GrpcClient__ThreadPoolSize", 0)),
+      override_message_size_(getIntFromConfig(config, "GrpcClient__OverrideMessageSize", 0)) {}
 
 ControlPlane::ControlPlane(const ControlPlane &controlplane)
     : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*controlplane.impl)),
       wait_batch_size_(controlplane.wait_batch_size_), submit_batch_size_(controlplane.submit_batch_size_),
-      thread_pool_size_(controlplane.thread_pool_size_) {}
+      thread_pool_size_(controlplane.thread_pool_size_), override_message_size_(controlplane.override_message_size_) {}
 ControlPlane::ControlPlane(ControlPlane &&) noexcept = default;
 
 ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
@@ -84,6 +85,7 @@ ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
   wait_batch_size_ = controlplane.wait_batch_size_;
   submit_batch_size_ = controlplane.submit_batch_size_;
   thread_pool_size_ = controlplane.thread_pool_size_;
+  override_message_size_ = controlplane.override_message_size_;
   return *this;
 }
 ControlPlane &ControlPlane::operator=(ControlPlane &&) noexcept = default;
@@ -99,6 +101,7 @@ bool ControlPlane::isSslValidation() const { return impl->isSslValidation(); }
 int ControlPlane::getWaitBatchSize() const { return wait_batch_size_; }
 int ControlPlane::getSubmitBatchSize() const { return submit_batch_size_; }
 int ControlPlane::getThreadPoolSize() const { return thread_pool_size_; }
+int ControlPlane::getOverrideMessageSize() const { return override_message_size_; }
 
 const armonik::api::common::options::ControlPlane &ControlPlane::get_impl() const {
   const static armonik::api::common::options::ControlPlane default_config =

@@ -24,6 +24,108 @@ namespace Sdk {
 namespace Client {
 namespace Internal {
 
+namespace {
+/**
+ * @brief Upload a large result using a stream, retrying the upload in case of error
+ * @param pool The channel pool to use to perform the requests
+ * @param session Id of the session where the result has been created
+ * @param result_id Id of the result to upload
+ * @param data Content of the result to upload
+ * @param data_max_chunk_size Size of the chunks to upload the data
+ * @param logger Logger
+ */
+void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std::string session, std::string result_id,
+                         absl::string_view data, std::size_t data_chunk_max_size,
+                         armonik::api::common::logger::ILogger &logger) {
+
+  std::exception_ptr eptr;
+
+  // Retry the upload at most 3 times
+  const int max_retry = 3;
+  for (int retry = 0; retry < max_retry; ++retry) {
+    eptr = nullptr;
+    auto remaining_data = data;
+
+    // If retry is available (not the last iteration), add prefix to the logs to indicate the upload will be retried
+    // even though there was an error, and log errors as warnings
+    bool can_retry = retry + 1 < max_retry;
+    const char *retry_notif = can_retry ? "Upload will be RETRIED: " : "";
+    auto loglevel =
+        can_retry ? armonik::api::common::logger::Level::Warning : armonik::api::common::logger::Level::Error;
+
+    try {
+      auto channel = pool.GetChannel();
+
+      grpc::ClientContext context{};
+      armonik::api::grpc::v1::results::UploadResultDataRequest request{};
+      armonik::api::grpc::v1::results::UploadResultDataResponse response{};
+
+      auto client = armonik::api::grpc::v1::results::Results::NewStub(channel.channel);
+      auto stream = client->UploadResultData(&context, &response);
+
+      // Send message header with the result identifier
+      request.mutable_id()->set_session_id(session);
+      request.mutable_id()->set_result_id(result_id);
+      stream->Write(request);
+      request.clear_id();
+
+      // Chunk the content to send it in multiple messages
+      while (!remaining_data.empty()) {
+        auto chunk = remaining_data.substr(0, data_chunk_max_size);
+        request.mutable_data_chunk()->assign(chunk.data(), chunk.size());
+        if (!stream->Write(request)) {
+          throw armonik::api::common::exceptions::ArmoniKApiException("Unable to continue upload result " + result_id);
+        }
+        remaining_data = remaining_data.substr(chunk.size());
+      }
+
+      if (!stream->WritesDone()) {
+        throw armonik::api::common::exceptions::ArmoniKApiException("Unable to upload result " + result_id);
+      }
+      auto status = stream->Finish();
+      if (!status.ok()) {
+        throw armonik::api::common::exceptions::ArmoniKApiException("Unable to finish upload result " + result_id +
+                                                                    ": " + status.error_message());
+      }
+
+      // If the uploaded size is different than the actual data size, upload must be retried
+      // Otherwise, we are good to go.
+      if (response.result().size() == std::int64_t(data.size())) {
+        break;
+      }
+
+      // If the uploaded size is different, delete the uploaded data from the object storage
+      try {
+        pool.WithChannel([&](auto channel) {
+          armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+              .delete_results_data(session, {std::move(*response.mutable_result()->mutable_result_id())});
+        });
+      } catch (const std::exception &e) {
+        logger.warning("Unable to clean data for " + result_id + ": " + e.what());
+      } catch (...) {
+        logger.warning("Unable to clean data for " + result_id + ": unknown exception");
+      }
+
+      std::stringstream ss;
+      ss << retry_notif << "Corrupted result " << result_id << " upload: mismatched between client size ("
+         << data.size() << " B) and server size (" << response.result().size() << ")";
+
+      throw std::make_exception_ptr(armonik::api::common::exceptions::ArmoniKApiException(ss.str()));
+    } catch (const std::exception &e) {
+      logger.log(loglevel, std::string(retry_notif) + "Failed to upload result " + result_id + ": " + e.what());
+      eptr = std::current_exception();
+    } catch (...) {
+      logger.log(loglevel, std::string(retry_notif) + "Failed to upload result " + result_id + ": unknown exception");
+      eptr = std::current_exception();
+    }
+  }
+
+  if (eptr) {
+    std::rethrow_exception(eptr);
+  }
+}
+} // namespace
+
 const std::string &SessionServiceImpl::getSession() const { return session; }
 
 [[maybe_unused]] std::vector<std::string>
@@ -31,108 +133,159 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
                            std::shared_ptr<IServiceInvocationHandler> handler,
                            const Common::TaskOptions &task_options) {
 
-  std::vector<std::string> task_ids;
-  task_ids.reserve(task_requests.size());
-
-  std::mutex task_ids_mutex;
-
-  Batcher<armonik::api::common::TaskCreation> submit_batcher(
-      submit_batch_size_, [&](std::vector<armonik::api::common::TaskCreation> &&batch) {
-        auto reply = channel_pool.WithChannel([&](auto channel) {
-          return armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
-              .submit_tasks(session, batch, static_cast<armonik::api::grpc::v1::TaskOptions>(task_options));
-        });
-
-        {
-          std::lock_guard<std::mutex> lock(task_ids_mutex);
-          for (auto &&t : reply) {
-            task_ids.emplace_back(std::move(t.task_id));
-          }
-        }
-
-        for (auto &&t : reply) {
-          taskId_resultId[t.task_id] = t.expected_output_ids[0];
-          resultId_taskId[t.expected_output_ids[0]] = t.task_id;
-          result_handlers[t.expected_output_ids[0]] = handler;
-        }
+  const std::size_t message_overhead = 128;
+  std::size_t data_chunk_max_size =
+      override_message_size_ ? override_message_size_ : channel_pool.WithChannel([](auto channel) {
+        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+            .get_service_configuration()
+            .data_chunk_max_size;
       });
 
-  for (const auto &task_request : task_requests) {
-    armonik::api::grpc::v1::TaskRequest request;
-    // Serialize the request in an ArmoniK format
-    *request.mutable_payload() = task_request.Serialize();
-    // Set the data dependencies
-    request.mutable_data_dependencies()->Add(task_request.data_dependencies.begin(),
-                                             task_request.data_dependencies.end());
+  // Number of bytes to be sent in the next CreateResult request
+  std::size_t data_batched = 0;
 
-    armonik::api::common::TaskCreation creation{};
+  std::vector<std::string> input_result_ids(task_requests.size());
+  std::vector<std::string> output_result_ids(task_requests.size());
+  std::vector<std::string> task_ids(task_requests.size());
 
-    auto result_payload = channel_pool.WithChannel([&](auto channel) {
-      armonik::api::client::ResultsClient client(armonik::api::grpc::v1::results::Results::NewStub(channel));
+  ThreadPool::JoinSet join_set(thread_pool_);
 
-      const std::size_t max_inline_bytes = client.get_service_configuration().data_chunk_max_size;
+  // Batch Result metadata creation (for outputs and large inputs) and upload inputs
+  Batcher<std::pair<std::size_t, bool>> create_metadata_and_upload_batcher(
+      submit_batch_size_, [&](std::vector<std::pair<std::size_t, bool>> &&batch) {
+        join_set.Spawn([&, batch = std::move(batch)]() {
+          std::vector<std::string> names(batch.size());
+          for (std::size_t j = 0; j < batch.size(); ++j) {
+            int i = batch[j].first;
+            bool is_output = batch[j].second;
 
-      const auto &payload_data = request.payload();
-      std::vector<std::string> result_names = {"result"};
+            names[j] = (is_output ? "output-" : "input-") + std::to_string(i);
+          }
 
-      // If we need to upload via stream, we create an extra result for the payload.
-      // It is not required with small payloads as create_results creates the metadata for us.
-      if (payload_data.size() > max_inline_bytes) {
-        assert(task_request.method_name != "result");
-        result_names.push_back(task_request.method_name);
+          auto reply = channel_pool.WithChannel([&](auto channel) {
+            return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                .create_results_metadata(session, names);
+          });
+
+          // threadsafe as the index is unique among all batches
+          for (std::size_t j = 0; j < batch.size(); ++j) {
+            std::size_t i = batch[j].first;
+            bool is_output = batch[j].second;
+
+            if (is_output) {
+              output_result_ids[i] = std::move(reply[names[j]]);
+            } else {
+              input_result_ids[i] = std::move(reply[names[j]]);
+
+              // Upload result using stream
+              join_set.Spawn([&, i]() {
+                upload_large_result(channel_pool, session, input_result_ids[i], task_requests[i].Serialize(),
+                                    data_chunk_max_size, logger_);
+              });
+            }
+          }
+        });
+      });
+
+  // Batch Result data creation (for small inputs)
+  Batcher<std::size_t> create_data_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
+    // Reset the number of bytes to be sent in the current batch
+    data_batched = 0;
+
+    join_set.Spawn([&, batch = std::move(batch)]() {
+      std::vector<std::pair<std::string, std::string>> results(batch.size());
+      for (std::size_t j = 0; j < batch.size(); ++j) {
+        std::size_t i = batch[j];
+        results[j] = {"input-" + std::to_string(i), task_requests[i].Serialize()};
       }
+      auto reply = channel_pool.WithChannel([&](auto channel) {
+        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+            .create_results(session, results);
+      });
 
-      auto results = client.create_results_metadata(session, result_names);
-      auto result_id = results.at("result");
-
-      std::string payload_id;
-
-      std::stringstream msg;
-      msg << "Preparing payload for method '" << task_request.method_name << "' (" << payload_data.size()
-          << " bytes, inline limit " << max_inline_bytes << " bytes)";
-      logger_.debug(msg.str());
-
-      try {
-        if (payload_data.size() <= max_inline_bytes) {
-          //  small payload embeded directly as part of metadata
-          logger_.debug("Using inline create_results for small payload.");
-
-          payload_id =
-              client
-                  .create_results(session, std::vector<std::pair<std::string, std::string>>{{task_request.method_name,
-                                                                                             request.payload()}})
-                  .at(task_request.method_name);
-        } else {
-          // Streaming for large payload
-          logger_.debug("Payload exceeds inline limit, using streaming upload.");
-
-          payload_id = results.at(task_request.method_name);
-          client.upload_result_data(session, payload_id, payload_data);
-        }
-      } catch (const armonik::api::common::exceptions::ArmoniKApiException &ex) {
-        std::stringstream err;
-        err << "Error uploading payload for '" << task_request.method_name << "': " << ex.what();
-        logger_.error(err.str());
-        throw;
+      // threadsafe as the index is unique among all batches
+      for (std::size_t j = 0; j < batch.size(); ++j) {
+        std::size_t i = batch[j];
+        input_result_ids[i] = std::move(reply[results[j].first]);
       }
-
-      return std::pair<std::string, std::string>{result_id, payload_id};
     });
+  });
 
-    // Set payload ID
-    creation.payload_id = std::move(result_payload.second);
-    // One result per task
-    creation.expected_output_keys.push_back(std::move(result_payload.first));
-    creation.data_dependencies.insert(creation.data_dependencies.end(), task_request.data_dependencies.begin(),
-                                      task_request.data_dependencies.end());
+  // Batch task submission
+  Batcher<std::size_t> submit_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
+    join_set.Spawn([&, batch = std::move(batch)]() {
+      std::vector<armonik::api::common::TaskCreation> requests(batch.size());
+      for (std::size_t j = 0; j < batch.size(); ++j) {
+        std::size_t i = batch[j];
+        auto &data_dependencies = task_requests[i].data_dependencies;
+        auto &request = requests[j];
 
-    // Add to batch, if number of requests in the batch attains the submitt_batch_size_ then
-    // the Batcher will process them
-    submit_batcher.Add(std::move(creation));
+        request = armonik::api::common::TaskCreation();
+        request.payload_id = input_result_ids[i];
+        request.expected_output_keys.push_back(output_result_ids[i]);
+        request.data_dependencies.insert(request.data_dependencies.end(), data_dependencies.begin(),
+                                         data_dependencies.end());
+      }
+
+      auto reply = channel_pool.WithChannel([&](auto channel) {
+        return armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
+            .submit_tasks(session, std::move(requests), static_cast<armonik::api::grpc::v1::TaskOptions>(task_options));
+      });
+
+      // threadsafe as the index is unique among all batches
+      for (std::size_t j = 0; j < batch.size(); ++j) {
+        std::size_t i = batch[j];
+        task_ids[i] = std::move(reply[j].task_id);
+
+        std::stringstream ss;
+        ss << "Submitted task " << task_ids[i] << " with result " << output_result_ids[i];
+        logger_.debug(ss.str());
+      }
+    });
+  });
+
+  // Create all results
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+    auto &task_request = task_requests[i];
+    auto payload_size = task_request.arguments.size();
+
+    create_metadata_and_upload_batcher.Add({i, true});
+    if (payload_size + message_overhead >= data_chunk_max_size) {
+      create_metadata_and_upload_batcher.Add({i, false});
+    } else {
+      // If current batch would be too large, send it right now
+      if (data_batched + payload_size + message_overhead >= data_chunk_max_size) {
+        create_data_batcher.ProcessBatch();
+      }
+
+      data_batched += payload_size + message_overhead;
+      create_data_batcher.Add(i);
+    }
   }
 
-  // Manually flush remaining requests before returning
+  // Ensure all results are created
+  create_metadata_and_upload_batcher.ProcessBatch();
+  create_data_batcher.ProcessBatch();
+  join_set.Wait();
+
+  // Submit all tasks
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+    submit_batcher.Add(i);
+  }
+
+  // Ensure all tasks are actually submitted
   submit_batcher.ProcessBatch();
+  join_set.Wait();
+
+  std::lock_guard<std::mutex> lock(maps_mutex);
+
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+    const auto &result_id = output_result_ids[i];
+    const auto &task_id = task_ids[i];
+    result_handlers[result_id] = handler;
+    resultId_taskId[result_id] = task_id;
+    taskId_resultId[task_id] = result_id;
+  }
 
   return task_ids;
 }
@@ -142,7 +295,8 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
     : taskOptions(properties.taskOptions), channel_pool(properties, logger),
       thread_pool_(properties.configuration.get_control_plane().getThreadPoolSize(), logger), logger_(logger.local()),
       wait_batch_size_(properties.configuration.get_control_plane().getWaitBatchSize()),
-      submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()) {
+      submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
+      override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](auto &&channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))

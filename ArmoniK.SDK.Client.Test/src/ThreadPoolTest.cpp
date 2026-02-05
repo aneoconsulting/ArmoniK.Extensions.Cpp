@@ -14,35 +14,46 @@ using namespace ArmoniK::Sdk::Client::Internal;
 constexpr auto TIMEOUT = std::chrono::seconds(1);
 
 // clang-format off
-#define DELETE_OR_ABORT(ptr, timeout)     \
-  do {                                    \
-    if (!DeleteOrAbort(ptr, timeout)) {   \
-      return;                             \
-    }                                     \
+/**
+ * @brief Try to execute a statement in a separate thread, aborting the test if it blocks for too long
+ * @param timeout The time to wait before aborting
+ * @param ... The statement to execute
+ */
+#define WITH_TIMEOUT(timeout, ...)                               \
+  do {                                                           \
+    if (!WithTimeout(timeout, [=]() mutable { __VA_ARGS__; })) { \
+      return;                                                    \
+    }                                                            \
   } while (0)
 // clang-format on
 
 /**
- * @brief Try to delete a pointer in a separate thread, aborting the test if it blocks for too long
- * @tparam T The type of pointer to delete
- * @param ptr The pointer to delete
+ * @brief Try to execute f in a separate thread, leaking the execution of f if it takes too long
+ * @param timeout The time to wait
+ * @param f The function to call
  */
-template <typename T> bool DeleteOrAbort(T *ptr, std::chrono::milliseconds timeout) {
+bool WithTimeout(std::chrono::milliseconds timeout, Function<void()> f) {
   auto promise = std::make_shared<std::promise<void>>();
 
-  std::thread delete_thread([=]() {
-    delete ptr;
-    promise->set_value();
+  std::thread thread([promise, f = std::move(f)]() mutable {
+    try {
+      f();
+      promise->set_value();
+    } catch (...) {
+      promise->set_exception(std::current_exception());
+    }
   });
 
-  bool success = promise->get_future().wait_for(timeout) == std::future_status::ready;
+  auto future = promise->get_future();
+  bool success = future.wait_for(timeout) == std::future_status::ready;
 
-  EXPECT_TRUE(success) << "Destructor blocked for more than " << timeout.count() << " milliseconds, leaking pointer";
+  EXPECT_TRUE(success) << "Function blocked for more than " << timeout.count() << " milliseconds, leaking pointer";
 
   if (success) {
-    delete_thread.join();
+    thread.join();
+    future.get();
   } else {
-    delete_thread.detach();
+    thread.detach();
   }
 
   return success;
@@ -72,7 +83,7 @@ TEST_F(ThreadPoolTest, SpawnSingleTask) {
   pool->Spawn([&task_promise]() { task_promise.set_value(); });
 
   ASSERT_EQ(task_future.wait_for(TIMEOUT), std::future_status::ready);
-  DELETE_OR_ABORT(pool, TIMEOUT);
+  WITH_TIMEOUT(TIMEOUT, delete pool);
 }
 
 TEST_F(ThreadPoolTest, SpawnMultipleTasks) {
@@ -89,7 +100,7 @@ TEST_F(ThreadPoolTest, SpawnMultipleTasks) {
     ASSERT_EQ(futures[i].wait_for(TIMEOUT), std::future_status::ready)
         << "Future " << i << " did not complete within timeout";
   }
-  DELETE_OR_ABORT(pool, TIMEOUT);
+  WITH_TIMEOUT(TIMEOUT, delete pool);
 }
 
 TEST_F(ThreadPoolTest, JoinSetCreation) {
@@ -108,8 +119,8 @@ TEST_F(ThreadPoolTest, JoinSetSpawnSingleTask) {
   join_set->Spawn([&task_promise]() { task_promise.set_value(); });
 
   ASSERT_EQ(task_future.wait_for(TIMEOUT), std::future_status::ready);
-  DELETE_OR_ABORT(join_set, TIMEOUT);
-  DELETE_OR_ABORT(pool, TIMEOUT);
+  WITH_TIMEOUT(TIMEOUT, delete join_set);
+  WITH_TIMEOUT(TIMEOUT, delete pool);
 }
 
 TEST_F(ThreadPoolTest, JoinSetSpawnMultipleTasks) {
@@ -127,66 +138,121 @@ TEST_F(ThreadPoolTest, JoinSetSpawnMultipleTasks) {
     ASSERT_EQ(futures[i].wait_for(TIMEOUT), std::future_status::ready)
         << "Future " << i << " did not complete within timeout";
   }
-  DELETE_OR_ABORT(join_set, TIMEOUT);
-  DELETE_OR_ABORT(pool, TIMEOUT);
+  WITH_TIMEOUT(TIMEOUT, delete join_set);
+  WITH_TIMEOUT(TIMEOUT, delete pool);
 }
 
 TEST_F(ThreadPoolTest, JoinSetWaitsForCompletion) {
   ThreadPool *pool = new ThreadPool(2, *logger_);
-  std::vector<std::future<void>> futures;
+  auto count = std::make_shared<std::atomic<int>>();
 
   ThreadPool::JoinSet *join_set = new ThreadPool::JoinSet(*pool);
   for (int i = 0; i < 5; ++i) {
-    std::promise<void> promise;
-    futures.push_back(promise.get_future());
-    join_set->Spawn([promise = std::move(promise)]() mutable { promise.set_value(); });
+    join_set->Spawn([count]() mutable {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      count->fetch_add(1);
+    });
   }
-  DELETE_OR_ABORT(join_set, TIMEOUT);
+  WITH_TIMEOUT(TIMEOUT, join_set->Wait());
 
-  for (size_t i = 0; i < futures.size(); ++i) {
-    ASSERT_EQ(futures[i].wait_for(TIMEOUT), std::future_status::ready)
-        << "Future " << i << " did not complete within timeout";
-  }
-  DELETE_OR_ABORT(pool, TIMEOUT);
+  // Ensure all tasks have finished
+  EXPECT_EQ(count->load(), 5);
+
+  WITH_TIMEOUT(TIMEOUT, delete join_set);
+  WITH_TIMEOUT(TIMEOUT, delete pool);
 }
 
 TEST_F(ThreadPoolTest, JoinSetDestructorWaitsForCompletion) {
   ThreadPool *pool = new ThreadPool(2, *logger_);
-  std::vector<std::future<void>> futures;
+  auto count = std::make_shared<std::atomic<int>>();
 
   ThreadPool::JoinSet *join_set = new ThreadPool::JoinSet(*pool);
   for (int i = 0; i < 5; ++i) {
-    std::promise<void> promise;
-    futures.push_back(promise.get_future());
-    join_set->Spawn([promise = std::move(promise)]() mutable {
+    join_set->Spawn([count]() mutable {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      promise.set_value();
+      count->fetch_add(1);
     });
   }
-  DELETE_OR_ABORT(join_set, TIMEOUT);
+  WITH_TIMEOUT(TIMEOUT, delete join_set);
 
-  for (size_t i = 0; i < futures.size(); ++i) {
-    ASSERT_EQ(futures[i].wait_for(TIMEOUT), std::future_status::ready)
-        << "Future " << i << " did not complete within timeout";
+  // Ensure all tasks have finished
+  EXPECT_EQ(count->load(), 5);
+
+  WITH_TIMEOUT(TIMEOUT, delete pool);
+}
+
+TEST_F(ThreadPoolTest, JoinSetExceptionHandling) {
+  ThreadPool *pool = new ThreadPool(2, *logger_);
+  auto count = std::make_shared<std::atomic<int>>();
+
+  ThreadPool::JoinSet *join_set = new ThreadPool::JoinSet(*pool);
+  join_set->Spawn([]() mutable { throw std::runtime_error("expected"); });
+
+  for (int i = 0; i < 5; ++i) {
+    join_set->Spawn([count]() mutable {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      count->fetch_add(1);
+    });
   }
-  DELETE_OR_ABORT(pool, TIMEOUT);
+
+  EXPECT_THROW(WITH_TIMEOUT(TIMEOUT, join_set->Wait()), std::runtime_error);
+
+  EXPECT_LT(count->load(), 5);
+
+  WITH_TIMEOUT(TIMEOUT, delete join_set);
+
+  // Ensure all tasks have finished
+  ASSERT_EQ(count->load(), 5);
+
+  WITH_TIMEOUT(TIMEOUT, delete pool);
+}
+
+TEST_F(ThreadPoolTest, JoinSetMultipleWait) {
+  ThreadPool *pool = new ThreadPool(3, *logger_);
+
+  auto bitset = std::make_shared<std::atomic<int>>();
+
+  ThreadPool::JoinSet *join_set_1 = new ThreadPool::JoinSet(*pool);
+  ThreadPool::JoinSet *join_set_2 = new ThreadPool::JoinSet(*pool);
+  ThreadPool::JoinSet *join_set_3 = new ThreadPool::JoinSet(*pool);
+
+  join_set_1->Spawn([bitset]() mutable {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    *bitset |= 1;
+  });
+  join_set_2->Spawn([bitset]() mutable { *bitset |= 2; });
+  join_set_3->Spawn([bitset]() mutable {
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    *bitset |= 4;
+  });
+
+  WITH_TIMEOUT(TIMEOUT, delete join_set_2);
+  EXPECT_EQ(bitset->load(), 2);
+
+  WITH_TIMEOUT(TIMEOUT, delete join_set_3);
+  EXPECT_EQ(bitset->load(), 6);
+
+  WITH_TIMEOUT(TIMEOUT, delete join_set_1);
+  EXPECT_EQ(bitset->load(), 7);
+
+  WITH_TIMEOUT(TIMEOUT, delete pool);
 }
 
 TEST_F(ThreadPoolTest, ThreadPoolDestructorWaitsForCompletion) {
   ThreadPool *pool = new ThreadPool(2, *logger_);
-  std::vector<std::future<void>> futures;
+  auto count = std::make_shared<std::atomic<int>>();
 
   for (int i = 0; i < 8; ++i) {
-    std::promise<void> promise;
-    futures.push_back(promise.get_future());
-    pool->Spawn([promise = std::move(promise)]() mutable { promise.set_value(); });
+    pool->Spawn([count]() mutable {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      count->fetch_add(1);
+    });
   }
 
-  for (size_t i = 0; i < futures.size(); ++i) {
-    ASSERT_EQ(futures[i].wait_for(TIMEOUT), std::future_status::ready)
-        << "Future " << i << " did not complete within timeout";
-  }
-  DELETE_OR_ABORT(pool, TIMEOUT);
+  WITH_TIMEOUT(TIMEOUT, delete pool);
+
+  // Ensure all tasks have finished
+  ASSERT_EQ(count->load(), 8);
 }
 
 TEST_F(ThreadPoolTest, ConcurrentTaskExecution) {
@@ -217,5 +283,5 @@ TEST_F(ThreadPoolTest, ConcurrentTaskExecution) {
         << "Future " << i << " did not complete within timeout";
   }
   ASSERT_GT(max_concurrent, 1);
-  DELETE_OR_ABORT(pool, TIMEOUT);
+  WITH_TIMEOUT(TIMEOUT, delete pool);
 }

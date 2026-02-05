@@ -7,6 +7,7 @@
 #include <condition_variable>
 #include <functional>
 #include <mutex>
+#include <queue>
 #include <thread>
 #include <vector>
 
@@ -64,7 +65,7 @@ private:
   /**
    * @brief The pending tasks waiting to be executed by the pool
    */
-  std::vector<Task> pending_tasks_;
+  std::queue<Task> pending_tasks_;
 
   /**
    * @brief Flag to stop the pool
@@ -137,10 +138,16 @@ private:
    * @brief The thread pool on which tasks are spawned
    */
   ThreadPool &thread_pool_;
+
   /**
    * @brief The number of unfinished tasks in the join set
    */
   std::size_t task_count_;
+
+  /**
+   * @brief The exception that occurred in any task of the join set, if any
+   */
+  std::exception_ptr exception_;
 
   /**
    * @brief Mutex to protect the join set
@@ -178,6 +185,7 @@ public:
 
   /**
    * @brief Destroy the Join Set object, waiting for all tasks to finish
+   * @note Ignore all exceptions that could have been thrown by the tasks
    */
   ~JoinSet();
 
@@ -190,6 +198,8 @@ public:
 
   /**
    * @brief Wait for all tasks in the join set to finish
+   * @throw If any task has thrown, the exception is thrown by Wait()
+   * @note In case of an exception, it does not block until all tasks have finished
    */
   void Wait();
 };
