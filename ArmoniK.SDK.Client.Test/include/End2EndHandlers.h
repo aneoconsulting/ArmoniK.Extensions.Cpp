@@ -3,6 +3,7 @@
 #include <armonik/common/logger/logger.h>
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -45,7 +46,7 @@ public:
 class StressTestServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   std::mutex mutex;
-  std::vector<double> result;
+  std::map<std::string, std::vector<double>> results;
   std::uint32_t nb_output_bytes{0};
   bool is_ok{true};
 
