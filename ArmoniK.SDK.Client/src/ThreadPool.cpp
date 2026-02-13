@@ -8,115 +8,66 @@ namespace Sdk {
 namespace Client {
 namespace Internal {
 
-/**
- * @brief A task to execute
- */
-class ThreadPool::Task {
-private:
-  /**
-   * @brief The function to execute
-   */
-  Function<void()> func_;
+ThreadPool::Task::Task() = default;
 
-  /**
-   * @brief The join set this task belongs to, optional
-   */
-  ThreadPool::JoinSet *join_set_ = nullptr;
-
-private:
-  friend class ThreadPool;
-
-public:
-  /**
-   * @brief Default constructor
-   */
-  Task() = default;
-
-  /**
-   * @brief Creates a task with the given function and optional join set
-   */
-  Task(Function<void()> &&func, ThreadPool::JoinSet *join_set = nullptr) : func_(std::move(func)), join_set_(join_set) {
-    if (join_set_) {
-      // Increment the task count in the join set
-      std::lock_guard<std::mutex> lock(join_set_->mutex_);
-      join_set_->task_count_ += 1;
-    }
-  }
-
-  /**
-   * @brief Copy constructor
-   */
-  Task(const Task &) = delete;
-
-  /**
-   * @brief Copy assignment operator
-   */
-  Task &operator=(const Task &) = delete;
-
-  /**
-   * @brief Move constructor
-   */
-  Task(Task &&other) noexcept : func_(std::move(other.func_)), join_set_(other.join_set_) { other.join_set_ = nullptr; }
-
-  /**
-   * @brief Move assignment operator
-   */
-  Task &operator=(Task &&other) noexcept {
-    if (this != &other) {
-      func_ = std::move(other.func_);
-      join_set_ = other.join_set_;
-      other.join_set_ = nullptr;
-    }
-    return *this;
-  }
-
-  /**
-   * @brief Destroy the Task object, updating the join set if applicable
-   */
-  ~Task() {
-    if (join_set_) {
-      // Decrement the task count in the join set
-      std::lock_guard<std::mutex> lock(join_set_->mutex_);
-      join_set_->task_count_ -= 1;
-      if (join_set_->task_count_ == 0) {
-        join_set_->wake_condition_.notify_all();
-      }
-    }
-  }
-
-  /**
-   * @brief Execute the task
-   */
-  void Execute(armonik::api::common::logger::ILogger &logger) {
-
-    try {
-      func_();
-    } catch (const std::exception &e) {
-      logger.error("Exception in thread pool task: " + std::string(e.what()));
-      RecordError();
-    } catch (...) {
-      logger.error("Unknown exception in thread pool task");
-      RecordError();
-    }
-  }
-
-  /**
-   * @brief Record current error for the join set
-   */
-  void RecordError() {
-    if (!join_set_) {
-      return;
-    }
-
+ThreadPool::Task::Task(Function<void()> &&func, ThreadPool::JoinSet *join_set)
+    : func_(std::move(func)), join_set_(join_set) {
+  if (join_set_) {
+    // Increment the task count in the join set
     std::lock_guard<std::mutex> lock(join_set_->mutex_);
+    join_set_->task_count_ += 1;
+  }
+}
 
-    // Keep only the first exception
-    if (!join_set_->exception_) {
-      join_set_->exception_ = std::current_exception();
+ThreadPool::Task::Task(ThreadPool::Task &&other) noexcept : func_(std::move(other.func_)), join_set_(other.join_set_) {
+  other.join_set_ = nullptr;
+}
+ThreadPool::Task &ThreadPool::Task::operator=(ThreadPool::Task &&other) noexcept {
+  if (this != &other) {
+    func_ = std::move(other.func_);
+    join_set_ = other.join_set_;
+    other.join_set_ = nullptr;
+  }
+  return *this;
+}
+
+ThreadPool::Task::~Task() {
+  if (join_set_) {
+    // Decrement the task count in the join set
+    std::lock_guard<std::mutex> lock(join_set_->mutex_);
+    join_set_->task_count_ -= 1;
+    if (join_set_->task_count_ == 0) {
       join_set_->wake_condition_.notify_all();
     }
   }
-};
+}
+
+void ThreadPool::Task::Execute(armonik::api::common::logger::ILogger &logger) {
+
+  try {
+    func_();
+  } catch (const std::exception &e) {
+    logger.error("Exception in thread pool task: " + std::string(e.what()));
+    RecordError();
+  } catch (...) {
+    logger.error("Unknown exception in thread pool task");
+    RecordError();
+  }
+}
+
+void ThreadPool::Task::RecordError() {
+  if (!join_set_) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(join_set_->mutex_);
+
+  // Keep only the first exception
+  if (!join_set_->exception_) {
+    join_set_->exception_ = std::current_exception();
+    join_set_->wake_condition_.notify_all();
+  }
+}
 
 ThreadPool::ThreadPool(int max_threads, armonik::api::common::logger::Logger &logger)
     : max_threads_(max_threads == 0 ? std::thread::hardware_concurrency() : max_threads), sleeping_threads_(0),
