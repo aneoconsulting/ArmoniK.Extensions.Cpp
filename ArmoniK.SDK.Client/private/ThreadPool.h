@@ -19,17 +19,77 @@ namespace Internal {
  * @brief A thread pool to execute tasks in background
  */
 class ThreadPool {
-private:
-  /**
-   * @brief A task to execute
-   */
-  class Task;
-
 public:
   /**
    * @brief A join set to wait for a set of tasks to finish
    */
   class JoinSet;
+
+private:
+  /**
+   * @brief A task to execute
+   */
+  class Task {
+  private:
+    /**
+     * @brief The function to execute
+     */
+    Function<void()> func_;
+
+    /**
+     * @brief The join set this task belongs to, optional
+     */
+    JoinSet *join_set_ = nullptr;
+
+  private:
+    friend class ThreadPool;
+
+  public:
+    /**
+     * @brief Default constructor
+     */
+    Task();
+
+    /**
+     * @brief Creates a task with the given function and optional join set
+     */
+    Task(Function<void()> &&func, JoinSet *join_set = nullptr);
+
+    /**
+     * @brief Copy constructor
+     */
+    Task(const Task &) = delete;
+
+    /**
+     * @brief Copy assignment operator
+     */
+    Task &operator=(const Task &) = delete;
+
+    /**
+     * @brief Move constructor
+     */
+    Task(Task &&other) noexcept;
+
+    /**
+     * @brief Move assignment operator
+     */
+    Task &operator=(Task &&other) noexcept;
+
+    /**
+     * @brief Destroy the Task object, updating the join set if applicable
+     */
+    ~Task();
+
+    /**
+     * @brief Execute the task
+     */
+    void Execute(armonik::api::common::logger::ILogger &logger);
+
+    /**
+     * @brief Record current error for the join set
+     */
+    void RecordError();
+  };
 
 private:
   /**
