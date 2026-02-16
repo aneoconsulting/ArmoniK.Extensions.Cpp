@@ -52,6 +52,36 @@ jobs:
         echo SNAPSHOT => ${{ steps.snapshot.outputs.version }} >> $GITHUB_STEP_SUMMARY
         echo RELASE   => ${{ steps.release.outputs.version }} >> $GITHUB_STEP_SUMMARY
 
+  dynamicworker-image:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: ["Alpine", "RedHat", "Ubuntu"]
+    needs: [versionning]
+    name: Build Dynamic Worker Image [${{ matrix.dist }}]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Build the image
+        id: build
+        run: |
+          source ./tools/common.sh
+          export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
+          ./tools/build-dynamic-worker.sh -e ${{ matrix.dist }} -n "$WORKER_IMG" -v ${{ github.ref_name }}
+          export WORKER_VERSION="${{ github.ref_name }}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')"
+          echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
+          echo "worker_version=$WORKER_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Login Docker
+        run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_LOGIN }} --password-stdin
+
+      - name: Push Docker
+        run: |
+          docker push "${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}"
   release-cpp-package:
     needs: [versionning]
     strategy:
