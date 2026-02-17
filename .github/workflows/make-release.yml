@@ -71,7 +71,7 @@ jobs:
         run: |
           source ./tools/common.sh
           export WORKER_IMG="dockerhubaneo/armonik-sdk-cpp-dynamicworker"
-          ./tools/build-dynamic-worker.sh -e ${{ matrix.dist }} -n "$WORKER_IMG" -v ${{ github.ref_name }}
+          ./tools/build-dynamic-worker.sh -e ${{ matrix.dist }} -n "$WORKER_IMG" -v ${{ github.ref_name }} -a $ARMONIK_API_VERSION_DEFAULT
           export WORKER_VERSION="${{ github.ref_name }}-$(echo "${{ matrix.dist }}" | awk '{print tolower($0)}')"
           echo "worker_img=$WORKER_IMG" >> $GITHUB_OUTPUT
           echo "worker_version=$WORKER_VERSION" >> $GITHUB_OUTPUT
