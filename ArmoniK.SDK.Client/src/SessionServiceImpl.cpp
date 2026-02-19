@@ -431,7 +431,15 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           message << " : " << e.what();
           logger_.error(message.str());
           if (handler) {
-            handler->HandleError(e, task_id);
+            try {
+              handler->HandleError(e, task_id);
+            } catch (const std::exception &he) {
+              logger_.error(std::string("Handler threw in HandleError: ") + he.what());
+            } catch (...) {
+              logger_.error("Handler threw unknown exception in HandleError");
+            }
+          } else {
+            logger_.warning("No handler registered for result " + result.result_id());
           }
         };
 
@@ -456,7 +464,11 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
 
           // Call the response handler with the payload
           try {
-            handler->HandleResponse(payload, task_id);
+            if (handler) {
+              handler->HandleResponse(payload, task_id);
+            } else {
+              logger_.warning("No handler to deliver result " + result.result_id());
+            }
           } catch (const std::exception &e) {
             handle_error(e, "Failed to execute result handler");
           }
