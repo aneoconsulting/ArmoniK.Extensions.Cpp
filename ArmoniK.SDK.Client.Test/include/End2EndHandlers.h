@@ -95,3 +95,15 @@ public:
   long failure = 0;
   armonik::api::common::logger::LocalLogger logger;
 };
+
+class ExceptionServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
+public:
+  explicit ExceptionServiceHandler(armonik::api::common::logger::Logger &logger);
+  void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
+  void HandleError(const std::exception &e, const std::string &taskId) override;
+
+  std::mutex mutex;
+  bool received = false;
+  bool is_error = false;
+  armonik::api::common::logger::LocalLogger logger;
+};

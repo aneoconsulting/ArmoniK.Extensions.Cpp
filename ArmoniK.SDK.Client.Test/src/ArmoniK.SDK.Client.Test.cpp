@@ -622,3 +622,53 @@ TEST(testSDK, testLargePayload) {
   service.CloseSession();
   std::cout << "Large payload test done!" << std::endl;
 }
+
+class ExceptionServiceTest : public ::testing::TestWithParam<std::string> {};
+
+TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
+  const std::string name = GetParam();
+
+  std::cout << "Testing Exception service..." << std::endl;
+
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+  if (config.get("Worker__Type").empty()) {
+    config.set("Worker__Type", "End2EndTest");
+  }
+
+  ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
+                                                         config.get("WorkerLib__Version"), "End2EndTest",
+                                                         "ExceptionService", config.get("PartitionId"));
+  session_task_options.max_retries = 1;
+
+  ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
+
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  std::cout << "Session : " << service.getSession() << std::endl;
+
+  auto handler = std::make_shared<ExceptionServiceHandler>(logger);
+  std::string args = "Exception success";
+
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload(name, args)}, handler);
+
+  std::cout << "Sent : " << tasks[0] << std::endl;
+
+  service.WaitResults();
+
+  ASSERT_TRUE(!args.empty());
+  ASSERT_TRUE(handler->received);
+  ASSERT_TRUE(handler->is_error);
+
+  service.CloseSession();
+  std::cout << "Done" << std::endl;
+}
+
+INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
+                         ::testing::Values(std::string("runTimeError"), std::string("logicalError")));

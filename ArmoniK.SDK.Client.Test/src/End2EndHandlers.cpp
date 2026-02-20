@@ -170,3 +170,29 @@ void CountServiceHandler::HandleError(const std::exception &e, const std::string
   logger.log(armonik::api::common::logger::Level::Debug, ss.str(),
              {{"success", std::to_string(success)}, {"failure", std::to_string(failure)}});
 }
+void ExceptionServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
+  std::stringstream ss;
+  ss << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
+     << "\nContent : ";
+  ss.write(result_payload.data(), result_payload.size()) << "\nRaw : ";
+  for (char c : result_payload) {
+    ss << static_cast<int>(c) << ' ';
+  }
+  ss << std::endl;
+  logger.debug(ss.str());
+  received = true;
+  is_error = false;
+}
+void ExceptionServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+
+  std::stringstream ss;
+  ss << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
+  logger.debug(ss.str());
+  received = true;
+  is_error = true;
+}
+ExceptionServiceHandler::ExceptionServiceHandler(armonik::api::common::logger::Logger &logger)
+    : logger(logger.local()) {}

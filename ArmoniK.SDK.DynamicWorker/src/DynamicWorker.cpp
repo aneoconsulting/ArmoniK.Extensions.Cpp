@@ -1,8 +1,8 @@
 #include "DynamicWorker.h"
 #include "ApplicationManager.h"
-#include <exception>
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/TaskPayload.h>
+#include <exception>
 namespace ArmoniK {
 namespace Sdk {
 namespace DynamicWorker {
