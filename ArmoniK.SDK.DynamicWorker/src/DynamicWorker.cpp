@@ -1,5 +1,6 @@
 #include "DynamicWorker.h"
 #include "ApplicationManager.h"
+#include <exception>
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/TaskPayload.h>
 namespace ArmoniK {
@@ -27,6 +28,10 @@ DynamicWorker::Execute(armonik::api::worker::TaskHandler &taskHandler) {
         .Execute(taskHandler, taskPayload.method_name, taskPayload.arguments);
   } catch (const ArmoniK::Sdk::Common::ArmoniKSdkException &e) {
     return armonik::api::worker::ProcessStatus(e.what());
+  } catch (const std::exception &e) {
+    return armonik::api::worker::ProcessStatus(e.what());
+  } catch (...) {
+    return armonik::api::worker::ProcessStatus("Unknown exception");
   }
 
   return armonik::api::worker::ProcessStatus::Ok;
