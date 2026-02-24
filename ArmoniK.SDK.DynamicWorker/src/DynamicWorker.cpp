@@ -23,9 +23,9 @@ DynamicWorker::Execute(armonik::api::worker::TaskHandler &taskHandler) {
     ServiceId serviceId(appId, taskHandler.getTaskOptions().application_namespace(),
                         taskHandler.getTaskOptions().application_service());
     return manager.UseApplication(appId)
-                  .UseService(serviceId)
-                  .UseSession(taskHandler.getSessionId())
-                  .Execute(taskHandler, taskPayload.method_name, taskPayload.arguments);
+        .UseService(serviceId)
+        .UseSession(taskHandler.getSessionId())
+        .Execute(taskHandler, taskPayload.method_name, taskPayload.arguments);
   } catch (const ArmoniK::Sdk::Common::ArmoniKSdkException &e) {
     return armonik::api::worker::ProcessStatus(e.what());
   }

@@ -670,5 +670,4 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
   std::cout << "Done" << std::endl;
 }
 
-INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
-                         ::testing::Values(std::string("runTimeError")));
+INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest, ::testing::Values(std::string("runTimeError")));
