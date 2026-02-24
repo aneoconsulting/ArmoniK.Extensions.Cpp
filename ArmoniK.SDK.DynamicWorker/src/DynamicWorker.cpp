@@ -22,19 +22,13 @@ DynamicWorker::Execute(armonik::api::worker::TaskHandler &taskHandler) {
     AppId appId{taskHandler.getTaskOptions().application_name(), taskHandler.getTaskOptions().application_version()};
     ServiceId serviceId(appId, taskHandler.getTaskOptions().application_namespace(),
                         taskHandler.getTaskOptions().application_service());
-    manager.UseApplication(appId)
-        .UseService(serviceId)
-        .UseSession(taskHandler.getSessionId())
-        .Execute(taskHandler, taskPayload.method_name, taskPayload.arguments);
+    return manager.UseApplication(appId)
+                  .UseService(serviceId)
+                  .UseSession(taskHandler.getSessionId())
+                  .Execute(taskHandler, taskPayload.method_name, taskPayload.arguments);
   } catch (const ArmoniK::Sdk::Common::ArmoniKSdkException &e) {
     return armonik::api::worker::ProcessStatus(e.what());
-  } catch (const std::exception &e) {
-    return armonik::api::worker::ProcessStatus(e.what());
-  } catch (...) {
-    return armonik::api::worker::ProcessStatus("Unknown exception");
   }
-
-  return armonik::api::worker::ProcessStatus::Ok;
 }
 } // namespace DynamicWorker
 } // namespace Sdk
