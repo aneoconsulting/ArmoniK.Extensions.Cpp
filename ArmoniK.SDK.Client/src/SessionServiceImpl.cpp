@@ -467,7 +467,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
             if (handler) {
               handler->HandleResponse(payload, task_id);
             } else {
-              logger_.warning("No handler to deliver result " + result.result_id());
+              logger_.debug("No handler to deliver result " + result.result_id());
             }
           } catch (const std::exception &e) {
             handle_error(e, "Failed to execute result handler");
