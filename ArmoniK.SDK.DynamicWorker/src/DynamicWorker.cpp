@@ -2,6 +2,7 @@
 #include "ApplicationManager.h"
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/TaskPayload.h>
+#include <exception>
 namespace ArmoniK {
 namespace Sdk {
 namespace DynamicWorker {
@@ -21,15 +22,13 @@ DynamicWorker::Execute(armonik::api::worker::TaskHandler &taskHandler) {
     AppId appId{taskHandler.getTaskOptions().application_name(), taskHandler.getTaskOptions().application_version()};
     ServiceId serviceId(appId, taskHandler.getTaskOptions().application_namespace(),
                         taskHandler.getTaskOptions().application_service());
-    manager.UseApplication(appId)
+    return manager.UseApplication(appId)
         .UseService(serviceId)
         .UseSession(taskHandler.getSessionId())
         .Execute(taskHandler, taskPayload.method_name, taskPayload.arguments);
   } catch (const ArmoniK::Sdk::Common::ArmoniKSdkException &e) {
     return armonik::api::worker::ProcessStatus(e.what());
   }
-
-  return armonik::api::worker::ProcessStatus::Ok;
 }
 } // namespace DynamicWorker
 } // namespace Sdk

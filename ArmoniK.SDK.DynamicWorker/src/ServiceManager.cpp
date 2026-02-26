@@ -43,10 +43,11 @@ armonik::api::worker::ProcessStatus ServiceManager::Execute(armonik::api::worker
                                       method_arguments.data(), method_arguments.size(), ServiceManager::UploadResult);
   if (status != ARMONIK_STATUS_OK) {
     if (callContext.output.ok()) {
-      return armonik::api::worker::ProcessStatus("Unknown error in worker, check logs.");
+      callContext.output.set_error("Unknown error in worker, check logs.");
     }
+  } else {
+    callContext.output.set_ok();
   }
-  callContext.output.set_ok();
   return callContext.output;
 }
 
