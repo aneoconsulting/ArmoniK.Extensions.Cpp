@@ -64,6 +64,7 @@ COPY ./Packaging.cmake ./
 
 WORKDIR /app/build
 ARG WORKER_VERSION
+ARG CPACK_GENERATOR
 RUN cmake "-DBUILD_SHARED_LIBS=ON" \
     "-DCMAKE_BUILD_TYPE=Release" \
     "-DCMAKE_INSTALL_PREFIX=/app/install" \
@@ -72,7 +73,7 @@ RUN cmake "-DBUILD_SHARED_LIBS=ON" \
     "-DARMONIK_API_DIR=/armonik/api" \
     "-DBUILD_DYNAMICWORKER=OFF" \
     "-DBUILD_END2END=OFF" \
-    "-DCPACK_GENERATOR=RPM" \
+    "-DCPACK_GENERATOR=${CPACK_GENERATOR}" \
     "-DVERSION=${WORKER_VERSION}" \
     /app/source/ && \
     make -j ${PARALLEL_JOBS} install && \
