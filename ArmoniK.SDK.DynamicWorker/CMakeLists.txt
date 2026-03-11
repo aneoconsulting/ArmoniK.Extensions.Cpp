@@ -26,7 +26,7 @@ split_version(${VERSION})
 setup_lib_version(${PROJECT_NAME})
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.Api.Common ArmoniK.SDK.Common)
+target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.SDK.Common PUBLIC ArmoniK.Api.Common)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC

@@ -170,10 +170,10 @@ jobs:
       - name: Build and upload tgz, rpm and deb packages 
         run: |
           cd tools/packaging
-          ./make-${{ matrix.type }}.sh
+          ./make-${{ matrix.type }}.sh ${{ github.ref_name }}
       - name: Publish package as artefact
         uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a
         with:
           if-no-files-found: error
           path: tools/packaging/*.${{ matrix.type }}
-          name: armoniksdk.${{ matrix.type }}
+          name: armoniksdk-${{ github.ref_name }}.${{ matrix.type }}
