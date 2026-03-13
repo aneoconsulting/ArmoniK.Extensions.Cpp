@@ -76,8 +76,12 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=/app/install \
 # Start with the latest Alpine base image for the final stage
 FROM registry.access.redhat.com/ubi8 AS runner
 
+RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+
 RUN yum --disableplugin=subscription-manager update -y && \
     yum --disableplugin=subscription-manager install -y \
+    re2-devel \
+    zlib \
     wget \
     openssl
 
@@ -87,6 +91,7 @@ WORKDIR /tmp
 RUN wget https://github.com/aneoconsulting/grpc-rpm/releases/download/1.62.2.0/grpc-1.62.2-1.el8.x86_64.rpm && \
     rpm -ivh grpc-1.62.2-1.el8.x86_64.rpm && rm grpc-1.62.2-1.el8.x86_64.rpm
 
+RUN adduser -d /home/armonikuser -u 5000 -U --shell /bin/sh armonikuser
 USER armonikuser
 
 # Copy the application files, libraries, and binaries from the builder image to the final image
