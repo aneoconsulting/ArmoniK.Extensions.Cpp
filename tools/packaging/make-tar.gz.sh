@@ -11,7 +11,8 @@ IMAGE_TAG="${1:-"armoniksdktgz:${ARMONIK_SDK_VERSION_DEFAULT}"}"
 API_VERSION="${2:-"${ARMONIK_API_VERSION_DEFAULT}"}"
 
 docker build -t "${IMAGE_TAG}" \
-    -f ubi-tgz.Dockerfile \
+    -f ubi8.Dockerfile \
+    --build-arg="CPACK_GENERATOR=TGZ" \
     --build-arg="API_VERSION=${API_VERSION}" \
     --build-arg="WORKER_VERSION=${IMAGE_TAG}" "${working_dir}"
 

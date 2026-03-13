@@ -19,17 +19,13 @@ then
     apt-get clean
 elif which yum
 then
-  sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo && \
-  sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo && \
-  sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
-  ln -s /opt/cmake-3.24.1/bin/* /usr/local/bin
-  yum --disableplugin=subscription-manager check-update ; \
-  yum --disableplugin=subscription-manager \
-          install -y \
-          centos-release-scl \
-          devtoolset-10
-  yum --disableplugin=subscription-manager clean all
-  echo "source /opt/rh/devtoolset-10/enable" >> /etc/bashrc
+  rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+  yum --disableplugin=subscription-manager update -y
+  yum --disableplugin=subscription-manager install -y \
+    gcc-c++ \
+    make \
+    cmake \
+    rpm-build
 else
   echo "Unknown distribution"
   exit 1

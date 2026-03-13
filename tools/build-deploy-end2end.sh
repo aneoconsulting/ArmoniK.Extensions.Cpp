@@ -59,7 +59,7 @@ case "$environment" in
     build_base_image="ubuntu:24.04"
   ;;
   "RedHat")
-    build_base_image="dockerhubaneo/armonikworker_base:ubi7.9-0.0.1"
+    build_base_image="registry.access.redhat.com/ubi8"
   ;;
   *)
     printf "Unknown requested environment, please use one of:\n\tAlpine\n\tUbuntu\n\tRedHat"
