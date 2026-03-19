@@ -44,7 +44,7 @@ RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSIO
     cd build/ && \
     cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" \
         "-DCMAKE_PREFIX_PATH=/usr/local/grpc" \
-        "-DSTATIC_LINK=ON" \        
+        "-DBUILD_SHARED_LIBS=OFF" \
         "-DBUILD_TEST=OFF" \
         "-DBUILD_CLIENT=ON" \
         "-DBUILD_WORKER=ON" .. && \
