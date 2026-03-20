@@ -80,7 +80,7 @@ RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.
 
 RUN yum --disableplugin=subscription-manager update -y && \
     yum --disableplugin=subscription-manager install -y \
-    re2-devel \
+    re2 \
     zlib \
     wget \
     openssl
