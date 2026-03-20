@@ -148,9 +148,9 @@ jobs:
 
       - name: Push Docker
         run: |
-          docker push "${{ steps.build.outputs.worker_img }}:${{ steps.build.outputs.worker_version }}"
-          docker push "${{ steps.build.outputs.worker_test_img }}":"build-${{ matrix.dist }}"
-          docker push "${{ steps.build.outputs.client_img }}:${{ steps.build.outputs.client_version }}"
+          docker push "${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}"
+          docker push "${{ steps.build.outputs.worker_test_img}}:${{ steps.build.outputs.worker_version }}"
+          docker push "${{ steps.build.outputs.client_img}}:${{ steps.build.outputs.client_version }}"
           
   build-upload-artifact:
     strategy:
