@@ -24,19 +24,23 @@ RUN yum --disableplugin=subscription-manager update -y && \
 
 WORKDIR /tmp
 
-# Fetch aneo's grpc rpm packages
-RUN wget https://github.com/aneoconsulting/grpc-rpm/releases/download/1.62.2.0/grpc-1.62.2-1.el8.x86_64.rpm && \
-    rpm -ivh grpc-1.62.2-1.el8.x86_64.rpm
+# Fetch aneo's grpc rpm packages, in our repo we append an extra .x to the grpc version to distinguish several builds of the
+# same version.
+ARG GRPC_VERSION=1.62.2
+ARG GRPC_BUILD=${GRPC_VERSION}.0
 
-RUN wget https://github.com/aneoconsulting/grpc-rpm/releases/download/1.62.2.0/grpc-devel-1.62.2-1.el8.x86_64.rpm && \
-    rpm -ivh grpc-devel-1.62.2-1.el8.x86_64.rpm
+RUN wget "https://github.com/aneoconsulting/grpc-rpm/releases/download/${GRPC_BUILD}/grpc-${GRPC_BUILD%.*}-1.el8.x86_64.rpm" && \
+    rpm -ivh "grpc-${GRPC_BUILD%.*}-1.el8.x86_64.rpm"
 
+RUN wget "https://github.com/aneoconsulting/grpc-rpm/releases/download/${GRPC_BUILD}/grpc-devel-${GRPC_BUILD%.*}-1.el8.x86_64.rpm" && \
+    rpm -ivh "grpc-devel-${GRPC_BUILD%.*}-1.el8.x86_64.rpm"
+
+# Default value read from tools/common.sh file
 ARG API_VERSION
-RUN wget "https://github.com/aneoconsulting/ArmoniK.Api/releases/download/${API_VERSION}/libarmonik-${API_VERSION}-Linux.rpm"
-RUN rpm -ivh "libarmonik-${API_VERSION}-Linux.rpm"
+RUN wget "https://github.com/aneoconsulting/ArmoniK.Api/releases/download/${API_VERSION}/libarmonik-${API_VERSION}-Linux.rpm" && \
+    rpm -ivh "libarmonik-${API_VERSION}-Linux.rpm"
 
 RUN rm -rf *.rpm
-
 
 # Copy the application source files into the image
 WORKDIR /app/source
