@@ -1,26 +1,24 @@
-FROM ubuntu:23.04
+FROM ubuntu:24.04
 
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
-    ssh \
-    gcc \
-    g++ \
-    gdb \
-    clang \
-    make \
-    ninja-build \
-    cmake \
-    autoconf \
-    automake \
-    locales-all \
-    build-essential \
-    libc-ares-dev \
-    protobuf-compiler-grpc \
-    grpc-proto \
-    libgrpc-dev \
-    libgrpc++-dev \
-    libprotobuf-dev \
-	&& apt-get clean
-
+     ssh \
+     gcc \
+     g++ \
+     gdb \
+     clang \
+     make \
+     ninja-build \
+     cmake \
+     autoconf \
+     automake \
+     locales-all \
+     build-essential \
+     libc-ares-dev \
+     libgrpc-dev \
+     libgrpc++-dev \
+     libprotobuf-dev \
+     protobuf-compiler \
+     && apt-get clean
 ENV protobuf_BUILD_TESTS=OFF
 
 RUN ( \
