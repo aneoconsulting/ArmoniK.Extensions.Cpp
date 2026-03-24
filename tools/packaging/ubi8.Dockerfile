@@ -31,26 +31,12 @@ RUN wget https://github.com/aneoconsulting/grpc-rpm/releases/download/1.62.2.0/g
 RUN wget https://github.com/aneoconsulting/grpc-rpm/releases/download/1.62.2.0/grpc-devel-1.62.2-1.el8.x86_64.rpm && \
     rpm -ivh grpc-devel-1.62.2-1.el8.x86_64.rpm
 
+ARG API_VERSION
+RUN wget "https://github.com/aneoconsulting/ArmoniK.Api/releases/download/${API_VERSION}/libarmonik-${API_VERSION}-Linux.rpm"
+RUN rpm -ivh "libarmonik-${API_VERSION}-Linux.rpm"
+
 RUN rm -rf *.rpm
 
-# Compile API
-ARG API_VERSION
-RUN git clone https://github.com/aneoconsulting/ArmoniK.Api.git -b "${API_VERSION}" && \
-    cd ArmoniK.Api/packages/cpp && \
-    mkdir -p /app/proto && \
-    mkdir -p /armonik/api && \
-    cp -r ../../Protos/V1/* /app/proto && \
-    mkdir -p build/ && \
-    cd build/ && \
-    cmake "-DCMAKE_INSTALL_PREFIX=/armonik/api" \
-        "-DCMAKE_PREFIX_PATH=/usr/local/grpc" \
-        "-DBUILD_SHARED_LIBS=OFF" \
-        "-DBUILD_TEST=OFF" \
-        "-DBUILD_CLIENT=ON" \
-        "-DBUILD_WORKER=ON" .. && \
-    make -j ${PARALLEL_JOBS} install && \
-    ls -alR /armonik/api && \
-    make clean
 
 # Copy the application source files into the image
 WORKDIR /app/source
