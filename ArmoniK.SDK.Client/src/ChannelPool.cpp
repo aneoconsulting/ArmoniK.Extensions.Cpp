@@ -1,8 +1,6 @@
 #include "ChannelPool.h"
 
 #include <armonik/client/channel/ChannelFactory.h>
-#include <armonik/common/options/ControlPlane.h>
-#include <armonik/common/utils/ChannelArguments.h>
 #include <grpcpp/create_channel.h>
 #include <utility>
 
@@ -14,27 +12,25 @@ namespace Internal {
 std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
   std::shared_ptr<grpc::Channel> channel;
   {
-    std::lock_guard<std::mutex> _(channel_mutex_);
+    std::lock_guard<std::mutex> lock(channel_mutex_);
     if (!channel_pool_.empty()) {
-      channel = channel_pool_.front();
+      channel = std::move(channel_pool_.front());
       channel_pool_.pop();
     }
   }
 
-  if (channel != nullptr) {
+  if (channel) {
     if (ShutdownOnFailure(channel)) {
       logger_.debug("Shutdown unhealthy channel");
+      channel.reset();
     } else {
-      logger_.debug("Acquired already existing channel from pool");
+      logger_.debug("Acquired existing channel from pool");
       return channel;
     }
   }
-  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true)};
-  armonik::api::client::ChannelFactory channelFactory(
-      static_cast<armonik::api::common::utils::Configuration>(properties_.configuration), logger);
-  channel = channelFactory.create_channel();
-  logger_.debug("Created and acquired new channel from pool");
+
+  channel = factory_.create_channel();
+  logger_.debug("Created new channel");
   return channel;
 }
 
@@ -43,48 +39,40 @@ void ChannelPool::ReleaseChannel(std::shared_ptr<grpc::Channel> channel) {
     logger_.debug("Shutdown unhealthy channel");
   } else {
     logger_.debug("Released channel to pool");
-    std::lock_guard<std::mutex> _(channel_mutex_);
-    channel_pool_.push(channel);
+    std::lock_guard<std::mutex> lock(channel_mutex_);
+    channel_pool_.push(std::move(channel));
   }
 }
 
 bool ChannelPool::ShutdownOnFailure(std::shared_ptr<grpc::Channel> channel) {
-  switch ((*channel).GetState(true)) {
-  case GRPC_CHANNEL_CONNECTING:
-    break;
-  case GRPC_CHANNEL_IDLE:
-    break;
-
+  switch (channel->GetState(true)) {
   case GRPC_CHANNEL_SHUTDOWN:
-    return true;
-    break;
-
   case GRPC_CHANNEL_TRANSIENT_FAILURE:
-    channel.reset();
     return true;
-    break;
-
-  case GRPC_CHANNEL_READY:
-    break;
-
   default:
     return false;
-    break;
   }
-  return false;
 }
 
-ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::api::common::logger::Logger &logger)
-    : properties_(std::move(properties)), logger_(logger.local()) {}
+  ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::api::common::logger::Logger &logger)
+    : properties_(std::move(properties)),
+      factory_(static_cast<armonik::api::common::utils::Configuration>(properties_.configuration), logger),
+      logger_(logger.local())
+{}
+
 ChannelPool::~ChannelPool() = default;
 
-ChannelPool::ChannelGuard::ChannelGuard(Internal::ChannelPool *pool) : pool_(pool) {
-  if (pool_ != nullptr) {
+ChannelPool::ChannelGuard::ChannelGuard(ChannelPool *pool) : pool_(pool) {
+  if (pool_) {
     channel = pool_->AcquireChannel();
   }
 }
 
-ChannelPool::ChannelGuard::~ChannelGuard() { pool_->ReleaseChannel(channel); }
+ChannelPool::ChannelGuard::~ChannelGuard() {
+  if (pool_ && channel) {
+    pool_->ReleaseChannel(channel);
+  }
+}
 
 ChannelPool::ChannelGuard ChannelPool::GetChannel() { return ChannelGuard(this); }
 
