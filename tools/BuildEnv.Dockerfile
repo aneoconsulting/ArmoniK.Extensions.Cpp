@@ -18,7 +18,8 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-ge
      libgrpc++-dev \
      libprotobuf-dev \
      protobuf-compiler \
-     && apt-get clean
+     && apt-get clean \
+     && rm -rf /var/lib/apt/lists/*
 ENV protobuf_BUILD_TESTS=OFF
 
 RUN ( \
