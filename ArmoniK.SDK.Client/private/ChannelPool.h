@@ -4,6 +4,7 @@
 #include <armonik/common/logger/logger.h>
 #include <armonik/common/logger/writer.h>
 #include <armonik/sdk/common/Properties.h>
+#include <channel/ChannelFactory.h>
 #include <grpcpp/channel.h>
 #include <mutex>
 #include <queue>
@@ -142,6 +143,7 @@ private:
   std::queue<std::shared_ptr<grpc::Channel>> channel_pool_;
   std::mutex channel_mutex_;
   armonik::api::common::logger::LocalLogger logger_;
+  armonik::api::client::ChannelFactory factory_;
 };
 
 } // namespace Internal
