@@ -5,7 +5,10 @@
 #include "ServiceManager.h"
 #include <Worker/ProcessStatus.h>
 #include <armonik/common/logger/logger.h>
+#include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/worker/Worker/TaskHandler.h>
+#include <map>
+#include <string>
 
 namespace ArmoniK {
 namespace Sdk {
@@ -42,6 +45,16 @@ public:
   ApplicationManager &UseApplication(const AppId &appId) &;
 
   /**
+   * @brief Configures the application manager to load a library directly by path (convention mode).
+   * The library is loaded from lib.library_path and function symbols are resolved using the lib.symbol prefix
+   * (defaults to "armonik" if empty). A default service is created with empty namespace and name.
+   * @param lib DynamicLibrary descriptor
+   * @return this ApplicationManager
+   * @note Caches by library_path; a repeated call with the same path is a no-op.
+   */
+  ApplicationManager &UseLibrary(const ArmoniK::Sdk::Common::DynamicLibrary &lib) &;
+
+  /**
    * @brief Configures the application manager to use the given service
    * @param serviceId Service id
    * @return this Application manager
@@ -69,6 +82,20 @@ public:
   armonik::api::worker::ProcessStatus Execute(armonik::api::worker::TaskHandler &taskHandler,
                                               const std::string &method_name, const std::string &method_arguments);
 
+  /**
+   * @brief Executes the task given by the task handler using named blob maps (convention mode).
+   * Serializes inputs and outputs to JSON and delegates to Execute(taskHandler, method_name, json).
+   * @param taskHandler Task handler
+   * @param method_name Name of the method to execute
+   * @param inputs Named input blob IDs
+   * @param outputs Named output blob IDs
+   * @return ProcessStatus telling whether the call was successful or not
+   */
+  armonik::api::worker::ProcessStatus Execute(armonik::api::worker::TaskHandler &taskHandler,
+                                              const std::string &method_name,
+                                              const std::map<std::string, std::string> &inputs,
+                                              const std::map<std::string, std::string> &outputs);
+
 private:
   /**
    * @brief Loaded application's function pointers
@@ -90,9 +117,14 @@ private:
   DynamicLib currentLibrary;
 
   /**
-   * @brief Base path in which to look for the library to load
+   * @brief Base path in which to look for the library to load (legacy mode)
    */
   std::string applicationsBasePath;
+
+  /**
+   * @brief Path of the currently loaded library (convention mode); empty when in legacy mode
+   */
+  std::string currentLibraryPath;
 
   /**
    * @brief Local Logger
