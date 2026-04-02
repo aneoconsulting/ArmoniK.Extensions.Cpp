@@ -1,4 +1,5 @@
 #include "armonik/sdk/common/TaskOptions.h"
+#include "armonik/sdk/common/ArmoniKSdkException.h"
 
 #include <armonik/common/objects.pb.h>
 
@@ -35,3 +36,32 @@ TaskOptions::TaskOptions(const armonik::api::grpc::v1::TaskOptions &raw)
       partition_id(raw.partition_id()), engine_type(raw.engine_type()), priority(raw.priority()),
       max_retries(raw.max_retries()), max_duration{raw.max_duration().seconds(), raw.max_duration().nanos()},
       options(raw.options().begin(), raw.options().end()) {}
+
+void TaskOptions::SetDynamicLibrary(const DynamicLibrary &lib) {
+  options[DynamicLibrary::KeyConventionVersion] = DynamicLibrary::ConventionVersion;
+  options[DynamicLibrary::KeyLibraryPath] = lib.library_path;
+  options[DynamicLibrary::KeySymbol] = lib.symbol;
+}
+
+DynamicLibrary TaskOptions::GetDynamicLibrary() const {
+  DynamicLibrary lib;
+  auto it = options.find(DynamicLibrary::KeyLibraryPath);
+  if (it == options.end()) {
+    throw ArmoniKSdkException(std::string("Missing key '") + DynamicLibrary::KeyLibraryPath + "' in task options");
+  }
+  lib.library_path = it->second;
+  it = options.find(DynamicLibrary::KeySymbol);
+  if (it != options.end()) {
+    lib.symbol = it->second;
+  }
+  return lib;
+}
+
+std::string TaskOptions::GetConventionVersion() const {
+  auto it = options.find(DynamicLibrary::KeyConventionVersion);
+  if (it == options.end()) {
+    throw ArmoniKSdkException(std::string("Missing key '") + DynamicLibrary::KeyConventionVersion +
+                              "' in task options");
+  }
+  return it->second;
+}

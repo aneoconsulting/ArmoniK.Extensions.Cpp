@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Duration.h"
+#include "DynamicLibrary.h"
 #include <map>
 #include <memory>
 #include <string>
@@ -99,6 +100,27 @@ struct TaskOptions {
    * @return ArmoniK compatible TaskOptions object
    */
   explicit operator armonik::api::grpc::v1::TaskOptions() const;
+
+  /**
+   * @brief Encodes a DynamicLibrary into this->options using the convention keys.
+   * Also sets the ConventionVersion key.
+   * @param lib DynamicLibrary to encode
+   */
+  void SetDynamicLibrary(const DynamicLibrary &lib);
+
+  /**
+   * @brief Decodes a DynamicLibrary from this->options.
+   * @return Decoded DynamicLibrary
+   * @throws ArmoniKSdkException if the LibraryPath key is missing
+   */
+  [[nodiscard]] DynamicLibrary GetDynamicLibrary() const;
+
+  /**
+   * @brief Returns the ConventionVersion value from this->options.
+   * @return Convention version string
+   * @throws ArmoniKSdkException if the ConventionVersion key is absent
+   */
+  [[nodiscard]] std::string GetConventionVersion() const;
 };
 } // namespace Common
 } // namespace Sdk
