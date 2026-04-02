@@ -44,10 +44,10 @@ armonik::api::worker::ProcessStatus ApplicationManager::Execute(armonik::api::wo
   return service_manager.Execute(taskHandler, method_name, method_arguments);
 }
 
-armonik::api::worker::ProcessStatus
-ApplicationManager::Execute(armonik::api::worker::TaskHandler &taskHandler, const std::string &method_name,
-                             const std::map<std::string, std::string> &inputs,
-                             const std::map<std::string, std::string> &outputs) {
+armonik::api::worker::ProcessStatus ApplicationManager::Execute(armonik::api::worker::TaskHandler &taskHandler,
+                                                                const std::string &method_name,
+                                                                const std::map<std::string, std::string> &inputs,
+                                                                const std::map<std::string, std::string> &outputs) {
   ArmoniK::Sdk::Common::TaskPayload payload;
   payload.method_name = method_name;
   payload.inputs = inputs;

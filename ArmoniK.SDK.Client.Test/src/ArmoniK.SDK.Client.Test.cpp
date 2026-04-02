@@ -270,8 +270,8 @@ TEST(testSDK, testAddFloat) {
   // Submit a task
   std::vector<std::string> task_ids;
 
-  auto tasks =
-      service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(32.3f, 21.2f))}, handler);
+  auto tasks = service.Submit(
+      {ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(32.3f, 21.2f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -285,7 +285,8 @@ TEST(testSDK, testAddFloat) {
 
   EXPECT_NEAR(handler->float_result, ans, error);
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(32.5f, 54.7f))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(32.5f, 54.7f))},
+                         handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -297,7 +298,8 @@ TEST(testSDK, testAddFloat) {
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(2.9f, 1.07f))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(2.9f, 1.07f))},
+                         handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -309,7 +311,8 @@ TEST(testSDK, testAddFloat) {
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(64.2f, 54.0f))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(64.2f, 54.0f))},
+                         handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -321,7 +324,8 @@ TEST(testSDK, testAddFloat) {
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(7.6f, 8.5f))}, handler);
+  tasks =
+      service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(7.6f, 8.5f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -394,7 +398,8 @@ TEST(testSDK, testStressTest) {
     serialize_item(beginPtr, input.data(), nbInputBytes / sizeof(double));
     return {outputVec.data(), outputVec.size()};
   }();
-  const std::vector<ArmoniK::Sdk::Common::LegacyTaskPayload> tasks_payload(nbTasks, {"compute_workload", std::move(payload)});
+  const std::vector<ArmoniK::Sdk::Common::LegacyTaskPayload> tasks_payload(nbTasks,
+                                                                           {"compute_workload", std::move(payload)});
 
   auto t0 = std::chrono::high_resolution_clock::now();
   const auto tasks = service.Submit(tasks_payload, handler);
