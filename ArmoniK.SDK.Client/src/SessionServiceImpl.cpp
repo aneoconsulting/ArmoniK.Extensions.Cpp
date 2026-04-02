@@ -130,7 +130,7 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
 const std::string &SessionServiceImpl::getSession() const { return session; }
 
 [[maybe_unused]] std::vector<std::string>
-SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
+SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_requests,
                            std::shared_ptr<IServiceInvocationHandler> handler,
                            const Common::TaskOptions &task_options) {
 
@@ -308,7 +308,7 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                : session_id;
 }
 
-std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
+std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler) {
   return Submit(task_requests, std::move(handler), taskOptions);
 }

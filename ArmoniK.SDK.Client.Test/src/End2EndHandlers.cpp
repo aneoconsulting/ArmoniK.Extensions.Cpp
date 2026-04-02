@@ -6,7 +6,7 @@
 void PythonTestWorkerHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
   std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
             << std::endl;
-  auto tr = ArmoniK::Sdk::Common::TaskPayload::Deserialize(result_payload);
+  auto tr = ArmoniK::Sdk::Common::LegacyTaskPayload::Deserialize(result_payload);
   std::cout << "Received : " << "\n Method name : " << tr.method_name << "\n Data dependencies : \n";
   for (auto &&dd : tr.data_dependencies) {
     std::cout << " - " << dd << '\n';

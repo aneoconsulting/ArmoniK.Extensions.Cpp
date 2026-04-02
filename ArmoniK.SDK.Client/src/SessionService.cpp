@@ -19,7 +19,7 @@ const std::string &SessionService::getSession() const {
 }
 
 std::vector<std::string>
-ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
+ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::LegacyTaskPayload> &requests,
                                              std::shared_ptr<IServiceInvocationHandler> handler,
                                              const ArmoniK::Sdk::Common::TaskOptions &task_options) {
   ensure_valid();
@@ -27,7 +27,7 @@ ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::TaskPaylo
 }
 std::vector<std::string>
 
-SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
+SessionService::Submit(const std::vector<Common::LegacyTaskPayload> &requests,
                        std::shared_ptr<IServiceInvocationHandler> handler) {
   ensure_valid();
   return impl->Submit(requests, std::move(handler));

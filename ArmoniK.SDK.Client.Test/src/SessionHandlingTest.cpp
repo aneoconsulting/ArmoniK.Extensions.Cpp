@@ -40,8 +40,8 @@ armonik::api::grpc::v1::tasks::Filters get_filter_for_session_id(const std::stri
   return filters;
 }
 
-std::vector<ArmoniK::Sdk::Common::TaskPayload> generate_payloads(unsigned int n) {
-  std::vector<ArmoniK::Sdk::Common::TaskPayload> payloads;
+std::vector<ArmoniK::Sdk::Common::LegacyTaskPayload> generate_payloads(unsigned int n) {
+  std::vector<ArmoniK::Sdk::Common::LegacyTaskPayload> payloads;
   payloads.reserve(n);
   for (unsigned int i = 0; i < n; ++i) {
     payloads.emplace_back("EchoService", "Test");

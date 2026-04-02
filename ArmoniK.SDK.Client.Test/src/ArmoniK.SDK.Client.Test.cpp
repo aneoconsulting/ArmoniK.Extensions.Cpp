@@ -110,7 +110,7 @@ TEST(testSDK, testEcho) {
   auto handler = std::make_shared<EchoServiceHandler>(logger);
 
   // Submit a task
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("EchoService", args)}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("EchoService", args)}, handler);
 
   std::cout << "Sent : " << tasks[0] << std::endl;
 
@@ -174,7 +174,7 @@ TEST(testSDK, testAddInt) {
   // Submit a task
   std::vector<std::string> task_ids;
   // for (auto &&arg : args) {
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", payload_val)}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_ints", payload_val)}, handler);
   service.WaitResults();
 
   ASSERT_FALSE(tasks.empty());
@@ -188,7 +188,7 @@ TEST(testSDK, testAddInt) {
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(23, 45))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_ints", StrSerialize<int>(23, 45))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -199,7 +199,7 @@ TEST(testSDK, testAddInt) {
   ASSERT_EQ(handler->int_result, ans);
   ASSERT_TRUE(!handler->str.empty());
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(76, 34))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_ints", StrSerialize<int>(76, 34))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -211,8 +211,8 @@ TEST(testSDK, testAddInt) {
   ASSERT_TRUE(!handler->str.empty());
 
   handler->successCounter = 0;
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(82, 1)),
-                          ArmoniK::Sdk::Common::TaskPayload("add_ints", StrSerialize<int>(4, 6))},
+  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_ints", StrSerialize<int>(82, 1)),
+                          ArmoniK::Sdk::Common::LegacyTaskPayload("add_ints", StrSerialize<int>(4, 6))},
                          handler);
 
   ASSERT_FALSE(tasks.empty());
@@ -271,7 +271,7 @@ TEST(testSDK, testAddFloat) {
   std::vector<std::string> task_ids;
 
   auto tasks =
-      service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(32.3f, 21.2f))}, handler);
+      service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(32.3f, 21.2f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -285,7 +285,7 @@ TEST(testSDK, testAddFloat) {
 
   EXPECT_NEAR(handler->float_result, ans, error);
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(32.5f, 54.7f))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(32.5f, 54.7f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -297,7 +297,7 @@ TEST(testSDK, testAddFloat) {
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(2.9f, 1.07f))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(2.9f, 1.07f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -309,7 +309,7 @@ TEST(testSDK, testAddFloat) {
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(64.2f, 54.0f))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(64.2f, 54.0f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -321,7 +321,7 @@ TEST(testSDK, testAddFloat) {
   ASSERT_TRUE(!handler->str.empty());
   ASSERT_EQ(handler->str.size(), sizeof(float));
 
-  tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("add_floats", StrSerialize<float>(7.6f, 8.5f))}, handler);
+  tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("add_floats", StrSerialize<float>(7.6f, 8.5f))}, handler);
 
   ASSERT_FALSE(tasks.empty());
 
@@ -394,7 +394,7 @@ TEST(testSDK, testStressTest) {
     serialize_item(beginPtr, input.data(), nbInputBytes / sizeof(double));
     return {outputVec.data(), outputVec.size()};
   }();
-  const std::vector<ArmoniK::Sdk::Common::TaskPayload> tasks_payload(nbTasks, {"compute_workload", std::move(payload)});
+  const std::vector<ArmoniK::Sdk::Common::LegacyTaskPayload> tasks_payload(nbTasks, {"compute_workload", std::move(payload)});
 
   auto t0 = std::chrono::high_resolution_clock::now();
   const auto tasks = service.Submit(tasks_payload, handler);
@@ -476,7 +476,7 @@ TEST(testSDK, parallelSubmit) {
   for (std::size_t t = 0; t < nbThreads; ++t) {
     handlers.push_back(std::make_shared<StressTestServiceHandler>(logger));
     threads.emplace_back([&, t]() {
-      std::vector<ArmoniK::Sdk::Common::TaskPayload> payloads;
+      std::vector<ArmoniK::Sdk::Common::LegacyTaskPayload> payloads;
       std::vector<double> input(nbInputBytes / sizeof(double));
       input[0] = t;
 
@@ -563,7 +563,7 @@ TEST(testSDK, testSegFault) {
   auto handler = std::make_shared<SegFaultServiceHandler>(logger);
 
   // Submit a task
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("SegFaultService", args)}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("SegFaultService", args)}, handler);
 
   std::cout << "Sent : " << tasks[0] << std::endl;
 
@@ -612,7 +612,7 @@ TEST(testSDK, testLargePayload) {
 
   auto handler = std::make_shared<CountServiceHandler>(logger);
 
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload("EchoService", large_payload)}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload("EchoService", large_payload)}, handler);
 
   std::cout << "Sent : " << tasks[0] << std::endl;
 
@@ -666,7 +666,7 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
   auto handler = std::make_shared<ExceptionServiceHandler>(logger);
   std::string args = "Exception success";
 
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload(param.method_name, args)}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload(name, args)}, handler);
 
   std::cout << "Sent : " << tasks[0] << std::endl;
 
