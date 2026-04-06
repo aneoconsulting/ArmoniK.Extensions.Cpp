@@ -101,7 +101,7 @@ TaskPayload TaskPayload::Deserialize(absl::string_view serialized) {
   try {
     auto j = nlohmann::json::parse(serialized.begin(), serialized.end());
     TaskPayload payload;
-    payload.method_name = j.at("method").get<std::string>();
+    payload.method_name = j.value("method", std::string{});
     payload.inputs = j.at("inputs").get<std::map<std::string, std::string>>();
     payload.outputs = j.at("outputs").get<std::map<std::string, std::string>>();
     return payload;
