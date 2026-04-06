@@ -41,15 +41,33 @@ void TaskOptions::SetDynamicLibrary(const DynamicLibrary &lib) {
   options[DynamicLibrary::KeyConventionVersion] = DynamicLibrary::ConventionVersion;
   options[DynamicLibrary::KeyLibraryPath] = lib.library_path;
   options[DynamicLibrary::KeySymbol] = lib.symbol;
+  if (!lib.library_blob_id.empty()) {
+    options[DynamicLibrary::KeyLibraryBlobId] = lib.library_blob_id;
+  }
 }
 
 DynamicLibrary TaskOptions::GetDynamicLibrary() const {
   DynamicLibrary lib;
-  auto it = options.find(DynamicLibrary::KeyLibraryPath);
-  if (it == options.end()) {
-    throw ArmoniKSdkException(std::string("Missing key '") + DynamicLibrary::KeyLibraryPath + "' in task options");
+
+  // LibraryBlobId: optional — when set, library_path is resolved at runtime from blob storage
+  auto it = options.find(DynamicLibrary::KeyLibraryBlobId);
+  if (it != options.end()) {
+    lib.library_blob_id = it->second;
   }
-  lib.library_path = it->second;
+
+  // LibraryPath: required only when LibraryBlobId is not set
+  it = options.find(DynamicLibrary::KeyLibraryPath);
+  if (it == options.end() || it->second.empty()) {
+    if (lib.library_blob_id.empty()) {
+      throw ArmoniKSdkException(std::string("Missing key '") + DynamicLibrary::KeyLibraryPath +
+                                "' in task options (required when '" + DynamicLibrary::KeyLibraryBlobId +
+                                "' is not set)");
+    }
+    // library_path will be resolved at runtime from the blob content
+  } else {
+    lib.library_path = it->second;
+  }
+
   it = options.find(DynamicLibrary::KeySymbol);
   if (it != options.end()) {
     lib.symbol = it->second;
