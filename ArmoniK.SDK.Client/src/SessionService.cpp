@@ -1,6 +1,8 @@
 #include "armonik/sdk/client/SessionService.h"
 #include "SessionServiceImpl.h"
 #include <armonik/sdk/common/Version.h>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -45,6 +47,16 @@ SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
                        std::shared_ptr<IServiceInvocationHandler> handler) {
   ensure_valid();
   return impl->Submit(requests, std::move(handler));
+}
+std::string SessionService::UploadLibrary(const std::string &library_path) {
+  ensure_valid();
+  std::ifstream f(library_path, std::ios::binary);
+  if (!f) {
+    throw std::runtime_error("Cannot open library file: " + library_path);
+  }
+  std::ostringstream buf;
+  buf << f.rdbuf();
+  return impl->UploadLibrary(buf.str());
 }
 
 void SessionService::WaitResults(std::set<std::string> task_ids, WaitBehavior waitBehavior,

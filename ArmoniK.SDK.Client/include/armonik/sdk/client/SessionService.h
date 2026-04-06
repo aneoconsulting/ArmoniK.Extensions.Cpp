@@ -104,6 +104,20 @@ public:
                                   std::shared_ptr<IServiceInvocationHandler> handler);
 
   /**
+   * @brief Uploads a shared library (.so) to ArmoniK blob storage and returns its blob ID.
+   *
+   * The returned ID should be stored in DynamicLibrary::library_blob_id and passed to
+   * TaskOptions::SetDynamicLibrary() before submitting tasks. The blob is automatically
+   * added as a data dependency for each task submitted with that DynamicLibrary, so the
+   * worker can download and dlopen the library at runtime without requiring the file to
+   * exist on the worker's local filesystem.
+   *
+   * @param library_path Filesystem path to the .so file to upload
+   * @return Blob ID (result ID) of the uploaded library
+   */
+  std::string UploadLibrary(const std::string &library_path);
+
+  /**
    * @brief Waits for the completion of the given tasks
    * @param task_ids Task ids to wait on. If left empty, will wait for submitted tasks in
    * @param waitBehavior Wait for all tasks completion, any task completion and/or stop waiting if a result is aborted

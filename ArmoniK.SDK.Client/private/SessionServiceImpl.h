@@ -154,6 +154,13 @@ public:
                                   const Common::TaskOptions &task_options);
 
   /**
+   * @brief Uploads raw library content to ArmoniK blob storage.
+   * @param content Raw bytes of the .so file
+   * @return Blob ID (result ID) of the uploaded library
+   */
+  std::string UploadLibrary(const std::string &content);
+
+  /**
    * @brief Get the session Id associated with this service
    * @return Session Id
    */

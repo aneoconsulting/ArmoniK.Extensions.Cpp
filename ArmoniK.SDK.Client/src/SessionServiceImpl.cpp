@@ -328,6 +328,27 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   return SubmitRaw(serialized, deps, std::move(handler), task_options);
 }
 
+std::string SessionServiceImpl::UploadLibrary(const std::string &content) {
+  const std::size_t data_chunk_max_size =
+      override_message_size_ ? override_message_size_ : channel_pool.WithChannel([](auto channel) {
+        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+            .get_service_configuration()
+            .data_chunk_max_size;
+      });
+
+  // Create a single result entry to hold the library blob
+  auto reply = channel_pool.WithChannel([&](auto channel) {
+    return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+        .create_results_metadata(session, {"library"});
+  });
+  const std::string result_id = reply.at("library");
+
+  upload_large_result(channel_pool, session, result_id, content, data_chunk_max_size, logger_);
+
+  logger_.info("Uploaded library blob: " + result_id + " (" + std::to_string(content.size()) + " bytes)");
+  return result_id;
+}
+
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                        armonik::api::common::logger::Logger &logger, const std::string &session_id)
     : taskOptions(properties.taskOptions), channel_pool(properties, logger),
