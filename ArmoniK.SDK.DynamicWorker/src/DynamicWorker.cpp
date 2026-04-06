@@ -5,6 +5,7 @@
 #include <armonik/sdk/common/TaskOptions.h>
 #include <armonik/sdk/common/TaskPayload.h>
 #include <exception>
+#include <fstream>
 
 namespace ArmoniK {
 namespace Sdk {
@@ -27,7 +28,28 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
       if (version != ArmoniK::Sdk::Common::DynamicLibrary::ConventionVersion) {
         throw ArmoniK::Sdk::Common::ArmoniKSdkException("Unsupported convention version: " + version);
       }
-      const auto lib = opts.GetDynamicLibrary();
+      auto lib = opts.GetDynamicLibrary();
+      const auto &deps = taskHandler.getDataDependencies();
+
+      // Blob-based loading: fetch the .so content from data dependencies, write to a temp file,
+      // then dlopen it. The library is uploaded as a blob by the client and pre-downloaded by
+      // ArmoniK before the worker runs.
+      if (!lib.library_blob_id.empty()) {
+        const auto blob_it = deps.find(lib.library_blob_id);
+        if (blob_it == deps.end()) {
+          throw ArmoniK::Sdk::Common::ArmoniKSdkException("Library blob '" + lib.library_blob_id +
+                                                          "' not found in data dependencies");
+        }
+        // Write to a deterministic temp path so identical blobs are only written once per worker process
+        lib.library_path = "/tmp/armonik-lib-" + lib.library_blob_id + ".so";
+        std::ofstream tmp(lib.library_path, std::ios::binary | std::ios::trunc);
+        if (!tmp) {
+          throw ArmoniK::Sdk::Common::ArmoniKSdkException("Failed to write library to temp file: " +
+                                                          lib.library_path);
+        }
+        tmp.write(blob_it->second.data(), static_cast<std::streamsize>(blob_it->second.size()));
+      }
+
       const auto payload = ArmoniK::Sdk::Common::TaskPayload::Deserialize(taskHandler.getPayload());
       return manager.UseLibrary(lib)
           .UseSession(taskHandler.getSessionId())
