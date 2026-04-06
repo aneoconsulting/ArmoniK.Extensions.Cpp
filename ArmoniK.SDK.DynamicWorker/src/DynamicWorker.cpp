@@ -51,9 +51,29 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
       }
 
       const auto payload = ArmoniK::Sdk::Common::TaskPayload::Deserialize(taskHandler.getPayload());
+
+      // Resolve method name: prefer payload field, fall back to MethodName task option (cross-SDK interoperability)
+      std::string method_name = payload.method_name;
+      if (method_name.empty()) {
+        const auto it = rawOptions.options().find(ArmoniK::Sdk::Common::DynamicLibrary::KeyMethodName);
+        if (it == rawOptions.options().end() || it->second.empty()) {
+          throw ArmoniK::Sdk::Common::ArmoniKSdkException(
+              "Convention task has no method name: set the 'method' field in the payload or the 'MethodName' task option");
+        }
+        method_name = it->second;
+      }
+
+      // Resolve inputs: if a value matches a data dependency key (blob ID), substitute its downloaded content.
+      // This handles both inline values (C++ native payloads) and blob ID references (cross-SDK interoperability).
+      std::map<std::string, std::string> resolved_inputs;
+      for (const auto &[name, value] : payload.inputs) {
+        const auto dep_it = deps.find(value);
+        resolved_inputs[name] = (dep_it != deps.end()) ? dep_it->second : value;
+      }
+
       return manager.UseLibrary(lib)
           .UseSession(taskHandler.getSessionId())
-          .Execute(taskHandler, payload.method_name, payload.inputs, payload.outputs);
+          .Execute(taskHandler, method_name, resolved_inputs, payload.outputs);
     }
 
     // Legacy path: use application_name / application_version based loading
