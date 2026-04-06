@@ -129,10 +129,11 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
 
 const std::string &SessionServiceImpl::getSession() const { return session; }
 
-[[maybe_unused]] std::vector<std::string>
-SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_requests,
-                           std::shared_ptr<IServiceInvocationHandler> handler,
-                           const Common::TaskOptions &task_options) {
+std::vector<std::string>
+SessionServiceImpl::SubmitRaw(const std::vector<std::string> &serialized_payloads,
+                              const std::vector<std::vector<std::string>> &data_dependencies,
+                              std::shared_ptr<IServiceInvocationHandler> handler,
+                              const Common::TaskOptions &task_options) {
 
   const std::size_t message_overhead = 128;
   std::size_t data_chunk_max_size =
@@ -145,9 +146,9 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
   // Number of bytes to be sent in the next CreateResult request
   std::size_t data_batched = 0;
 
-  std::vector<std::string> input_result_ids(task_requests.size());
-  std::vector<std::string> output_result_ids(task_requests.size());
-  std::vector<std::string> task_ids(task_requests.size());
+  std::vector<std::string> input_result_ids(serialized_payloads.size());
+  std::vector<std::string> output_result_ids(serialized_payloads.size());
+  std::vector<std::string> task_ids(serialized_payloads.size());
 
   ThreadPool::JoinSet join_set(thread_pool_);
 
@@ -180,7 +181,7 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
 
               // Upload result using stream
               join_set.Spawn([&, i]() {
-                upload_large_result(channel_pool, session, input_result_ids[i], task_requests[i].Serialize(),
+                upload_large_result(channel_pool, session, input_result_ids[i], serialized_payloads[i],
                                     data_chunk_max_size, logger_);
               });
             }
@@ -197,7 +198,7 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
       std::vector<std::pair<std::string, std::string>> results(batch.size());
       for (std::size_t j = 0; j < batch.size(); ++j) {
         std::size_t i = batch[j];
-        results[j] = {"input-" + std::to_string(i), task_requests[i].Serialize()};
+        results[j] = {"input-" + std::to_string(i), serialized_payloads[i]};
       }
       auto reply = channel_pool.WithChannel([&](auto channel) {
         return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
@@ -218,14 +219,13 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
       std::vector<armonik::api::common::TaskCreation> requests(batch.size());
       for (std::size_t j = 0; j < batch.size(); ++j) {
         std::size_t i = batch[j];
-        auto &data_dependencies = task_requests[i].data_dependencies;
+        const auto &deps = data_dependencies[i];
         auto &request = requests[j];
 
         request = armonik::api::common::TaskCreation();
         request.payload_id = input_result_ids[i];
         request.expected_output_keys.push_back(output_result_ids[i]);
-        request.data_dependencies.insert(request.data_dependencies.end(), data_dependencies.begin(),
-                                         data_dependencies.end());
+        request.data_dependencies.insert(request.data_dependencies.end(), deps.begin(), deps.end());
       }
 
       auto reply = channel_pool.WithChannel([&](auto channel) {
@@ -246,9 +246,8 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
   });
 
   // Create all results
-  for (std::size_t i = 0; i < task_requests.size(); ++i) {
-    auto &task_request = task_requests[i];
-    auto payload_size = task_request.arguments.size();
+  for (std::size_t i = 0; i < serialized_payloads.size(); ++i) {
+    auto payload_size = serialized_payloads[i].size();
 
     create_metadata_and_upload_batcher.Add({i, true});
     if (payload_size + message_overhead >= data_chunk_max_size) {
@@ -270,7 +269,7 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
   join_set.Wait();
 
   // Submit all tasks
-  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+  for (std::size_t i = 0; i < serialized_payloads.size(); ++i) {
     submit_batcher.Add(i);
   }
 
@@ -280,7 +279,7 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
 
   std::lock_guard<std::mutex> lock(maps_mutex);
 
-  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+  for (std::size_t i = 0; i < serialized_payloads.size(); ++i) {
     const auto &result_id = output_result_ids[i];
     const auto &task_id = task_ids[i];
     result_handlers[result_id] = handler;
@@ -289,6 +288,21 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
   }
 
   return task_ids;
+}
+
+[[maybe_unused]] std::vector<std::string>
+SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_requests,
+                           std::shared_ptr<IServiceInvocationHandler> handler,
+                           const Common::TaskOptions &task_options) {
+  std::vector<std::string> serialized;
+  serialized.reserve(task_requests.size());
+  std::vector<std::vector<std::string>> deps;
+  deps.reserve(task_requests.size());
+  for (const auto &req : task_requests) {
+    serialized.push_back(req.Serialize());
+    deps.push_back(req.data_dependencies);
+  }
+  return SubmitRaw(serialized, deps, std::move(handler), task_options);
 }
 
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,

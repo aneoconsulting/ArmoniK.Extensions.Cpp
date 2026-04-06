@@ -26,12 +26,12 @@ ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::LegacyTas
   return impl->Submit(requests, std::move(handler), task_options);
 }
 std::vector<std::string>
-
 SessionService::Submit(const std::vector<Common::LegacyTaskPayload> &requests,
                        std::shared_ptr<IServiceInvocationHandler> handler) {
   ensure_valid();
   return impl->Submit(requests, std::move(handler));
 }
+
 void SessionService::WaitResults(std::set<std::string> task_ids, WaitBehavior waitBehavior,
                                  const WaitOptions &options) {
   ensure_valid();

@@ -177,6 +177,20 @@ public:
    * the client.
    */
   void CleanupTasks(std::vector<std::string> task_ids);
+
+private:
+  /**
+   * @brief Core submission logic operating on pre-serialized payloads.
+   * @param serialized_payloads Pre-serialized task payload bytes (one per task)
+   * @param data_dependencies Per-task list of data dependency result IDs
+   * @param handler Result handler for this batch
+   * @param task_options Task options
+   * @return List of task ids
+   */
+  std::vector<std::string> SubmitRaw(const std::vector<std::string> &serialized_payloads,
+                                     const std::vector<std::vector<std::string>> &data_dependencies,
+                                     std::shared_ptr<IServiceInvocationHandler> handler,
+                                     const Common::TaskOptions &task_options);
 };
 } // namespace Internal
 } // namespace Client
