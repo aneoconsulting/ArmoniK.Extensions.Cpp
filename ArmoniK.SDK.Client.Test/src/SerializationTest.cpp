@@ -1,0 +1,206 @@
+#include <gtest/gtest.h>
+
+#include <armonik/sdk/common/ArmoniKSdkException.h>
+#include <armonik/sdk/common/DynamicLibrary.h>
+#include <armonik/sdk/common/TaskOptions.h>
+#include <armonik/sdk/common/TaskPayload.h>
+
+using namespace ArmoniK::Sdk::Common;
+
+// ---------------------------------------------------------------------------
+// TaskPayload JSON serialization
+// ---------------------------------------------------------------------------
+
+TEST(TaskPayloadJson, RoundTrip) {
+  TaskPayload original;
+  original.method_name = "compute";
+  original.inputs = {{"x", "blob-1"}, {"y", "blob-2"}};
+  original.outputs = {{"result", "blob-3"}};
+
+  auto json = original.Serialize();
+  auto restored = TaskPayload::Deserialize(json);
+
+  EXPECT_EQ(restored.method_name, original.method_name);
+  EXPECT_EQ(restored.inputs, original.inputs);
+  EXPECT_EQ(restored.outputs, original.outputs);
+}
+
+TEST(TaskPayloadJson, EmptyMaps) {
+  TaskPayload original;
+  original.method_name = "noop";
+  original.inputs = {};
+  original.outputs = {};
+
+  auto json = original.Serialize();
+  auto restored = TaskPayload::Deserialize(json);
+
+  EXPECT_EQ(restored.method_name, "noop");
+  EXPECT_TRUE(restored.inputs.empty());
+  EXPECT_TRUE(restored.outputs.empty());
+}
+
+TEST(TaskPayloadJson, EmptyMethodName) {
+  TaskPayload original;
+  original.method_name = "";
+  original.inputs = {};
+  original.outputs = {};
+
+  auto json = original.Serialize();
+  auto restored = TaskPayload::Deserialize(json);
+
+  EXPECT_EQ(restored.method_name, "");
+}
+
+TEST(TaskPayloadJson, MissingMethodField) {
+  // Java SDK omits the "method" field — must deserialize without error
+  const std::string json = R"({"inputs":{"a":"b"},"outputs":{"c":"d"}})";
+  auto payload = TaskPayload::Deserialize(json);
+  EXPECT_EQ(payload.method_name, "");
+  EXPECT_EQ(payload.inputs.at("a"), "b");
+  EXPECT_EQ(payload.outputs.at("c"), "d");
+}
+
+TEST(TaskPayloadJson, MissingInputsThrows) {
+  const std::string json = R"({"method":"foo","outputs":{}})";
+  EXPECT_THROW(TaskPayload::Deserialize(json), ArmoniKSdkException);
+}
+
+TEST(TaskPayloadJson, MissingOutputsThrows) {
+  const std::string json = R"({"method":"foo","inputs":{}})";
+  EXPECT_THROW(TaskPayload::Deserialize(json), ArmoniKSdkException);
+}
+
+TEST(TaskPayloadJson, InvalidJsonThrows) {
+  EXPECT_THROW(TaskPayload::Deserialize("not-json"), ArmoniKSdkException);
+  EXPECT_THROW(TaskPayload::Deserialize(""), ArmoniKSdkException);
+  EXPECT_THROW(TaskPayload::Deserialize("{"), ArmoniKSdkException);
+}
+
+TEST(TaskPayloadJson, MultipleInputsOutputs) {
+  TaskPayload original;
+  original.method_name = "multi";
+  original.inputs = {{"a", "1"}, {"b", "2"}, {"c", "3"}};
+  original.outputs = {{"out1", "4"}, {"out2", "5"}};
+
+  auto restored = TaskPayload::Deserialize(original.Serialize());
+
+  EXPECT_EQ(restored.inputs.size(), 3u);
+  EXPECT_EQ(restored.outputs.size(), 2u);
+  EXPECT_EQ(restored.inputs.at("b"), "2");
+  EXPECT_EQ(restored.outputs.at("out2"), "5");
+}
+
+// ---------------------------------------------------------------------------
+// TaskOptions::SetDynamicLibrary / GetDynamicLibrary
+// ---------------------------------------------------------------------------
+
+// Path-only loading: the classic case where the worker reads the .so directly from
+// its local filesystem. No blob involved, so library_blob_id must come back empty.
+TEST(TaskOptionsDynamicLibrary, RoundTripWithPathOnly) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+
+  DynamicLibrary lib;
+  lib.library_path = "/data/lib.so";
+  lib.symbol = "myprefix";
+
+  opts.SetDynamicLibrary(lib);
+  auto restored = opts.GetDynamicLibrary();
+
+  EXPECT_EQ(restored.library_path, "/data/lib.so");
+  EXPECT_EQ(restored.symbol, "myprefix");
+  EXPECT_TRUE(restored.library_blob_id.empty());
+}
+
+// Blob-only loading: the cross-SDK / dynamic upload case where the client has uploaded
+// the .so via UploadLibrary() and passes the returned blob ID instead of a path.
+// library_path is optional and should be empty when not set.
+TEST(TaskOptionsDynamicLibrary, RoundTripWithBlobId) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+
+  DynamicLibrary lib;
+  lib.library_blob_id = "blob-uuid-1234";
+  lib.symbol = "armonik";
+
+  opts.SetDynamicLibrary(lib);
+  auto restored = opts.GetDynamicLibrary();
+
+  EXPECT_EQ(restored.library_blob_id, "blob-uuid-1234");
+  EXPECT_EQ(restored.symbol, "armonik");
+}
+
+// Both fields set: library_path is kept as a hint but the worker will prefer the blob.
+// Ensures SetDynamicLibrary writes both keys and GetDynamicLibrary reads both.
+TEST(TaskOptionsDynamicLibrary, RoundTripWithBothPathAndBlobId) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+
+  DynamicLibrary lib;
+  lib.library_path = "/data/lib.so";
+  lib.library_blob_id = "blob-abc";
+  lib.symbol = "sym";
+
+  opts.SetDynamicLibrary(lib);
+  auto restored = opts.GetDynamicLibrary();
+
+  EXPECT_EQ(restored.library_path, "/data/lib.so");
+  EXPECT_EQ(restored.library_blob_id, "blob-abc");
+}
+
+// When neither LibraryPath nor LibraryBlobId is present, GetDynamicLibrary must
+// throw rather than silently return an unusable struct — the worker would dlopen("")
+// which is implementation-defined and almost always wrong.
+TEST(TaskOptionsDynamicLibrary, MissingLibraryPathWithoutBlobIdThrows) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+  opts.options[DynamicLibrary::KeyConventionVersion] = DynamicLibrary::ConventionVersion;
+  opts.options[DynamicLibrary::KeySymbol] = "sym";
+  // Neither LibraryPath nor LibraryBlobId set
+
+  EXPECT_THROW(opts.GetDynamicLibrary(), ArmoniKSdkException);
+}
+
+// SetDynamicLibrary must always write the ConventionVersion key so that the worker
+// can detect the encoding and dispatch to the right loading path.
+TEST(TaskOptionsDynamicLibrary, SetDynamicLibrarySetsConventionVersion) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+
+  DynamicLibrary lib;
+  lib.library_path = "/data/lib.so";
+  opts.SetDynamicLibrary(lib);
+
+  EXPECT_EQ(opts.options.at(DynamicLibrary::KeyConventionVersion), DynamicLibrary::ConventionVersion);
+}
+
+// An empty library_blob_id must not be written to the options map: a missing key
+// and an empty-string key have different semantics — the worker uses presence of
+// LibraryBlobId to decide between path-based and blob-based loading.
+TEST(TaskOptionsDynamicLibrary, BlobIdNotWrittenWhenEmpty) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+
+  DynamicLibrary lib;
+  lib.library_path = "/data/lib.so";
+  lib.library_blob_id = "";
+  opts.SetDynamicLibrary(lib);
+
+  EXPECT_EQ(opts.options.count(DynamicLibrary::KeyLibraryBlobId), 0u);
+}
+
+// ---------------------------------------------------------------------------
+// TaskOptions::GetConventionVersion
+// ---------------------------------------------------------------------------
+
+// After SetDynamicLibrary the version string must match the current convention.
+TEST(TaskOptionsConventionVersion, ReturnsVersionWhenSet) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+  DynamicLibrary lib;
+  lib.library_path = "/data/lib.so";
+  opts.SetDynamicLibrary(lib);
+
+  EXPECT_EQ(opts.GetConventionVersion(), DynamicLibrary::ConventionVersion);
+}
+
+// Tasks that were submitted without the convention (e.g. legacy path) will not have
+// ConventionVersion in their options; GetConventionVersion must throw so the caller
+// can distinguish them from convention tasks.
+TEST(TaskOptionsConventionVersion, ThrowsWhenMissing) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+  EXPECT_THROW(opts.GetConventionVersion(), ArmoniKSdkException);
+}

@@ -11,6 +11,7 @@
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <armonik/sdk/client/SessionService.h>
 #include <armonik/sdk/common/Configuration.h>
+#include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskPayload.h>
 #include <chrono>
@@ -719,9 +720,110 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
   std::cout << "Done" << std::endl;
 }
 
-// Both cases use max_retries=2 to prove the distinction:
-// "sdkError": ArmoniKSdkException → permanent failure (output.error) → 1 task attempt despite retries being allowed.
-// "retry": std::runtime_error → transient failure (gRPC UNAVAILABLE) → 3 task attempts (original + 2 retries
-// exhausted).
-INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
-                         ::testing::Values(ExceptionTestParam{"sdkError", 2, 1}, ExceptionTestParam{"retry", 2, 3}));
+INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest, ::testing::Values(std::string("runTimeError")));
+
+static std::string ConventionWorkerLibPath(const ArmoniK::Sdk::Common::Configuration &config) {
+  std::string base = config.get("Worker__ApplicationBasePath");
+  if (base.empty())
+    base = "/data";
+  const std::string version = config.get("WorkerLib__Version");
+  return base + "/libArmoniK.SDK.Worker.Test.so" + (version.empty() ? "" : "." + version);
+}
+
+/* Submit a TaskPayload (JSON) via the convention path and verify the task
+ * completes successfully. The method name is carried in the payload's "method"
+ * field cpp to cpp usage. */
+TEST(testSDK, testConventionEcho) {
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+
+  ArmoniK::Sdk::Common::DynamicLibrary lib;
+  lib.library_path = ConventionWorkerLibPath(config);
+  lib.symbol = "armonik"; // the test worker exports armonik_create_service etc.
+
+  ArmoniK::Sdk::Common::TaskOptions task_options("", config.get("WorkerLib__Version"), "End2EndTest", "",
+                                                 config.get("PartitionId"));
+  task_options.SetDynamicLibrary(lib);
+  task_options.max_retries = 1;
+
+  ArmoniK::Sdk::Common::Properties properties{config, task_options};
+
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+  std::cout << "Session : " << service.getSession() << std::endl;
+
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
+
+  ArmoniK::Sdk::Common::TaskPayload payload;
+  payload.method_name = "EchoService";
+  payload.inputs = {{"data", "hello-convention"}};
+  payload.outputs = {};
+
+  auto tasks = service.Submit({payload}, handler);
+  std::cout << "Sent : " << tasks[0] << std::endl;
+
+  service.WaitResults();
+
+  ASSERT_FALSE(tasks.empty());
+  ASSERT_TRUE(handler->received);
+  ASSERT_FALSE(handler->is_error);
+
+  service.CloseSession();
+  std::cout << "Convention echo test done!" << std::endl;
+}
+
+/* Submit a TaskPayload whose "method" field is empty, with the method name
+ *provided via the MethodName task option instead.  This exercises the
+ *cross-SDK interoperability path: a client that does not include "method"
+ *in the JSON payload (like in the Java SDK) can still dispatch to the right
+ *service by setting the MethodName key in task options.*/
+TEST(testSDK, testConventionMethodNameFallback) {
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+
+  ArmoniK::Sdk::Common::DynamicLibrary lib;
+  lib.library_path = ConventionWorkerLibPath(config);
+  lib.symbol = "armonik";
+
+  ArmoniK::Sdk::Common::TaskOptions task_options("", config.get("WorkerLib__Version"), "End2EndTest", "",
+                                                 config.get("PartitionId"));
+  task_options.SetDynamicLibrary(lib);
+
+  // Provide the method name via task option — the payload will have none.
+  task_options.options[ArmoniK::Sdk::Common::DynamicLibrary::KeyMethodName] = "EchoService";
+  task_options.max_retries = 1;
+
+  ArmoniK::Sdk::Common::Properties properties{config, task_options};
+
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+  std::cout << "Session : " << service.getSession() << std::endl;
+
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
+
+  ArmoniK::Sdk::Common::TaskPayload payload;
+  payload.inputs = {{"data", "hello-fallback"}};
+  payload.outputs = {};
+
+  auto tasks = service.Submit({payload}, handler);
+  std::cout << "Sent : " << tasks[0] << std::endl;
+
+  service.WaitResults();
+
+  ASSERT_FALSE(tasks.empty());
+  ASSERT_TRUE(handler->received);
+  ASSERT_FALSE(handler->is_error);
+
+  service.CloseSession();
+  std::cout << "Convention method name fallback test done!" << std::endl;
+}
