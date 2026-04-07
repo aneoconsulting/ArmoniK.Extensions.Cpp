@@ -75,7 +75,8 @@ ApplicationManager &ApplicationManager::UseLibrary(const ArmoniK::Sdk::Common::D
 
   currentLibraryPath = lib.library_path;
   currentLibraryServiceName = service_name;
-  service_manager = ServiceManager(functionPointers, ServiceId({lib.library_path, ""}, service_namespace, service_name));
+  service_manager =
+      ServiceManager(functionPointers, ServiceId({lib.library_path, ""}, service_namespace, service_name));
   logger.info("Successfully loaded library " + lib.library_path);
   return *this;
 }

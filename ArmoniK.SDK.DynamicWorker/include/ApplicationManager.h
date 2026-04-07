@@ -55,8 +55,7 @@ public:
    * @note Caches by library_path + service_name; a repeated call with the same values is a no-op.
    */
   ApplicationManager &UseLibrary(const ArmoniK::Sdk::Common::DynamicLibrary &lib,
-                                 const std::string &service_namespace = "",
-                                 const std::string &service_name = "") &;
+                                 const std::string &service_namespace = "", const std::string &service_name = "") &;
 
   /**
    * @brief Configures the application manager to use the given service
