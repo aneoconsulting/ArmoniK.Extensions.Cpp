@@ -743,7 +743,9 @@ TEST(testSDK, testConventionEcho) {
   lib.library_path = ConventionWorkerLibPath(config);
   lib.symbol = "armonik"; // the test worker exports armonik_create_service etc.
 
-  ArmoniK::Sdk::Common::TaskOptions task_options("", config.get("WorkerLib__Version"), "End2EndTest", "",
+  // application_namespace and application_service are forwarded by DynamicWorker to
+  // armonik_create_service — required by the test worker to dispatch to EchoService.
+  ArmoniK::Sdk::Common::TaskOptions task_options("", config.get("WorkerLib__Version"), "End2EndTest", "EchoService",
                                                  config.get("PartitionId"));
   task_options.SetDynamicLibrary(lib);
   task_options.max_retries = 1;
@@ -792,7 +794,9 @@ TEST(testSDK, testConventionMethodNameFallback) {
   lib.library_path = ConventionWorkerLibPath(config);
   lib.symbol = "armonik";
 
-  ArmoniK::Sdk::Common::TaskOptions task_options("", config.get("WorkerLib__Version"), "End2EndTest", "",
+  // application_namespace and application_service are forwarded by DynamicWorker to
+  // armonik_create_service — required by the test worker to dispatch to EchoService.
+  ArmoniK::Sdk::Common::TaskOptions task_options("", config.get("WorkerLib__Version"), "End2EndTest", "EchoService",
                                                  config.get("PartitionId"));
   task_options.SetDynamicLibrary(lib);
 

@@ -70,7 +70,7 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
         resolved_inputs[name] = (dep_it != deps.end()) ? dep_it->second : value;
       }
 
-      return manager.UseLibrary(lib)
+      return manager.UseLibrary(lib, rawOptions.application_namespace(), rawOptions.application_service())
           .UseSession(taskHandler.getSessionId())
           .Execute(taskHandler, method_name, resolved_inputs, payload.outputs);
     }

@@ -47,12 +47,16 @@ public:
   /**
    * @brief Configures the application manager to load a library directly by path (convention mode).
    * The library is loaded from lib.library_path and function symbols are resolved using the lib.symbol prefix
-   * (defaults to "armonik" if empty). A default service is created with empty namespace and name.
+   * (defaults to "armonik" if empty).
    * @param lib DynamicLibrary descriptor
+   * @param service_namespace Namespace passed to armonik_create_service (empty for single-service workers)
+   * @param service_name Name passed to armonik_create_service (empty for single-service workers)
    * @return this ApplicationManager
-   * @note Caches by library_path; a repeated call with the same path is a no-op.
+   * @note Caches by library_path + service_name; a repeated call with the same values is a no-op.
    */
-  ApplicationManager &UseLibrary(const ArmoniK::Sdk::Common::DynamicLibrary &lib) &;
+  ApplicationManager &UseLibrary(const ArmoniK::Sdk::Common::DynamicLibrary &lib,
+                                 const std::string &service_namespace = "",
+                                 const std::string &service_name = "") &;
 
   /**
    * @brief Configures the application manager to use the given service
@@ -125,6 +129,11 @@ private:
    * @brief Path of the currently loaded library (convention mode); empty when in legacy mode
    */
   std::string currentLibraryPath;
+
+  /**
+   * @brief Service name used when the current library was loaded (convention mode)
+   */
+  std::string currentLibraryServiceName;
 
   /**
    * @brief Local Logger

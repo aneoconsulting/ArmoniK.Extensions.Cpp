@@ -55,8 +55,10 @@ armonik::api::worker::ProcessStatus ApplicationManager::Execute(armonik::api::wo
   return Execute(taskHandler, method_name, payload.Serialize());
 }
 
-ApplicationManager &ApplicationManager::UseLibrary(const ArmoniK::Sdk::Common::DynamicLibrary &lib) & {
-  if (lib.library_path == currentLibraryPath) {
+ApplicationManager &ApplicationManager::UseLibrary(const ArmoniK::Sdk::Common::DynamicLibrary &lib,
+                                                   const std::string &service_namespace,
+                                                   const std::string &service_name) & {
+  if (lib.library_path == currentLibraryPath && service_name == currentLibraryServiceName) {
     return *this;
   }
   service_manager.clear();
@@ -72,8 +74,8 @@ ApplicationManager &ApplicationManager::UseLibrary(const ArmoniK::Sdk::Common::D
                               currentLibrary.get<armonik_call_t>((prefix + "_call").c_str())};
 
   currentLibraryPath = lib.library_path;
-  // Create a default service (convention workers typically export a single unnamed service)
-  service_manager = ServiceManager(functionPointers, ServiceId({lib.library_path, ""}, "", ""));
+  currentLibraryServiceName = service_name;
+  service_manager = ServiceManager(functionPointers, ServiceId({lib.library_path, ""}, service_namespace, service_name));
   logger.info("Successfully loaded library " + lib.library_path);
   return *this;
 }
