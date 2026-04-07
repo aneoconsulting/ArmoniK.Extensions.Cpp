@@ -44,8 +44,7 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
         lib.library_path = "/tmp/armonik-lib-" + lib.library_blob_id + ".so";
         std::ofstream tmp(lib.library_path, std::ios::binary | std::ios::trunc);
         if (!tmp) {
-          throw ArmoniK::Sdk::Common::ArmoniKSdkException("Failed to write library to temp file: " +
-                                                          lib.library_path);
+          throw ArmoniK::Sdk::Common::ArmoniKSdkException("Failed to write library to temp file: " + lib.library_path);
         }
         tmp.write(blob_it->second.data(), static_cast<std::streamsize>(blob_it->second.size()));
       }
@@ -57,8 +56,8 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
       if (method_name.empty()) {
         const auto it = rawOptions.options().find(ArmoniK::Sdk::Common::DynamicLibrary::KeyMethodName);
         if (it == rawOptions.options().end() || it->second.empty()) {
-          throw ArmoniK::Sdk::Common::ArmoniKSdkException(
-              "Convention task has no method name: set the 'method' field in the payload or the 'MethodName' task option");
+          throw ArmoniK::Sdk::Common::ArmoniKSdkException("Convention task has no method name: set the 'method' field "
+                                                          "in the payload or the 'MethodName' task option");
         }
         method_name = it->second;
       }

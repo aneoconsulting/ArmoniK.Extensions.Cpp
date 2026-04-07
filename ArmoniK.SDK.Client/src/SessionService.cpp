@@ -27,24 +27,21 @@ ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::LegacyTas
   ensure_valid();
   return impl->Submit(requests, std::move(handler), task_options);
 }
-std::vector<std::string>
-SessionService::Submit(const std::vector<Common::LegacyTaskPayload> &requests,
-                       std::shared_ptr<IServiceInvocationHandler> handler) {
+std::vector<std::string> SessionService::Submit(const std::vector<Common::LegacyTaskPayload> &requests,
+                                                std::shared_ptr<IServiceInvocationHandler> handler) {
   ensure_valid();
   return impl->Submit(requests, std::move(handler));
 }
 
-std::vector<std::string>
-SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
-                       std::shared_ptr<IServiceInvocationHandler> handler,
-                       const ArmoniK::Sdk::Common::TaskOptions &task_options) {
+std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
+                                                std::shared_ptr<IServiceInvocationHandler> handler,
+                                                const ArmoniK::Sdk::Common::TaskOptions &task_options) {
   ensure_valid();
   return impl->Submit(requests, std::move(handler), task_options);
 }
 
-std::vector<std::string>
-SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
-                       std::shared_ptr<IServiceInvocationHandler> handler) {
+std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
+                                                std::shared_ptr<IServiceInvocationHandler> handler) {
   ensure_valid();
   return impl->Submit(requests, std::move(handler));
 }

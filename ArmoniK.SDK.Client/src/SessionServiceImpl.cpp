@@ -130,11 +130,10 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
 
 const std::string &SessionServiceImpl::getSession() const { return session; }
 
-std::vector<std::string>
-SessionServiceImpl::SubmitRaw(const std::vector<std::string> &serialized_payloads,
-                              const std::vector<std::vector<std::string>> &data_dependencies,
-                              std::shared_ptr<IServiceInvocationHandler> handler,
-                              const Common::TaskOptions &task_options) {
+std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::string> &serialized_payloads,
+                                                       const std::vector<std::vector<std::string>> &data_dependencies,
+                                                       std::shared_ptr<IServiceInvocationHandler> handler,
+                                                       const Common::TaskOptions &task_options) {
 
   const std::size_t message_overhead = 128;
   std::size_t data_chunk_max_size =
@@ -306,10 +305,9 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
   return SubmitRaw(serialized, deps, std::move(handler), task_options);
 }
 
-std::vector<std::string>
-SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
-                           std::shared_ptr<IServiceInvocationHandler> handler,
-                           const Common::TaskOptions &task_options) {
+std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
+                                                    std::shared_ptr<IServiceInvocationHandler> handler,
+                                                    const Common::TaskOptions &task_options) {
   std::vector<std::string> serialized;
   serialized.reserve(task_requests.size());
 
