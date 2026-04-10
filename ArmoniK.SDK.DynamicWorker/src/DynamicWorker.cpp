@@ -52,7 +52,8 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
       const auto payload = ArmoniK::Sdk::Common::TaskPayload::Deserialize(taskHandler.getPayload());
 
       if (lib.symbol.empty()) {
-        throw ArmoniK::Sdk::Common::ArmoniKSdkException("Convention task has no method name: set the 'Symbol' task option");
+        throw ArmoniK::Sdk::Common::ArmoniKSdkException(
+            "Convention task has no method name: set the 'Symbol' task option");
       }
       const std::string &method_name = lib.symbol;
 
