@@ -46,8 +46,8 @@ public:
 
   /**
    * @brief Configures the application manager to load a library directly by path (convention mode).
-   * The library is loaded from lib.library_path and function symbols are resolved using the lib.symbol prefix
-   * (defaults to "armonik" if empty).
+   * The library is loaded from lib.library_path; ABI symbols are always resolved with the "armonik_" prefix.
+   * lib.symbol carries the method name passed to armonik_call at execution time.
    * @param lib DynamicLibrary descriptor
    * @param service_namespace Namespace passed to armonik_create_service (empty for single-service workers)
    * @param service_name Name passed to armonik_create_service (empty for single-service workers)

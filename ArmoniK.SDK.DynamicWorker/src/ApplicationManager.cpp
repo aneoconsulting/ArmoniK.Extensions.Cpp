@@ -65,7 +65,7 @@ ApplicationManager &ApplicationManager::UseLibrary(const ArmoniK::Sdk::Common::D
   currentId.clear();
   currentLibrary = DynamicLib(lib.library_path.c_str());
 
-  const std::string prefix = lib.symbol.empty() ? "armonik" : lib.symbol;
+  const std::string prefix = "armonik";
   functionPointers =
       ArmoniKFunctionPointers{currentLibrary.get<armonik_create_service_t>((prefix + "_create_service").c_str()),
                               currentLibrary.get<armonik_destroy_service_t>((prefix + "_destroy_service").c_str()),

@@ -119,7 +119,7 @@ TEST(TaskOptionsDynamicLibrary, RoundTripWithBlobId) {
 
   DynamicLibrary lib;
   lib.library_blob_id = "blob-uuid-1234";
-  lib.symbol = "armonik";
+  lib.symbol = "myMethod"; // method name passed to armonik_call at execution time
 
   opts.SetDynamicLibrary(lib);
   auto restored = opts.GetDynamicLibrary();

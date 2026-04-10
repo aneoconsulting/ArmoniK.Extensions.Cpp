@@ -741,7 +741,7 @@ TEST(testSDK, testConventionEcho) {
 
   ArmoniK::Sdk::Common::DynamicLibrary lib;
   lib.library_path = ConventionWorkerLibPath(config);
-  lib.symbol = "armonik"; // the test worker exports armonik_create_service etc.
+  lib.symbol = "EchoService"; // passed as function_name to armonik_call for dispatch
 
   // application_namespace and application_service are forwarded by DynamicWorker to
   // armonik_create_service — required by the test worker to dispatch to EchoService.
@@ -762,7 +762,6 @@ TEST(testSDK, testConventionEcho) {
   auto handler = std::make_shared<EchoServiceHandler>(logger);
 
   ArmoniK::Sdk::Common::TaskPayload payload;
-  payload.method_name = "EchoService";
   payload.inputs = {{"data", "hello-convention"}};
   payload.outputs = {};
 

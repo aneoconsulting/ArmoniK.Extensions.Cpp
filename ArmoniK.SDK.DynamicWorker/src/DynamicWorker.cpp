@@ -51,16 +51,10 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
 
       const auto payload = ArmoniK::Sdk::Common::TaskPayload::Deserialize(taskHandler.getPayload());
 
-      // Resolve method name: prefer payload field, fall back to MethodName task option (cross-SDK interoperability)
-      std::string method_name = payload.method_name;
-      if (method_name.empty()) {
-        const auto it = rawOptions.options().find(ArmoniK::Sdk::Common::DynamicLibrary::KeyMethodName);
-        if (it == rawOptions.options().end() || it->second.empty()) {
-          throw ArmoniK::Sdk::Common::ArmoniKSdkException("Convention task has no method name: set the 'method' field "
-                                                          "in the payload or the 'MethodName' task option");
-        }
-        method_name = it->second;
+      if (lib.symbol.empty()) {
+        throw ArmoniK::Sdk::Common::ArmoniKSdkException("Convention task has no method name: set the 'Symbol' task option");
       }
+      const std::string &method_name = lib.symbol;
 
       // Resolve inputs: if a value matches a data dependency key (blob ID), substitute its downloaded content.
       // This handles both inline values (C++ native payloads) and blob ID references (cross-SDK interoperability).
