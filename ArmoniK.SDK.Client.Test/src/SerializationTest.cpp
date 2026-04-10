@@ -125,7 +125,7 @@ TEST(TaskOptionsDynamicLibrary, RoundTripWithBlobId) {
   auto restored = opts.GetDynamicLibrary();
 
   EXPECT_EQ(restored.library_blob_id, "blob-uuid-1234");
-  EXPECT_EQ(restored.symbol, "armonik");
+  EXPECT_EQ(restored.symbol, "myMethod");
 }
 
 // Both fields set: library_path is kept as a hint but the worker will prefer the blob.
