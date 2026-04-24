@@ -27,11 +27,20 @@ typedef enum armonik_status_t {
    */
   ARMONIK_STATUS_OK = 0,
   /**
-   * @brief Failed called
-   * @note This status should be used only if the failure reason is not solvable by a retry. The task result will then
-   * be marked as ABORTED.
+   * @brief Failed call, not retryable.
+   * @note Use this status for permanent failures. The task will be marked as Error and will not be retried.
+   * @note When using the ArmoniK.SDK.Worker library, throwing an
+   * ArmoniK::Sdk::Common::ArmoniKSdkException from ServiceBase::call() will automatically produce this status.
    */
-  ARMONIK_STATUS_ERROR = 1
+  ARMONIK_STATUS_ERROR = 1,
+  /**
+   * @brief Failed call, retryable.
+   * @note Use this status for transient failures. ArmoniK will retry the task according to the task's retry policy
+   * (TaskOptions::max_retries).
+   * @note When using the ArmoniK.SDK.Worker library, any exception other than
+   * ArmoniK::Sdk::Common::ArmoniKSdkException thrown from ServiceBase::call() will automatically produce this status.
+   */
+  ARMONIK_STATUS_RETRY = 2
 } armonik_status_t;
 
 /**

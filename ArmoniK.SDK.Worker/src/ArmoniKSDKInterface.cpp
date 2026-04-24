@@ -1,4 +1,5 @@
 #include "armonik/sdk/worker/ArmoniKSDKInterface.h"
+#include "armonik/sdk/common/ArmoniKSdkException.h"
 #include "armonik/sdk/worker/ServiceBase.h"
 #include <cstring>
 
@@ -46,10 +47,14 @@ armonik_status_t armonik_call_default(void *armonik_context, void *service_conte
                       ->call(session_context, std::string(function_name), std::string(input, input_size));
     callback(armonik_context, ARMONIK_STATUS_OK, output.data(), output.size());
     return ARMONIK_STATUS_OK;
-  } catch (const std::exception &e) {
+  } catch (const ArmoniK::Sdk::Common::ArmoniKSdkException &e) {
     auto msg = e.what();
     callback(armonik_context, ARMONIK_STATUS_ERROR, msg, std::strlen(msg));
     return ARMONIK_STATUS_ERROR;
+  } catch (const std::exception &e) {
+    auto msg = e.what();
+    callback(armonik_context, ARMONIK_STATUS_RETRY, msg, std::strlen(msg));
+    return ARMONIK_STATUS_RETRY;
   }
 }
 

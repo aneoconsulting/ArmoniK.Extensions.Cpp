@@ -105,5 +105,6 @@ public:
   std::mutex mutex;
   bool received = false;
   bool is_error = false;
+  int error_count = 0;
   armonik::api::common::logger::LocalLogger logger;
 };

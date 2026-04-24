@@ -2,6 +2,7 @@
 #include "ContextIds.h"
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/worker/Worker/ProcessStatus.h>
+#include <stdexcept>
 #include <utility>
 
 namespace ArmoniK {
@@ -11,6 +12,8 @@ namespace {
 struct ArmonikContext {
   armonik::api::worker::TaskHandler &taskHandler;
   armonik::api::worker::ProcessStatus output;
+  bool retry_requested = false;
+  std::string retry_message;
 
   explicit ArmonikContext(armonik::api::worker::TaskHandler &taskHandler) : taskHandler(taskHandler) {}
 };
@@ -41,6 +44,9 @@ armonik::api::worker::ProcessStatus ServiceManager::Execute(armonik::api::worker
   }
   auto status = functionPointers.call(&callContext, service_context, session_context, method_name.c_str(),
                                       method_arguments.data(), method_arguments.size(), ServiceManager::UploadResult);
+  if (callContext.retry_requested) {
+    throw std::runtime_error(callContext.retry_message);
+  }
   if (status != ARMONIK_STATUS_OK) {
     if (callContext.output.ok()) {
       callContext.output.set_error("Unknown error in worker, check logs.");
@@ -53,6 +59,11 @@ armonik::api::worker::ProcessStatus ServiceManager::Execute(armonik::api::worker
 
 void ServiceManager::UploadResult(void *opaque_context, armonik_status_t status, const char *data, size_t data_size) {
   auto context = static_cast<ArmonikContext *>(opaque_context);
+  if (status == ARMONIK_STATUS_RETRY) {
+    context->retry_requested = true;
+    context->retry_message = std::string(data, data_size);
+    return;
+  }
   if (status != ARMONIK_STATUS_OK) {
     context->output.set_error(std::string(data, data_size));
     return;

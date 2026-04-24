@@ -3,9 +3,11 @@
 #include <iostream>
 
 #include <algorithm>
+#include <armonik/client/tasks_service.grpc.pb.h>
 #include <armonik/common/logger/formatter.h>
 #include <armonik/common/logger/logger.h>
 #include <armonik/common/logger/writer.h>
+#include <armonik/common/tasks_filters.pb.h>
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <armonik/sdk/client/SessionService.h>
 #include <armonik/sdk/common/Configuration.h>
@@ -16,6 +18,7 @@
 #include <numeric>
 #include <thread>
 
+#include "ChannelPool.h"
 #include "End2EndHandlers.h"
 
 template <typename T> std::string StrSerialize(T a, T b) {
@@ -623,10 +626,17 @@ TEST(testSDK, testLargePayload) {
   std::cout << "Large payload test done!" << std::endl;
 }
 
-class ExceptionServiceTest : public ::testing::TestWithParam<std::string> {};
+struct ExceptionTestParam {
+  std::string method_name;
+  int max_retries;
+  // Expected number of task attempts in ArmoniK (1 + actual retries performed).
+  int expected_task_count;
+};
+
+class ExceptionServiceTest : public ::testing::TestWithParam<ExceptionTestParam> {};
 
 TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
-  const std::string name = GetParam();
+  const auto &param = GetParam();
 
   std::cout << "Testing Exception service..." << std::endl;
 
@@ -641,7 +651,7 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
   ArmoniK::Sdk::Common::TaskOptions session_task_options("libArmoniK.SDK.Worker.Test.so",
                                                          config.get("WorkerLib__Version"), "End2EndTest",
                                                          "ExceptionService", config.get("PartitionId"));
-  session_task_options.max_retries = 1;
+  session_task_options.max_retries = param.max_retries;
 
   ArmoniK::Sdk::Common::Properties properties{config, session_task_options};
 
@@ -656,18 +666,57 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
   auto handler = std::make_shared<ExceptionServiceHandler>(logger);
   std::string args = "Exception success";
 
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload(name, args)}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskPayload(param.method_name, args)}, handler);
 
   std::cout << "Sent : " << tasks[0] << std::endl;
 
   service.WaitResults();
 
-  ASSERT_TRUE(!args.empty());
   ASSERT_TRUE(handler->received);
   ASSERT_TRUE(handler->is_error);
+  // The client receives exactly one HandleError call once the result is aborted.
+  ASSERT_EQ(handler->error_count, 1);
+
+  // Verify the actual number of task attempts recorded by ArmoniK.
+  // Each retry creates a new task, so total = 1 (original) + retries performed.
+  // "sdkError" never retries (ArmoniKSdkException → output.error path) even though max_retries=2 → total == 1.
+  // "retry" exhausts all retries (std::exception → gRPC UNAVAILABLE path) → total == max_retries + 1 == 3.
+  {
+    ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
+    auto channel_guard = pool.GetChannel();
+    auto tasks_stub = armonik::api::grpc::v1::tasks::Tasks::NewStub(channel_guard.channel);
+
+    armonik::api::grpc::v1::tasks::ListTasksRequest list_request;
+    armonik::api::grpc::v1::tasks::ListTasksResponse list_response;
+
+    // Filter to this session only.
+    armonik::api::grpc::v1::tasks::FilterField filter_field;
+    filter_field.mutable_field()->mutable_task_summary_field()->set_field(
+        armonik::api::grpc::v1::tasks::TASK_SUMMARY_ENUM_FIELD_SESSION_ID);
+    filter_field.mutable_filter_string()->set_operator_(armonik::api::grpc::v1::FILTER_STRING_OPERATOR_EQUAL);
+    filter_field.mutable_filter_string()->set_value(service.getSession());
+    *list_request.mutable_filters()->mutable_or_()->Add()->mutable_and_()->Add() = filter_field;
+
+    list_request.mutable_sort()->set_direction(armonik::api::grpc::v1::sort_direction::SORT_DIRECTION_ASC);
+    list_request.mutable_sort()->mutable_field()->mutable_task_summary_field()->set_field(
+        armonik::api::grpc::v1::tasks::TASK_SUMMARY_ENUM_FIELD_CREATED_AT);
+
+    list_request.set_page(0);
+    list_request.set_page_size(1);
+    list_request.set_with_errors(true);
+
+    grpc::ClientContext context;
+    ASSERT_TRUE(tasks_stub->ListTasks(&context, list_request, &list_response).ok());
+    ASSERT_EQ(list_response.total(), param.expected_task_count);
+  }
 
   service.CloseSession();
   std::cout << "Done" << std::endl;
 }
 
-INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest, ::testing::Values(std::string("runTimeError")));
+// Both cases use max_retries=2 to prove the distinction:
+// "sdkError": ArmoniKSdkException → permanent failure (output.error) → 1 task attempt despite retries being allowed.
+// "retry": std::runtime_error → transient failure (gRPC UNAVAILABLE) → 3 task attempts (original + 2 retries
+// exhausted).
+INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
+                         ::testing::Values(ExceptionTestParam{"sdkError", 2, 1}, ExceptionTestParam{"retry", 2, 3}));

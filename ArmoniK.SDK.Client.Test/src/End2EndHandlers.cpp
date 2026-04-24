@@ -193,6 +193,7 @@ void ExceptionServiceHandler::HandleError(const std::exception &e, const std::st
   logger.debug(ss.str());
   received = true;
   is_error = true;
+  ++error_count;
 }
 ExceptionServiceHandler::ExceptionServiceHandler(armonik::api::common::logger::Logger &logger)
     : logger(logger.local()) {}
