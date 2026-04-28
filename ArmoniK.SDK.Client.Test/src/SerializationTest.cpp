@@ -13,49 +13,32 @@ using namespace ArmoniK::Sdk::Common;
 
 TEST(TaskPayloadJson, RoundTrip) {
   TaskPayload original;
-  original.method_name = "compute";
   original.inputs = {{"x", "blob-1"}, {"y", "blob-2"}};
   original.outputs = {{"result", "blob-3"}};
 
   auto json = original.Serialize();
   auto restored = TaskPayload::Deserialize(json);
 
-  EXPECT_EQ(restored.method_name, original.method_name);
   EXPECT_EQ(restored.inputs, original.inputs);
   EXPECT_EQ(restored.outputs, original.outputs);
 }
 
 TEST(TaskPayloadJson, EmptyMaps) {
   TaskPayload original;
-  original.method_name = "noop";
   original.inputs = {};
   original.outputs = {};
 
   auto json = original.Serialize();
   auto restored = TaskPayload::Deserialize(json);
 
-  EXPECT_EQ(restored.method_name, "noop");
   EXPECT_TRUE(restored.inputs.empty());
   EXPECT_TRUE(restored.outputs.empty());
-}
-
-TEST(TaskPayloadJson, EmptyMethodName) {
-  TaskPayload original;
-  original.method_name = "";
-  original.inputs = {};
-  original.outputs = {};
-
-  auto json = original.Serialize();
-  auto restored = TaskPayload::Deserialize(json);
-
-  EXPECT_EQ(restored.method_name, "");
 }
 
 TEST(TaskPayloadJson, MissingMethodField) {
   // Java SDK omits the "method" field — must deserialize without error
   const std::string json = R"({"inputs":{"a":"b"},"outputs":{"c":"d"}})";
   auto payload = TaskPayload::Deserialize(json);
-  EXPECT_EQ(payload.method_name, "");
   EXPECT_EQ(payload.inputs.at("a"), "b");
   EXPECT_EQ(payload.outputs.at("c"), "d");
 }
@@ -78,7 +61,6 @@ TEST(TaskPayloadJson, InvalidJsonThrows) {
 
 TEST(TaskPayloadJson, MultipleInputsOutputs) {
   TaskPayload original;
-  original.method_name = "multi";
   original.inputs = {{"a", "1"}, {"b", "2"}, {"c", "3"}};
   original.outputs = {{"out1", "4"}, {"out2", "5"}};
 
