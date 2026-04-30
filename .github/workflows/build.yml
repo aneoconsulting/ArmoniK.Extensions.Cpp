@@ -127,11 +127,6 @@ jobs:
 
       - name: Login Docker
         run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_LOGIN }} --password-stdin
-  
-      - name: Override parameters tfvars
-        run: |
-          cat ${{ github.workspace }}/infra/versions.tfvars.json | jq --arg worker "${{ steps.build.outputs.worker_img }}" --arg version "${{ steps.build.outputs.worker_version }}" '.armonik_versions.samples=$version | .armonik_images.samples+=[$worker]' > .versions.tfvars.json
-          mv .versions.tfvars.json ${{ github.workspace }}/infra/versions.tfvars.json
 
       - id: deploy
         name: Deploy
@@ -139,21 +134,23 @@ jobs:
         with:
           working-directory: ${{ github.workspace }}/infra
           type: localhost
+          override-compute: true
+          override-worker-version: ${{ steps.build.outputs.worker_version }}
+          override-worker-image:  ${{ steps.build.outputs.worker_img }}
+          override-worker-partition: cppdynamic
 
       - name: Run Client tests
         timeout-minutes: 5
         run: |
           set -ex
-          kubectl set image deployment/compute-plane-default -n armonik worker-0=${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}
-          export CPIP=$(kubectl get svc control-plane -n armonik -o custom-columns="IP:.spec.clusterIP" --no-headers=true)
-          export CPPort=$(kubectl get svc control-plane -n armonik -o custom-columns="PORT:.spec.ports[*].port" --no-headers=true)
-          docker run --rm -t --network host -e GrpcClient__Endpoint=http://$CPIP:$CPPort -e WorkerLib__Version="${{ needs.versionning.outputs.version}}" "${{ steps.build.outputs.client_img}}:${{ needs.versionning.outputs.version}}"
+          export CONTROL_PLANE_URL=$(jq -r .armonik.control_plane_url "${{ steps.deploy.outputs.generated-folder }}/armonik-output.json")
+          docker run --rm -t --network host -e GrpcClient__Endpoint="${CONTROL_PLANE_URL}" -e PartitionId=cppdynamic -e WorkerLib__Version="${{ needs.versionning.outputs.version}}" "${{ steps.build.outputs.client_img}}:${{ needs.versionning.outputs.version}}"
 
       - name: Push Docker
         run: |
-          docker push "${{ steps.build.outputs.worker_img}}:${{ steps.build.outputs.worker_version }}"
-          docker push "${{ steps.build.outputs.worker_test_img}}":"build-${{ matrix.dist }}"
-          docker push "${{ steps.build.outputs.client_img}}:${{ steps.build.outputs.client_version }}"
+          docker push "${{ steps.build.outputs.worker_img }}:${{ steps.build.outputs.worker_version }}"
+          docker push "${{ steps.build.outputs.worker_test_img }}":"build-${{ matrix.dist }}"
+          docker push "${{ steps.build.outputs.client_img }}:${{ steps.build.outputs.client_version }}"
           
   build-upload-artifact:
     strategy:
