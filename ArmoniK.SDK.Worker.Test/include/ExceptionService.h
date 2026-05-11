@@ -1,5 +1,6 @@
 #pragma once
 
+#include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/worker/ServiceBase.h>
 #include <iostream>
 namespace ArmoniK {
@@ -14,8 +15,11 @@ class ExceptionService : ServiceBase {
 public:
   std::string call(void *, const std::string &name, const std::string &input) override {
     std::cout << "ExceptionService method : " << name << std::endl;
-    if (name == "runTimeError") {
-      throw std::runtime_error("Not implemented method");
+    if (name == "sdkError") {
+      throw ArmoniK::Sdk::Common::ArmoniKSdkException("Permanent SDK error, no retry");
+    }
+    if (name == "retry") {
+      throw std::runtime_error("Transient error, retry requested");
     }
     throw std::logic_error("Logic error in method");
   }
