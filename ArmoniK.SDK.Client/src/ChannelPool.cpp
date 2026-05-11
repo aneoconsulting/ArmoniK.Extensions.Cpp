@@ -1,6 +1,7 @@
 #include "ChannelPool.h"
 
 #include <armonik/client/channel/ChannelFactory.h>
+#include <armonik/sdk/common/Version.h>
 #include <armonik/common/options/ControlPlane.h>
 #include <armonik/common/utils/ChannelArguments.h>
 #include <grpcpp/create_channel.h>
@@ -75,7 +76,7 @@ bool ChannelPool::ShutdownOnFailure(std::shared_ptr<grpc::Channel> channel) {
 }
 
 ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::api::common::logger::Logger &logger)
-    : properties_(std::move(properties)), logger_(logger.local()) {}
+    : properties_(std::move(properties)), logger_(logger.local({{"sdk_version", ArmoniK::Sdk::Common::getVersion()}})) {}
 ChannelPool::~ChannelPool() = default;
 
 ChannelPool::ChannelGuard::ChannelGuard(Internal::ChannelPool *pool) : pool_(pool) {

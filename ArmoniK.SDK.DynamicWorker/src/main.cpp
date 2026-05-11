@@ -1,6 +1,7 @@
 #include "DynamicWorker.h"
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/TaskPayload.h>
+#include <armonik/sdk/common/Version.h>
 #include <armonik/worker/utils/WorkerServer.h>
 
 int main() {
@@ -9,6 +10,7 @@ int main() {
 
   armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
                                               armonik::api::common::logger::formatter_clef(), config.get_log_level()};
+  logger.global_context_add("sdk_version", ArmoniK::Sdk::Common::getVersion());
 
   logger.info("Starting ArmoniK SDK worker");
 

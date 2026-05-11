@@ -12,6 +12,12 @@ FILE(GLOB_RECURSE HEADER_CLIENT_FILES ${HEADER_FILES_DIR}/*.h)
 
 find_package(ArmoniK.Api.Common CONFIG REQUIRED)
 
+configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/include/armonik/sdk/common/Version.h"
+        @ONLY
+)
+
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common)
@@ -19,6 +25,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common)
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         )
 
@@ -41,6 +48,8 @@ install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY ${HEADER_FILES_DIR}/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} FILES_MATCHING PATTERN "*.h")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/armonik/sdk/common/Version.h"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/armonik/sdk/common)
 
 install(EXPORT ${PROJECT_NAME}Targets
         FILE ${PROJECT_NAME}Targets.cmake

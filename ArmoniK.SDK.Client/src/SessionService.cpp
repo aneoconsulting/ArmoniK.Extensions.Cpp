@@ -1,5 +1,6 @@
 #include "armonik/sdk/client/SessionService.h"
 #include "SessionServiceImpl.h"
+#include <armonik/sdk/common/Version.h>
 #include <string>
 #include <utility>
 
@@ -9,7 +10,8 @@ namespace Client {
 
 SessionService::SessionService(const ArmoniK::Sdk::Common::Properties &properties,
                                armonik::api::common::logger::Logger &logger, const std::string &session_id)
-    : impl(new Internal::SessionServiceImpl(properties, logger, session_id)), logger_(logger.local()) {}
+    : impl(new Internal::SessionServiceImpl(properties, logger, session_id)),
+      logger_(logger.local({{"sdk_version", ArmoniK::Sdk::Common::getVersion()}})) {}
 
 const std::string &SessionService::getSession() const {
   ensure_valid();
