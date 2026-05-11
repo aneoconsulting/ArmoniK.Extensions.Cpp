@@ -1,0 +1,10 @@
+#pragma once
+#include <string>
+
+namespace ArmoniK {
+namespace Sdk {
+namespace Common {
+inline std::string getVersion() { return "@VERSION@"; }
+} // namespace Common
+} // namespace Sdk
+} // namespace ArmoniK
