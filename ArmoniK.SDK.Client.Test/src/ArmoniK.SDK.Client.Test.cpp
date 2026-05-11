@@ -672,7 +672,7 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
   auto handler = std::make_shared<ExceptionServiceHandler>(logger);
   std::string args = "Exception success";
 
-  auto tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload(name, args)}, handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::LegacyTaskPayload(param.method_name, args)}, handler);
 
   std::cout << "Sent : " << tasks[0] << std::endl;
 
@@ -720,7 +720,8 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
   std::cout << "Done" << std::endl;
 }
 
-INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest, ::testing::Values(std::string("runTimeError")));
+INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
+                         ::testing::Values(ExceptionTestParam{"runTimeError", 0, 1}));
 
 static std::string ConventionWorkerLibPath(const ArmoniK::Sdk::Common::Configuration &config) {
   std::string base = config.get("Worker__ApplicationBasePath");
@@ -800,7 +801,7 @@ TEST(testSDK, testConventionMethodNameFallback) {
   task_options.SetDynamicLibrary(lib);
 
   // Provide the method name via task option — the payload will have none.
-  task_options.options[ArmoniK::Sdk::Common::DynamicLibrary::KeyMethodName] = "EchoService";
+  task_options.options[ArmoniK::Sdk::Common::DynamicLibrary::KeySymbol] = "EchoService";
   task_options.max_retries = 1;
 
   ArmoniK::Sdk::Common::Properties properties{config, task_options};
