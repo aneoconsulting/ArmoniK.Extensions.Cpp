@@ -721,7 +721,7 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
 }
 
 INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
-                         ::testing::Values(ExceptionTestParam{"runTimeError", 0, 1}));
+                         ::testing::Values(ExceptionTestParam{"runTimeError", 1, 2}));
 
 static std::string ConventionWorkerLibPath(const ArmoniK::Sdk::Common::Configuration &config) {
   std::string base = config.get("Worker__ApplicationBasePath");
