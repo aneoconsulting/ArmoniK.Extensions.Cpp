@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <armonik/sdk/common/ArmoniKSdkException.h>
+#include <armonik/sdk/common/BlobDefinition.h>
 #include <armonik/sdk/common/DynamicLibrary.h>
+#include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskOptions.h>
 #include <armonik/sdk/common/TaskPayload.h>
 
@@ -94,7 +96,7 @@ TEST(TaskOptionsDynamicLibrary, RoundTripWithPathOnly) {
 }
 
 // Blob-only loading: the cross-SDK / dynamic upload case where the client has uploaded
-// the .so via UploadLibrary() and passes the returned blob ID instead of a path.
+// the .so via UploadLibrary(path, lib) and lib.library_blob_id is now set.
 // library_path is optional and should be empty when not set.
 TEST(TaskOptionsDynamicLibrary, RoundTripWithBlobId) {
   TaskOptions opts("app", "1.0", "ns", "svc", "part");
@@ -185,4 +187,80 @@ TEST(TaskOptionsConventionVersion, ReturnsVersionWhenSet) {
 TEST(TaskOptionsConventionVersion, ThrowsWhenMissing) {
   TaskOptions opts("app", "1.0", "ns", "svc", "part");
   EXPECT_THROW(opts.GetConventionVersion(), ArmoniKSdkException);
+}
+
+// ---------------------------------------------------------------------------
+// BlobDefinition
+// ---------------------------------------------------------------------------
+
+TEST(BlobDefinition, FromDataIsRaw) {
+  auto b = BlobDefinition::FromData("hello");
+  EXPECT_TRUE(b.IsRawData());
+  EXPECT_EQ(b.GetData(), "hello");
+}
+
+TEST(BlobDefinition, FromDataPreservesBinaryContent) {
+  std::string bytes(4, '\0');
+  bytes[0] = '\x01';
+  bytes[2] = '\xFF';
+  auto b = BlobDefinition::FromData(bytes);
+  EXPECT_TRUE(b.IsRawData());
+  EXPECT_EQ(b.GetData(), bytes);
+}
+
+TEST(BlobDefinition, FromBlobIdIsNotRaw) {
+  auto b = BlobDefinition::FromBlobId("result-uuid-1234");
+  EXPECT_FALSE(b.IsRawData());
+  EXPECT_EQ(b.GetBlobId(), "result-uuid-1234");
+}
+
+TEST(BlobDefinition, FromDataEmptyString) {
+  auto b = BlobDefinition::FromData("");
+  EXPECT_TRUE(b.IsRawData());
+  EXPECT_EQ(b.GetData(), "");
+}
+
+TEST(BlobDefinition, FromBlobIdEmptyString) {
+  auto b = BlobDefinition::FromBlobId("");
+  EXPECT_FALSE(b.IsRawData());
+  EXPECT_EQ(b.GetBlobId(), "");
+}
+
+// ---------------------------------------------------------------------------
+// TaskDefinition
+// ---------------------------------------------------------------------------
+
+TEST(TaskDefinition, BraceInit) {
+  TaskDefinition td("my_method", {{"x", BlobDefinition::FromData("data_x")},
+                                  {"y", BlobDefinition::FromBlobId("blob-y")}});
+  EXPECT_EQ(td.method_name, "my_method");
+  EXPECT_EQ(td.inputs.size(), 2u);
+  EXPECT_TRUE(td.inputs.at("x").IsRawData());
+  EXPECT_EQ(td.inputs.at("x").GetData(), "data_x");
+  EXPECT_FALSE(td.inputs.at("y").IsRawData());
+  EXPECT_EQ(td.inputs.at("y").GetBlobId(), "blob-y");
+}
+
+TEST(TaskDefinition, WithInputBuilder) {
+  TaskDefinition td;
+  td.method_name = "sum";
+  td.WithInput("a", BlobDefinition::FromData("1")).WithInput("b", BlobDefinition::FromData("2"));
+
+  EXPECT_EQ(td.inputs.size(), 2u);
+  EXPECT_EQ(td.inputs.at("a").GetData(), "1");
+  EXPECT_EQ(td.inputs.at("b").GetData(), "2");
+}
+
+TEST(TaskDefinition, NoInputs) {
+  TaskDefinition td("ping", {});
+  EXPECT_EQ(td.method_name, "ping");
+  EXPECT_TRUE(td.inputs.empty());
+}
+
+TEST(TaskDefinition, WithInputOverwritesExisting) {
+  TaskDefinition td;
+  td.WithInput("k", BlobDefinition::FromData("v1"));
+  td.WithInput("k", BlobDefinition::FromData("v2")); // same key, different value
+  // std::map::emplace does not overwrite — first insertion wins
+  EXPECT_EQ(td.inputs.at("k").GetData(), "v1");
 }

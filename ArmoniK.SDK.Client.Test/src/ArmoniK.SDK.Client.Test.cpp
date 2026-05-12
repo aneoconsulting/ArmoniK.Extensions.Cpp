@@ -11,8 +11,10 @@
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <armonik/sdk/client/SessionService.h>
 #include <armonik/sdk/common/Configuration.h>
+#include <armonik/sdk/common/BlobDefinition.h>
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/Properties.h>
+#include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskPayload.h>
 #include <chrono>
 #include <cmath>
@@ -720,8 +722,12 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
   std::cout << "Done" << std::endl;
 }
 
+// Both cases use max_retries=2 to prove the distinction:
+// "sdkError": ArmoniKSdkException → permanent failure (output.error) → 1 task attempt despite retries being allowed.
+// "retry": std::runtime_error → transient failure (gRPC UNAVAILABLE) → 3 task attempts (original + 2 retries
+// exhausted).
 INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
-                         ::testing::Values(ExceptionTestParam{"runTimeError", 1, 2}));
+                         ::testing::Values(ExceptionTestParam{"sdkError", 2, 1}, ExceptionTestParam{"retry", 2, 3}));
 
 static std::string ConventionWorkerLibPath(const ArmoniK::Sdk::Common::Configuration &config) {
   std::string base = config.get("Worker__ApplicationBasePath");
@@ -731,9 +737,9 @@ static std::string ConventionWorkerLibPath(const ArmoniK::Sdk::Common::Configura
   return base + "/libArmoniK.SDK.Worker.Test.so" + (version.empty() ? "" : "." + version);
 }
 
-/* Submit a TaskPayload (JSON) via the convention path and verify the task
- * completes successfully. The method name is carried in the payload's "method"
- * field cpp to cpp usage. */
+/* Submit a TaskDefinition via the convention path and verify the task
+ * completes successfully. The method name is carried in the TaskDefinition
+ * and ends up in the payload's "method" field (C++ to C++ usage). */
 TEST(testSDK, testConventionEcho) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
@@ -762,11 +768,10 @@ TEST(testSDK, testConventionEcho) {
 
   auto handler = std::make_shared<EchoServiceHandler>(logger);
 
-  ArmoniK::Sdk::Common::TaskPayload payload;
-  payload.inputs = {{"data", "hello-convention"}};
-  payload.outputs = {};
-
-  auto tasks = service.Submit({payload}, handler);
+  auto tasks = service.Submit(
+      {ArmoniK::Sdk::Common::TaskDefinition(
+          "EchoService", {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-convention")}})},
+      handler);
   std::cout << "Sent : " << tasks[0] << std::endl;
 
   service.WaitResults();
@@ -779,11 +784,10 @@ TEST(testSDK, testConventionEcho) {
   std::cout << "Convention echo test done!" << std::endl;
 }
 
-/* Submit a TaskPayload whose "method" field is empty, with the method name
- *provided via the MethodName task option instead.  This exercises the
- *cross-SDK interoperability path: a client that does not include "method"
- *in the JSON payload (like in the Java SDK) can still dispatch to the right
- *service by setting the MethodName key in task options.*/
+/* Submit a TaskDefinition with no method name, relying on the Symbol task
+ * option for dispatch. This exercises the cross-SDK interoperability path:
+ * a client that does not include "method" in the payload (like the Java SDK)
+ * can still dispatch to the right service via the Symbol key in task options. */
 TEST(testSDK, testConventionMethodNameFallback) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
@@ -815,11 +819,11 @@ TEST(testSDK, testConventionMethodNameFallback) {
 
   auto handler = std::make_shared<EchoServiceHandler>(logger);
 
-  ArmoniK::Sdk::Common::TaskPayload payload;
-  payload.inputs = {{"data", "hello-fallback"}};
-  payload.outputs = {};
-
-  auto tasks = service.Submit({payload}, handler);
+  // Empty method_name: the worker falls back to the Symbol key in task options.
+  auto tasks = service.Submit(
+      {ArmoniK::Sdk::Common::TaskDefinition(
+          "", {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-fallback")}})},
+      handler);
   std::cout << "Sent : " << tasks[0] << std::endl;
 
   service.WaitResults();

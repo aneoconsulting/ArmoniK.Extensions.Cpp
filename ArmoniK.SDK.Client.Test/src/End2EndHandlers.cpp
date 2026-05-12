@@ -170,6 +170,22 @@ void CountServiceHandler::HandleError(const std::exception &e, const std::string
   logger.log(armonik::api::common::logger::Level::Debug, ss.str(),
              {{"success", std::to_string(success)}, {"failure", std::to_string(failure)}});
 }
+ConventionResultHandler::ConventionResultHandler(armonik::api::common::logger::Logger &logger)
+    : logger(logger.local()) {}
+void ConventionResultHandler::HandleResponse(const std::string &payload, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+  result_payload = payload;
+  received = true;
+  is_error = false;
+  logger.debug("ConventionResultHandler: received " + std::to_string(payload.size()) + " bytes for task " + taskId);
+}
+void ConventionResultHandler::HandleError(const std::exception &e, const std::string &taskId) {
+  std::lock_guard<std::mutex> lock(mutex);
+  received = true;
+  is_error = true;
+  logger.debug(std::string("ConventionResultHandler: error for task ") + taskId + ": " + e.what());
+}
+
 void ExceptionServiceHandler::HandleResponse(const std::string &result_payload, const std::string &taskId) {
   std::lock_guard<std::mutex> lock(mutex);
 
