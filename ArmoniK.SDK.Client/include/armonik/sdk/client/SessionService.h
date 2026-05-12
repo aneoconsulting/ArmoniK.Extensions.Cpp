@@ -15,7 +15,6 @@ namespace Common {
 struct TaskOptions;
 struct Properties;
 struct LegacyTaskPayload;
-struct TaskPayload;
 struct TaskDefinition;
 struct DynamicLibrary;
 } // namespace Common
@@ -81,28 +80,6 @@ public:
    * @return List of task ids
    */
   std::vector<std::string> Submit(const std::vector<Common::LegacyTaskPayload> &requests,
-                                  std::shared_ptr<IServiceInvocationHandler> handler);
-
-  /**
-   * @brief Submits the given list of convention task requests using the session's task options.
-   * Each payload is JSON-serialized before submission.
-   * @param requests List of convention task requests
-   * @param handler Result handler for this batch of requests
-   * @param task_options Task options to use for this batch of requests
-   * @return List of task ids
-   */
-  std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &requests,
-                                  std::shared_ptr<IServiceInvocationHandler> handler,
-                                  const ArmoniK::Sdk::Common::TaskOptions &task_options);
-
-  /**
-   * @brief Submits the given list of convention task requests using the session's task options.
-   * Each payload is JSON-serialized before submission.
-   * @param requests List of convention task requests
-   * @param handler Result handler for this batch of requests
-   * @return List of task ids
-   */
-  std::vector<std::string> Submit(const std::vector<Common::TaskPayload> &requests,
                                   std::shared_ptr<IServiceInvocationHandler> handler);
 
   /**

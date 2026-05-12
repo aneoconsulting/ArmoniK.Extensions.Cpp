@@ -306,27 +306,6 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
   return SubmitRaw(serialized, deps, std::move(handler), task_options);
 }
 
-std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
-                                                    std::shared_ptr<IServiceInvocationHandler> handler,
-                                                    const Common::TaskOptions &task_options) {
-  std::vector<std::string> serialized;
-  serialized.reserve(task_requests.size());
-
-  // If a LibraryBlobId is encoded in the task options, automatically add it as a data dependency
-  // for every task so the worker has the library content pre-downloaded before execution.
-  std::vector<std::string> library_deps;
-  auto blob_it = task_options.options.find(Common::DynamicLibrary::KeyLibraryBlobId);
-  if (blob_it != task_options.options.end() && !blob_it->second.empty()) {
-    library_deps.push_back(blob_it->second);
-  }
-
-  std::vector<std::vector<std::string>> deps(task_requests.size(), library_deps);
-  for (const auto &req : task_requests) {
-    serialized.push_back(req.Serialize());
-  }
-  return SubmitRaw(serialized, deps, std::move(handler), task_options);
-}
-
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler) {
   return Submit(task_requests, std::move(handler), taskOptions);
@@ -517,11 +496,6 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
 }
 
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_requests,
-                                                    std::shared_ptr<IServiceInvocationHandler> handler) {
-  return Submit(task_requests, std::move(handler), taskOptions);
-}
-
-std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler) {
   return Submit(task_requests, std::move(handler), taskOptions);
 }
