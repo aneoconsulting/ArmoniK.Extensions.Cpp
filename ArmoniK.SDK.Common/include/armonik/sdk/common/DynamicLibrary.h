@@ -30,7 +30,7 @@ struct DynamicLibrary {
 
   // Blob ID of an uploaded .so file. When non-empty the worker fetches the library content
   // from the task's data dependencies and writes it to a temp file before dlopen-ing it.
-  // Use SessionService::UploadLibrary() to obtain this ID.
+  // Set via SessionService::UploadLibrary(path, lib).
   std::string library_blob_id;
 };
 
