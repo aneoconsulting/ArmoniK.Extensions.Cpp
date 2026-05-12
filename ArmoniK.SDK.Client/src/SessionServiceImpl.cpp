@@ -14,6 +14,7 @@
 #include <armonik/common/utils/GuuId.h>
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/Properties.h>
+#include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskPayload.h>
 #include <armonik/sdk/common/Version.h>
 #include <chrono>
@@ -323,6 +324,157 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
   for (const auto &req : task_requests) {
     serialized.push_back(req.Serialize());
   }
+  return SubmitRaw(serialized, deps, std::move(handler), task_options);
+}
+
+std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
+                                                    std::shared_ptr<IServiceInvocationHandler> handler) {
+  return Submit(task_requests, std::move(handler), taskOptions);
+}
+
+std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
+                                                    std::shared_ptr<IServiceInvocationHandler> handler,
+                                                    const Common::TaskOptions &task_options) {
+  const std::size_t message_overhead = 128;
+  const std::size_t data_chunk_max_size =
+      override_message_size_
+          ? static_cast<std::size_t>(override_message_size_)
+          : channel_pool.WithChannel([](auto channel) {
+              return static_cast<std::size_t>(
+                  armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                      .get_service_configuration()
+                      .data_chunk_max_size);
+            });
+
+  // Flatten all raw-data inputs across all tasks so they can be batch-created
+  struct InputRef {
+    std::size_t task_idx;
+    std::string name;
+    std::string result_key;
+  };
+  std::vector<InputRef> raw_inputs;
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+    for (const auto &[name, blob] : task_requests[i].inputs) {
+      if (blob.IsRawData()) {
+        raw_inputs.push_back({i, name, "input-" + std::to_string(raw_inputs.size())});
+      }
+    }
+  }
+
+  // Parallel to raw_inputs: result IDs assigned after creation
+  std::vector<std::string> raw_result_ids(raw_inputs.size());
+
+  if (!raw_inputs.empty()) {
+    ThreadPool::JoinSet join_set(thread_pool_);
+
+    // Large inputs: create metadata then stream-upload
+    Batcher<std::size_t> large_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
+      join_set.Spawn([&, batch = std::move(batch)]() {
+        std::vector<std::string> keys;
+        keys.reserve(batch.size());
+        for (std::size_t j : batch) {
+          keys.push_back(raw_inputs[j].result_key);
+        }
+
+        auto reply = channel_pool.WithChannel([&](auto channel) {
+          return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+              .create_results_metadata(session, keys);
+        });
+
+        for (std::size_t k = 0; k < batch.size(); ++k) {
+          std::size_t j = batch[k];
+          raw_result_ids[j] = reply.at(keys[k]); // threadsafe: each j is unique across batches
+
+          join_set.Spawn([&, j]() {
+            const auto &ri = raw_inputs[j];
+            upload_large_result(channel_pool, session, raw_result_ids[j],
+                                task_requests[ri.task_idx].inputs.at(ri.name).GetData(), data_chunk_max_size, logger_);
+          });
+        }
+      });
+    });
+
+    // Small inputs: inline create (metadata + data in one RPC)
+    std::size_t data_batched = 0;
+    Batcher<std::size_t> small_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
+      data_batched = 0;
+      join_set.Spawn([&, batch = std::move(batch)]() {
+        std::vector<std::pair<std::string, std::string>> pairs;
+        pairs.reserve(batch.size());
+        for (std::size_t j : batch) {
+          const auto &ri = raw_inputs[j];
+          pairs.push_back({ri.result_key, task_requests[ri.task_idx].inputs.at(ri.name).GetData()});
+        }
+
+        auto reply = channel_pool.WithChannel([&](auto channel) {
+          return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+              .create_results(session, pairs);
+        });
+
+        for (std::size_t k = 0; k < batch.size(); ++k) {
+          raw_result_ids[batch[k]] = reply.at(pairs[k].first); // threadsafe: each j is unique
+        }
+      });
+    });
+
+    for (std::size_t j = 0; j < raw_inputs.size(); ++j) {
+      const auto &data = task_requests[raw_inputs[j].task_idx].inputs.at(raw_inputs[j].name).GetData();
+      if (data.size() + message_overhead >= data_chunk_max_size) {
+        large_batcher.Add(j);
+      } else {
+        if (data_batched + data.size() + message_overhead >= data_chunk_max_size) {
+          small_batcher.ProcessBatch();
+        }
+        data_batched += data.size() + message_overhead;
+        small_batcher.Add(j);
+      }
+    }
+
+    large_batcher.ProcessBatch();
+    small_batcher.ProcessBatch();
+    join_set.Wait();
+  }
+
+  // Build TaskPayloads: existing-blob inputs resolved directly, raw inputs resolved from upload
+  std::vector<Common::TaskPayload> payloads(task_requests.size());
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+    payloads[i].method_name = task_requests[i].method_name;
+    for (const auto &[name, blob] : task_requests[i].inputs) {
+      if (!blob.IsRawData()) {
+        payloads[i].inputs[name] = blob.GetBlobId();
+      }
+    }
+  }
+  for (std::size_t j = 0; j < raw_inputs.size(); ++j) {
+    payloads[raw_inputs[j].task_idx].inputs[raw_inputs[j].name] = raw_result_ids[j];
+  }
+
+  // Serialize payloads
+  std::vector<std::string> serialized;
+  serialized.reserve(payloads.size());
+  for (auto &p : payloads) {
+    serialized.push_back(p.Serialize());
+  }
+
+  // Build per-task deps: library blob + all input blob IDs so the DynamicWorker can resolve them
+  std::vector<std::string> library_deps;
+  auto blob_it = task_options.options.find(Common::DynamicLibrary::KeyLibraryBlobId);
+  if (blob_it != task_options.options.end() && !blob_it->second.empty()) {
+    library_deps.push_back(blob_it->second);
+  }
+
+  std::vector<std::vector<std::string>> deps(task_requests.size(), library_deps);
+  for (std::size_t j = 0; j < raw_inputs.size(); ++j) {
+    deps[raw_inputs[j].task_idx].push_back(std::move(raw_result_ids[j]));
+  }
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+    for (const auto &[name, blob] : task_requests[i].inputs) {
+      if (!blob.IsRawData()) {
+        deps[i].push_back(blob.GetBlobId());
+      }
+    }
+  }
+
   return SubmitRaw(serialized, deps, std::move(handler), task_options);
 }
 

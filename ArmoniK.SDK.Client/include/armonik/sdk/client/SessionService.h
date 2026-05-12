@@ -16,6 +16,8 @@ struct TaskOptions;
 struct Properties;
 struct LegacyTaskPayload;
 struct TaskPayload;
+struct TaskDefinition;
+struct DynamicLibrary;
 } // namespace Common
 } // namespace Sdk
 } // namespace ArmoniK
@@ -104,18 +106,42 @@ public:
                                   std::shared_ptr<IServiceInvocationHandler> handler);
 
   /**
-   * @brief Uploads a shared library (.so) to ArmoniK blob storage and returns its blob ID.
+   * @brief Submits the given list of task definitions using the session's task options.
+   * Raw input data in each TaskDefinition is uploaded automatically before task submission.
+   * Callers do not need to pre-allocate result IDs or upload blobs manually.
+   * @param requests List of task definitions
+   * @param handler Result handler for this batch of requests
+   * @param task_options Task options to use for this batch of requests
+   * @return List of task ids
+   */
+  std::vector<std::string> Submit(const std::vector<Common::TaskDefinition> &requests,
+                                  std::shared_ptr<IServiceInvocationHandler> handler,
+                                  const ArmoniK::Sdk::Common::TaskOptions &task_options);
+
+  /**
+   * @brief Submits the given list of task definitions using the session's task options.
+   * Raw input data in each TaskDefinition is uploaded automatically before task submission.
+   * Callers do not need to pre-allocate result IDs or upload blobs manually.
+   * @param requests List of task definitions
+   * @param handler Result handler for this batch of requests
+   * @return List of task ids
+   */
+  std::vector<std::string> Submit(const std::vector<Common::TaskDefinition> &requests,
+                                  std::shared_ptr<IServiceInvocationHandler> handler);
+
+  /**
+   * @brief Uploads a shared library (.so) to ArmoniK blob storage and stores the resulting
+   * blob ID in @p lib. After this call, @p lib is ready to be passed to
+   * TaskOptions::SetDynamicLibrary().
    *
-   * The returned ID should be stored in DynamicLibrary::library_blob_id and passed to
-   * TaskOptions::SetDynamicLibrary() before submitting tasks. The blob is automatically
-   * added as a data dependency for each task submitted with that DynamicLibrary, so the
-   * worker can download and dlopen the library at runtime without requiring the file to
-   * exist on the worker's local filesystem.
+   * The blob is automatically added as a data dependency for each task submitted with that
+   * DynamicLibrary, so the worker can download and dlopen the library at runtime without
+   * requiring the file to exist on the worker's local filesystem.
    *
    * @param library_path Filesystem path to the .so file to upload
-   * @return Blob ID (result ID) of the uploaded library
+   * @param lib DynamicLibrary whose library_blob_id field will be set to the uploaded blob ID
    */
-  std::string UploadLibrary(const std::string &library_path);
+  void UploadLibrary(const std::string &library_path, Common::DynamicLibrary &lib);
 
   /**
    * @brief Waits for the completion of the given tasks

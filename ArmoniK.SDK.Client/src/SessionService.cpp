@@ -45,7 +45,21 @@ std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskPa
   ensure_valid();
   return impl->Submit(requests, std::move(handler));
 }
-std::string SessionService::UploadLibrary(const std::string &library_path) {
+
+std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskDefinition> &requests,
+                                                std::shared_ptr<IServiceInvocationHandler> handler,
+                                                const ArmoniK::Sdk::Common::TaskOptions &task_options) {
+  ensure_valid();
+  return impl->Submit(requests, std::move(handler), task_options);
+}
+
+std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskDefinition> &requests,
+                                                std::shared_ptr<IServiceInvocationHandler> handler) {
+  ensure_valid();
+  return impl->Submit(requests, std::move(handler));
+}
+
+void SessionService::UploadLibrary(const std::string &library_path, Common::DynamicLibrary &lib) {
   ensure_valid();
   std::ifstream f(library_path, std::ios::binary);
   if (!f) {
@@ -53,7 +67,7 @@ std::string SessionService::UploadLibrary(const std::string &library_path) {
   }
   std::ostringstream buf;
   buf << f.rdbuf();
-  return impl->UploadLibrary(buf.str());
+  lib.library_blob_id = impl->UploadLibrary(buf.str());
 }
 
 void SessionService::WaitResults(std::set<std::string> task_ids, WaitBehavior waitBehavior,
