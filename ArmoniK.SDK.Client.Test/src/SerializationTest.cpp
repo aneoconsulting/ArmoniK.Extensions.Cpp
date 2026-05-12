@@ -231,8 +231,8 @@ TEST(BlobDefinition, FromBlobIdEmptyString) {
 // ---------------------------------------------------------------------------
 
 TEST(TaskDefinition, BraceInit) {
-  TaskDefinition td("my_method", {{"x", BlobDefinition::FromData("data_x")},
-                                  {"y", BlobDefinition::FromBlobId("blob-y")}});
+  TaskDefinition td("my_method",
+                    {{"x", BlobDefinition::FromData("data_x")}, {"y", BlobDefinition::FromBlobId("blob-y")}});
   EXPECT_EQ(td.method_name, "my_method");
   EXPECT_EQ(td.inputs.size(), 2u);
   EXPECT_TRUE(td.inputs.at("x").IsRawData());

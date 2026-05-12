@@ -10,8 +10,8 @@
 #include <armonik/common/tasks_filters.pb.h>
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <armonik/sdk/client/SessionService.h>
-#include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/BlobDefinition.h>
+#include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskDefinition.h>
@@ -820,10 +820,9 @@ TEST(testSDK, testConventionMethodNameFallback) {
   auto handler = std::make_shared<EchoServiceHandler>(logger);
 
   // Empty method_name: the worker falls back to the Symbol key in task options.
-  auto tasks = service.Submit(
-      {ArmoniK::Sdk::Common::TaskDefinition(
-          "", {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-fallback")}})},
-      handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskDefinition(
+                                  "", {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-fallback")}})},
+                              handler);
   std::cout << "Sent : " << tasks[0] << std::endl;
 
   service.WaitResults();
