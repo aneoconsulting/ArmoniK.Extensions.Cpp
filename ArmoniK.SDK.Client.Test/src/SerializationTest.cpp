@@ -5,7 +5,7 @@
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskOptions.h>
-#include <armonik/sdk/common/ConventionPayload.h>
+#include <armonik/sdk/common/TaskPayload.h>
 
 using namespace ArmoniK::Sdk::Common;
 
