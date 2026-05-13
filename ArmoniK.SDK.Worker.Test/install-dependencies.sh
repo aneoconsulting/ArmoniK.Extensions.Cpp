@@ -29,16 +29,11 @@ then
   yum --disableplugin=subscription-manager \
           install -y \
           centos-release-scl \
-          devtoolset-10 \
-          git
+          devtoolset-10
   yum --disableplugin=subscription-manager clean all
   echo "source /opt/rh/devtoolset-10/enable" >> /etc/bashrc
-  git clone --depth 1 https://github.com/nlohmann/json.git -b v3.11.3 /tmp/nlohmann-json && \
-      cmake -S /tmp/nlohmann-json -B /tmp/nlohmann-json/build \
-          -DCMAKE_INSTALL_PREFIX=/usr/local \
-          -DJSON_BuildTests=OFF && \
-      cmake --build /tmp/nlohmann-json/build --target install && \
-      rm -rf /tmp/nlohmann-json
+  # nlohmann/json is installed to /app/install by the DynamicWorker ubi7 build
+  # and copied into this image via COPY --from=source /app/install /app/install.
 else
   echo "Unknown distribution"
   exit 1
