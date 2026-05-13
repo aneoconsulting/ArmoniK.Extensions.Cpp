@@ -729,13 +729,6 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
 INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
                          ::testing::Values(ExceptionTestParam{"sdkError", 2, 1}, ExceptionTestParam{"retry", 2, 3}));
 
-static std::string ConventionWorkerLibPath(const ArmoniK::Sdk::Common::Configuration &config) {
-  std::string base = config.get("Worker__ApplicationBasePath");
-  if (base.empty())
-    base = "/data";
-  const std::string version = config.get("WorkerLib__Version");
-  return base + "/libArmoniK.SDK.Worker.Test.so" + (version.empty() ? "" : "." + version);
-}
 
 /* Submit a TaskDefinition via the convention path and verify the task
  * completes successfully. The method name is carried in the TaskDefinition

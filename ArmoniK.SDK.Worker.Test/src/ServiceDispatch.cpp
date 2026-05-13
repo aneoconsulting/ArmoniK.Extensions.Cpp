@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "AdditionService.h"
+#include "ConventionService.h"
 #include "EchoService.h"
 #include "ExceptionService.h"
 #include "SegFaultService.h"
@@ -21,6 +22,8 @@ extern "C" void *armonik_create_service(const char *service_namespace, const cha
     return new ArmoniK::Sdk::Worker::Test::SegFaultService();
   } else if (std::strcmp(service_name, "SleepService") == 0) {
     return new ArmoniK::Sdk::Worker::Test::SleepService();
+  } else if (std::strcmp(service_name, "ConventionArithmetic") == 0) {
+    return new ArmoniK::Sdk::Worker::Test::ConventionService();
   } else if (std::strcmp(service_name, "ExceptionService") == 0) {
     return new ArmoniK::Sdk::Worker::Test::ExceptionService();
   }

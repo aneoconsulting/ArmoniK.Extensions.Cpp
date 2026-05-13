@@ -15,9 +15,12 @@ public:
    * @brief Callback function called when a tasks succeeds
    * @param result_payload Task result
    * @param taskId Task Id
+   * @param result_id Blob ID of the result in ArmoniK storage; can be passed to BlobDefinition::FromBlobId
+   *        to use this result as an input for a subsequent task
    * @note  It can be called for multiple tasks in parallel, so it must be thread-safe
    */
-  virtual void HandleResponse(const std::string &result_payload, const std::string &taskId) = 0;
+  virtual void HandleResponse(const std::string &result_payload, const std::string &taskId,
+                              const std::string &result_id) = 0;
 
   /**
    * @brief Callback function called when a tasks fails

@@ -654,7 +654,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           // Call the response handler with the payload
           try {
             if (handler) {
-              handler->HandleResponse(payload, task_id);
+              handler->HandleResponse(payload, task_id, result.result_id());
             } else {
               logger_.debug("No handler to deliver result " + result.result_id());
             }
