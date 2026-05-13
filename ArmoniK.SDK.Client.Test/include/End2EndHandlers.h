@@ -20,13 +20,15 @@ inline std::string ConventionWorkerLibPath(const ArmoniK::Sdk::Common::Configura
 
 class PythonTestWorkerHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
-  void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
+  void HandleResponse(const std::string &result_payload, const std::string &taskId,
+                      const std::string &result_id) override;
   void HandleError(const std::exception &e, const std::string &taskId) override;
 };
 
 class AddServiceHandler : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
-  void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
+  void HandleResponse(const std::string &result_payload, const std::string &taskId,
+                      const std::string &result_id) override;
   void HandleError(const std::exception &e, const std::string &taskId) override;
 
   std::mutex mutex;
@@ -44,7 +46,8 @@ public:
 class EchoServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   explicit EchoServiceHandler(armonik::api::common::logger::Logger &logger);
-  void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
+  void HandleResponse(const std::string &result_payload, const std::string &taskId,
+                      const std::string &result_id) override;
   void HandleError(const std::exception &e, const std::string &taskId) override;
 
   std::mutex mutex;
@@ -63,7 +66,7 @@ public:
   explicit StressTestServiceHandler(armonik::api::common::logger::Logger &logger);
   virtual ~StressTestServiceHandler() noexcept final = default;
 
-  void HandleResponse(const std::string &result_payload, const std::string &taskId) final;
+  void HandleResponse(const std::string &result_payload, const std::string &taskId, const std::string &result_id) final;
   void HandleError(const std::exception &e, const std::string &taskId) final;
 
   armonik::api::common::logger::LocalLogger logger;
@@ -72,7 +75,8 @@ public:
 class SegFaultServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   explicit SegFaultServiceHandler(armonik::api::common::logger::Logger &logger);
-  void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
+  void HandleResponse(const std::string &result_payload, const std::string &taskId,
+                      const std::string &result_id) override;
   void HandleError(const std::exception &e, const std::string &taskId) override;
 
   std::mutex mutex;
@@ -84,7 +88,8 @@ public:
 class SleepServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   explicit SleepServiceHandler(armonik::api::common::logger::Logger &logger);
-  void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
+  void HandleResponse(const std::string &result_payload, const std::string &taskId,
+                      const std::string &result_id) override;
   void HandleError(const std::exception &e, const std::string &taskId) override;
 
   std::mutex mutex;
@@ -97,7 +102,8 @@ public:
 class CountServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   explicit CountServiceHandler(armonik::api::common::logger::Logger &logger);
-  void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
+  void HandleResponse(const std::string &result_payload, const std::string &taskId,
+                      const std::string &result_id) override;
   void HandleError(const std::exception &e, const std::string &taskId) override;
 
   std::mutex mutex;
@@ -124,7 +130,8 @@ public:
 class ExceptionServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   explicit ExceptionServiceHandler(armonik::api::common::logger::Logger &logger);
-  void HandleResponse(const std::string &result_payload, const std::string &taskId) override;
+  void HandleResponse(const std::string &result_payload, const std::string &taskId,
+                      const std::string &result_id) override;
   void HandleError(const std::exception &e, const std::string &taskId) override;
 
   std::mutex mutex;

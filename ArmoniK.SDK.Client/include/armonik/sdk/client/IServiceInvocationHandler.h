@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdexcept>
 #include <string>
 
 namespace ArmoniK {
@@ -19,22 +20,29 @@ public:
    *        to use this result as an input for a subsequent task without re-uploading.
    * @note  Called concurrently for multiple tasks; implementation must be thread-safe.
    *
-   * Override this version to access result_id. The default delegates to the two-parameter
-   * overload below for backward compatibility with existing handlers.
+   * Override this version. The default delegates to the deprecated two-parameter overload for
+   * backward compatibility with existing handlers that already override it.
    */
   virtual void HandleResponse(const std::string &result_payload, const std::string &taskId,
                               const std::string &result_id) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     HandleResponse(result_payload, taskId);
+#pragma GCC diagnostic pop
   }
 
   /**
-   * @brief Callback function called when a task succeeds (legacy overload).
-   * @param result_payload Task result
-   * @param taskId Task Id
-   * @note  Override this if you do not need the result blob ID. Override the three-parameter
-   *        version instead if you need to chain tasks via BlobDefinition::FromBlobId.
+   * @brief Legacy callback overload — override the three-parameter version instead.
+   * @deprecated Override HandleResponse(result_payload, taskId, result_id) instead.
+   *             This overload exists only for backward compatibility and will be removed in a future release.
    */
-  virtual void HandleResponse(const std::string &result_payload, const std::string &taskId) {}
+  [[deprecated("Override HandleResponse(result_payload, taskId, result_id) instead")]]
+  virtual void HandleResponse(const std::string &result_payload, const std::string &taskId) {
+    (void)result_payload;
+    (void)taskId;
+    throw std::logic_error(
+        "HandleResponse not implemented — override HandleResponse(result_payload, taskId, result_id)");
+  }
 
   /**
    * @brief Callback function called when a tasks fails
