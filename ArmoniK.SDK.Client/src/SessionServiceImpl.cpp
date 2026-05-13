@@ -16,6 +16,7 @@
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskPayload.h>
+#include <armonik/sdk/common/internal/ConventionPayload.h>
 #include <armonik/sdk/common/Version.h>
 #include <chrono>
 #include <thread>

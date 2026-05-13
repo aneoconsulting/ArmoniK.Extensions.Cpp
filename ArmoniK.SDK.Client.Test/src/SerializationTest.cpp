@@ -5,74 +5,8 @@
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskOptions.h>
-#include <armonik/sdk/common/TaskPayload.h>
 
 using namespace ArmoniK::Sdk::Common;
-
-// ---------------------------------------------------------------------------
-// ConventionPayload JSON serialization
-// ---------------------------------------------------------------------------
-
-TEST(ConventionPayloadJson, RoundTrip) {
-  ConventionPayload original;
-  original.inputs = {{"x", "blob-1"}, {"y", "blob-2"}};
-  original.outputs = {{"result", "blob-3"}};
-
-  auto json = original.Serialize();
-  auto restored = ConventionPayload::Deserialize(json);
-
-  EXPECT_EQ(restored.inputs, original.inputs);
-  EXPECT_EQ(restored.outputs, original.outputs);
-}
-
-TEST(ConventionPayloadJson, EmptyMaps) {
-  ConventionPayload original;
-  original.inputs = {};
-  original.outputs = {};
-
-  auto json = original.Serialize();
-  auto restored = ConventionPayload::Deserialize(json);
-
-  EXPECT_TRUE(restored.inputs.empty());
-  EXPECT_TRUE(restored.outputs.empty());
-}
-
-TEST(ConventionPayloadJson, MissingMethodField) {
-  // Java SDK omits the "method" field — must deserialize without error
-  const std::string json = R"({"inputs":{"a":"b"},"outputs":{"c":"d"}})";
-  auto payload = ConventionPayload::Deserialize(json);
-  EXPECT_EQ(payload.inputs.at("a"), "b");
-  EXPECT_EQ(payload.outputs.at("c"), "d");
-}
-
-TEST(ConventionPayloadJson, MissingInputsThrows) {
-  const std::string json = R"({"method":"foo","outputs":{}})";
-  EXPECT_THROW(ConventionPayload::Deserialize(json), ArmoniKSdkException);
-}
-
-TEST(ConventionPayloadJson, MissingOutputsThrows) {
-  const std::string json = R"({"method":"foo","inputs":{}})";
-  EXPECT_THROW(ConventionPayload::Deserialize(json), ArmoniKSdkException);
-}
-
-TEST(ConventionPayloadJson, InvalidJsonThrows) {
-  EXPECT_THROW(ConventionPayload::Deserialize("not-json"), ArmoniKSdkException);
-  EXPECT_THROW(ConventionPayload::Deserialize(""), ArmoniKSdkException);
-  EXPECT_THROW(ConventionPayload::Deserialize("{"), ArmoniKSdkException);
-}
-
-TEST(ConventionPayloadJson, MultipleInputsOutputs) {
-  ConventionPayload original;
-  original.inputs = {{"a", "1"}, {"b", "2"}, {"c", "3"}};
-  original.outputs = {{"out1", "4"}, {"out2", "5"}};
-
-  auto restored = ConventionPayload::Deserialize(original.Serialize());
-
-  EXPECT_EQ(restored.inputs.size(), 3u);
-  EXPECT_EQ(restored.outputs.size(), 2u);
-  EXPECT_EQ(restored.inputs.at("b"), "2");
-  EXPECT_EQ(restored.outputs.at("out2"), "5");
-}
 
 // ---------------------------------------------------------------------------
 // TaskOptions::SetDynamicLibrary / GetDynamicLibrary

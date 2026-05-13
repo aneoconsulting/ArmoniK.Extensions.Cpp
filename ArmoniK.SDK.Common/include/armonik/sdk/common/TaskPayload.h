@@ -55,43 +55,6 @@ struct [[deprecated("Use TaskDefinition with Submit(std::vector<TaskDefinition>)
   static TaskPayload Deserialize(absl::string_view serialized);
 };
 
-/**
- * @brief Convention task payload using JSON encoding.
- * Internal wire format for the convention execution path (LibraryPath / Symbol based loading).
- *
- * Serialized format: {"method":"<method_name>","inputs":{...},"outputs":{...}}
- */
-struct ConventionPayload {
-  ConventionPayload() = default;
-
-  /**
-   * @brief Method name to dispatch to
-   */
-  std::string method_name;
-
-  /**
-   * @brief Named inputs: maps user-defined name to blob ID
-   */
-  std::map<std::string, std::string> inputs;
-
-  /**
-   * @brief Named outputs: maps user-defined name to pre-allocated blob ID
-   */
-  std::map<std::string, std::string> outputs;
-
-  /**
-   * @brief Serializes the payload to JSON
-   * @return JSON string
-   */
-  [[nodiscard]] std::string Serialize() const;
-
-  /**
-   * @brief Deserializes the payload from JSON
-   * @param serialized JSON string
-   * @return Deserialized payload
-   */
-  static ConventionPayload Deserialize(absl::string_view serialized);
-};
 
 } // namespace Common
 } // namespace Sdk

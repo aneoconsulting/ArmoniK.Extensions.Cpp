@@ -14,7 +14,8 @@
 #include "armonik/sdk/common/Properties.h"
 #include "armonik/sdk/common/TaskDefinition.h"
 #include "armonik/sdk/common/TaskOptions.h"
-#include "armonik/sdk/common/TaskPayload.h"
+#include <armonik/sdk/common/TaskPayload.h>
+#include <nlohmann/json.hpp>
 
 #include <armonik/client/results_service.grpc.pb.h>
 #include <armonik/client/sessions_service.grpc.pb.h>
@@ -381,9 +382,9 @@ TEST(SessionService, task_definition_submit_raw_input) {
   ASSERT_TRUE(handler->received);
   ASSERT_FALSE(handler->is_error);
 
-  // The worker echoes back a serialized ConventionPayload with the resolved inputs
-  auto result = ArmoniK::Sdk::Common::ConventionPayload::Deserialize(handler->result_payload);
-  EXPECT_EQ(result.inputs.at("greeting"), "hello");
+  // The worker echoes back the resolved inputs as a JSON object; verify the value round-tripped.
+  auto j = nlohmann::json::parse(handler->result_payload);
+  EXPECT_EQ(j.at("inputs").at("greeting").get<std::string>(), "hello");
 
   service.CloseSession();
 }

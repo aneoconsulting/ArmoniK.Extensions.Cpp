@@ -1,4 +1,5 @@
 #include "armonik/sdk/common/TaskPayload.h"
+#include "armonik/sdk/common/internal/ConventionPayload.h"
 #include "armonik/sdk/common/ArmoniKSdkException.h"
 #include <cstdint>
 #include <iomanip>

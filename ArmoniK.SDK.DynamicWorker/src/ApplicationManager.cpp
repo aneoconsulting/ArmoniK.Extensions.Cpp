@@ -2,6 +2,7 @@
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/TaskPayload.h>
+#include <armonik/sdk/common/internal/ConventionPayload.h>
 #include <sstream>
 
 namespace ArmoniK {
