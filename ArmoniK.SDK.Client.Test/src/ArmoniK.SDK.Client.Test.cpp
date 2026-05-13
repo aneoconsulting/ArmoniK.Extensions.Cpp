@@ -826,3 +826,71 @@ TEST(testSDK, testConventionMethodNameFallback) {
   service.CloseSession();
   std::cout << "Convention method name fallback test done!" << std::endl;
 }
+
+/* Compute 2^2 + 3^2 = 13 using three chained tasks:
+ *   - Task A: square(2) -> result blob containing "4"
+ *   - Task B: square(3) -> result blob containing "9"
+ *   - Task C: add(FromBlobId(A), FromBlobId(B)) -> "13"
+ * Verifies that result_id from HandleResponse can be passed to
+ * BlobDefinition::FromBlobId to wire a task output as input of a downstream task. */
+TEST(testSDK, testConventionChainedSquareThenAdd) {
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+
+  ArmoniK::Sdk::Common::DynamicLibrary lib;
+  lib.library_path = ConventionWorkerLibPath(config);
+  lib.symbol = "square";
+
+  ArmoniK::Sdk::Common::TaskOptions task_options("libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"),
+                                                 "End2EndTest", "ConventionArithmetic", config.get("PartitionId"));
+  task_options.max_retries = 1;
+  task_options.SetDynamicLibrary(lib);
+
+  ArmoniK::Sdk::Common::Properties properties{config, task_options};
+
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+  ASSERT_FALSE(service.getSession().empty());
+
+  auto opts_square = properties.taskOptions;
+
+  auto handler_a = std::make_shared<ConventionResultHandler>(logger);
+  auto handler_b = std::make_shared<ConventionResultHandler>(logger);
+  service.Submit(
+      {ArmoniK::Sdk::Common::TaskDefinition("square", {{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("2")}})},
+      handler_a, opts_square);
+  service.Submit(
+      {ArmoniK::Sdk::Common::TaskDefinition("square", {{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("3")}})},
+      handler_b, opts_square);
+  service.WaitResults();
+
+  ASSERT_TRUE(handler_a->received);
+  ASSERT_FALSE(handler_a->is_error);
+  EXPECT_EQ(handler_a->result_payload, "4");
+
+  ASSERT_TRUE(handler_b->received);
+  ASSERT_FALSE(handler_b->is_error);
+  EXPECT_EQ(handler_b->result_payload, "9");
+
+  auto opts_add = opts_square;
+  opts_add.options[ArmoniK::Sdk::Common::DynamicLibrary::KeySymbol] = "add";
+
+  auto handler_c = std::make_shared<ConventionResultHandler>(logger);
+  service.Submit({ArmoniK::Sdk::Common::TaskDefinition(
+                     "add", {{"a", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_a->result_id)},
+                             {"b", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_b->result_id)}})},
+                 handler_c, opts_add);
+  service.WaitResults();
+
+  ASSERT_TRUE(handler_c->received);
+  ASSERT_FALSE(handler_c->is_error);
+  EXPECT_EQ(handler_c->result_payload, "13");
+
+  service.CloseSession();
+  std::cout << "Convention chained square then add test done!" << std::endl;
+}
