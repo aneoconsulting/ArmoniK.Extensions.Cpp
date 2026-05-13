@@ -729,7 +729,6 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
 INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
                          ::testing::Values(ExceptionTestParam{"sdkError", 2, 1}, ExceptionTestParam{"retry", 2, 3}));
 
-
 /* Submit a TaskDefinition via the convention path and verify the task
  * completes successfully. The method name is carried in the TaskDefinition
  * and ends up in the payload's "method" field (C++ to C++ usage). */

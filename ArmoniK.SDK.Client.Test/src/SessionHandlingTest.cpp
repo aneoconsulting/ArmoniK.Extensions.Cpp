@@ -459,7 +459,7 @@ static std::tuple<ArmoniK::Sdk::Common::Properties, armonik::api::common::logger
   lib.symbol = "square";
 
   ArmoniK::Sdk::Common::TaskOptions task_options("libArmoniK.SDK.Worker.Test.so", version, "End2EndTest",
-                                                  "ConventionArithmetic", config.get("PartitionId"));
+                                                 "ConventionArithmetic", config.get("PartitionId"));
   task_options.max_retries = 1;
   task_options.SetDynamicLibrary(lib);
 
@@ -509,11 +509,10 @@ TEST(SessionService, task_definition_chained_square_then_add) {
 
   // Submit task C: add the two squares using their result blobs as inputs
   auto handler_c = std::make_shared<ConventionResultHandler>(logger);
-  service.Submit(
-      {ArmoniK::Sdk::Common::TaskDefinition(
-          "add", {{"a", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_a->result_id)},
-                  {"b", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_b->result_id)}})},
-      handler_c, opts_add);
+  service.Submit({ArmoniK::Sdk::Common::TaskDefinition(
+                     "add", {{"a", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_a->result_id)},
+                             {"b", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_b->result_id)}})},
+                 handler_c, opts_add);
   service.WaitResults();
 
   ASSERT_TRUE(handler_c->received);
