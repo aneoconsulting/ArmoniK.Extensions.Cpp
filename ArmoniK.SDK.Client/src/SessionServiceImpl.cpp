@@ -291,8 +291,10 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
   return task_ids;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 [[maybe_unused]] std::vector<std::string>
-SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_requests,
+SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
                            std::shared_ptr<IServiceInvocationHandler> handler,
                            const Common::TaskOptions &task_options) {
   std::vector<std::string> serialized;
@@ -305,6 +307,7 @@ SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_re
   }
   return SubmitRaw(serialized, deps, std::move(handler), task_options);
 }
+#pragma GCC diagnostic pop
 
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler) {
@@ -414,8 +417,8 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
     join_set.Wait();
   }
 
-  // Build TaskPayloads: existing-blob inputs resolved directly, raw inputs resolved from upload
-  std::vector<Common::TaskPayload> payloads(task_requests.size());
+  // Build ConventionPayloads: existing-blob inputs resolved directly, raw inputs resolved from upload
+  std::vector<Common::ConventionPayload> payloads(task_requests.size());
   for (std::size_t i = 0; i < task_requests.size(); ++i) {
     payloads[i].method_name = task_requests[i].method_name;
     for (const auto &[name, blob] : task_requests[i].inputs) {
@@ -495,10 +498,13 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                : session_id;
 }
 
-std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::LegacyTaskPayload> &task_requests,
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler) {
   return Submit(task_requests, std::move(handler), taskOptions);
 }
+#pragma GCC diagnostic pop
 
 void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavior behavior,
                                      const WaitOptions &options) {

@@ -53,10 +53,13 @@ absl::string_view advance_sv(absl::string_view &sv, size_t offset) {
 } // namespace
 
 // ---------------------------------------------------------------------------
-// LegacyTaskPayload
+// TaskPayload (legacy binary format)
 // ---------------------------------------------------------------------------
 
-std::string LegacyTaskPayload::Serialize() const {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
+std::string TaskPayload::Serialize() const {
   std::stringstream ss;
   ss << int_to_hex((field_size_t)method_name.size()) << method_name << int_to_hex((field_size_t)arguments.size());
   ss.write(arguments.data(), arguments.size());
@@ -66,7 +69,7 @@ std::string LegacyTaskPayload::Serialize() const {
   return ss.str();
 }
 
-LegacyTaskPayload LegacyTaskPayload::Deserialize(absl::string_view serialized) {
+TaskPayload TaskPayload::Deserialize(absl::string_view serialized) {
   constexpr size_t size_width = sizeof(field_size_t) * 2;
   field_size_t fieldSize;
   std::vector<std::string> data_dependencies;
@@ -85,11 +88,13 @@ LegacyTaskPayload LegacyTaskPayload::Deserialize(absl::string_view serialized) {
   return {std::move(method_name), std::move(arguments), std::move(data_dependencies)};
 }
 
+#pragma GCC diagnostic pop
+
 // ---------------------------------------------------------------------------
-// TaskPayload (convention JSON format)
+// ConventionPayload (JSON wire format for the convention path)
 // ---------------------------------------------------------------------------
 
-std::string TaskPayload::Serialize() const {
+std::string ConventionPayload::Serialize() const {
   nlohmann::json j;
   j["method"] = method_name;
   j["inputs"] = inputs;
@@ -97,16 +102,16 @@ std::string TaskPayload::Serialize() const {
   return j.dump();
 }
 
-TaskPayload TaskPayload::Deserialize(absl::string_view serialized) {
+ConventionPayload ConventionPayload::Deserialize(absl::string_view serialized) {
   try {
     auto j = nlohmann::json::parse(serialized.begin(), serialized.end());
-    TaskPayload payload;
+    ConventionPayload payload;
     payload.method_name = j.value("method", std::string{});
     payload.inputs = j.at("inputs").get<std::map<std::string, std::string>>();
     payload.outputs = j.at("outputs").get<std::map<std::string, std::string>>();
     return payload;
   } catch (const nlohmann::json::exception &e) {
-    throw ArmoniKSdkException(std::string("Failed to deserialize task payload JSON: ") + e.what());
+    throw ArmoniKSdkException(std::string("Failed to deserialize convention payload JSON: ") + e.what());
   }
 }
 

@@ -20,18 +20,21 @@ const std::string &SessionService::getSession() const {
   return impl->getSession();
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 std::vector<std::string>
-ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::LegacyTaskPayload> &requests,
+ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
                                              std::shared_ptr<IServiceInvocationHandler> handler,
                                              const ArmoniK::Sdk::Common::TaskOptions &task_options) {
   ensure_valid();
   return impl->Submit(requests, std::move(handler), task_options);
 }
-std::vector<std::string> SessionService::Submit(const std::vector<Common::LegacyTaskPayload> &requests,
+std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
                                                 std::shared_ptr<IServiceInvocationHandler> handler) {
   ensure_valid();
   return impl->Submit(requests, std::move(handler));
 }
+#pragma GCC diagnostic pop
 
 std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskDefinition> &requests,
                                                 std::shared_ptr<IServiceInvocationHandler> handler,

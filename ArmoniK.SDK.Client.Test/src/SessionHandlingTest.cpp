@@ -43,8 +43,8 @@ armonik::api::grpc::v1::tasks::Filters get_filter_for_session_id(const std::stri
   return filters;
 }
 
-std::vector<ArmoniK::Sdk::Common::LegacyTaskPayload> generate_payloads(unsigned int n) {
-  std::vector<ArmoniK::Sdk::Common::LegacyTaskPayload> payloads;
+std::vector<ArmoniK::Sdk::Common::TaskPayload> generate_payloads(unsigned int n) {
+  std::vector<ArmoniK::Sdk::Common::TaskPayload> payloads;
   payloads.reserve(n);
   for (unsigned int i = 0; i < n; ++i) {
     payloads.emplace_back("EchoService", "Test");
@@ -381,8 +381,8 @@ TEST(SessionService, task_definition_submit_raw_input) {
   ASSERT_TRUE(handler->received);
   ASSERT_FALSE(handler->is_error);
 
-  // The worker echoes back a serialized TaskPayload with the resolved inputs
-  auto result = ArmoniK::Sdk::Common::TaskPayload::Deserialize(handler->result_payload);
+  // The worker echoes back a serialized ConventionPayload with the resolved inputs
+  auto result = ArmoniK::Sdk::Common::ConventionPayload::Deserialize(handler->result_payload);
   EXPECT_EQ(result.inputs.at("greeting"), "hello");
 
   service.CloseSession();
@@ -437,4 +437,3 @@ TEST(SessionService, task_definition_submit_no_inputs) {
 
   service.CloseSession();
 }
-

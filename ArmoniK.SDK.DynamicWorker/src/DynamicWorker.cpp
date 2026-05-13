@@ -49,7 +49,7 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
         tmp.write(blob_it->second.data(), static_cast<std::streamsize>(blob_it->second.size()));
       }
 
-      const auto payload = ArmoniK::Sdk::Common::TaskPayload::Deserialize(taskHandler.getPayload());
+      const auto payload = ArmoniK::Sdk::Common::ConventionPayload::Deserialize(taskHandler.getPayload());
 
       if (lib.symbol.empty()) {
         throw ArmoniK::Sdk::Common::ArmoniKSdkException(
@@ -71,7 +71,10 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
     }
 
     // Legacy path: use application_name / application_version based loading
-    auto legacyPayload = ArmoniK::Sdk::Common::LegacyTaskPayload::Deserialize(taskHandler.getPayload());
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    auto legacyPayload = ArmoniK::Sdk::Common::TaskPayload::Deserialize(taskHandler.getPayload());
+#pragma GCC diagnostic pop
     AppId appId{rawOptions.application_name(), rawOptions.application_version()};
     ServiceId serviceId(appId, rawOptions.application_namespace(), rawOptions.application_service());
     return manager.UseApplication(appId)
