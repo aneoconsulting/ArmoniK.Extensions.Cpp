@@ -1,6 +1,7 @@
 #pragma once
 
 #include <armonik/sdk/worker/ServiceBase.h>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -12,13 +13,14 @@ namespace Test {
 class ConventionService : ServiceBase {
 public:
   std::string call(void *, const std::string &name, const std::string &input) override {
+    const auto inputs = nlohmann::json::parse(input).at("inputs");
     if (name == "square") {
-      int x = std::stoi(extract_input(input, "x"));
+      int x = std::stoi(inputs.at("x").get<std::string>());
       return std::to_string(x * x);
     }
     if (name == "add") {
-      int a = std::stoi(extract_input(input, "a"));
-      int b = std::stoi(extract_input(input, "b"));
+      int a = std::stoi(inputs.at("a").get<std::string>());
+      int b = std::stoi(inputs.at("b").get<std::string>());
       return std::to_string(a + b);
     }
     throw std::runtime_error("ConventionService: unknown method: " + name);
@@ -26,21 +28,6 @@ public:
 
   void *enter_session(const char *session_id) override { return new std::string(session_id); }
   void leave_session(void *session_ctx) override { delete static_cast<std::string *>(session_ctx); }
-
-private:
-  // Extract the string value for `key` from the "inputs" object of a TaskPayload JSON.
-  // Relies on the known wire format: {"inputs":{"key":"value",...},...}
-  static std::string extract_input(const std::string &json, const std::string &key) {
-    const std::string needle = "\"" + key + "\":\"";
-    auto pos = json.find(needle);
-    if (pos == std::string::npos)
-      throw std::runtime_error("ConventionService: input key not found: " + key);
-    pos += needle.size();
-    const auto end = json.find('"', pos);
-    if (end == std::string::npos)
-      throw std::runtime_error("ConventionService: malformed payload for key: " + key);
-    return json.substr(pos, end - pos);
-  }
 };
 
 } // namespace Test

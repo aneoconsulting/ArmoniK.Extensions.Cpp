@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 if(NOT TARGET ArmoniK.SDK.Worker)
     find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
 endif()
+find_package(nlohmann_json REQUIRED)
 
 SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
