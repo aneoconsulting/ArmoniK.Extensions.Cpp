@@ -14,6 +14,7 @@
 #include <armonik/common/utils/GuuId.h>
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskPayload.h>
+#include <armonik/sdk/common/Version.h>
 #include <chrono>
 #include <thread>
 #include <utility>
@@ -293,7 +294,8 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                        armonik::api::common::logger::Logger &logger, const std::string &session_id)
     : taskOptions(properties.taskOptions), channel_pool(properties, logger),
-      thread_pool_(properties.configuration.get_control_plane().getThreadPoolSize(), logger), logger_(logger.local()),
+      thread_pool_(properties.configuration.get_control_plane().getThreadPoolSize(), logger),
+      logger_(logger.local({{"sdk_version", ArmoniK::Sdk::Common::getVersion()}})),
       wait_batch_size_(properties.configuration.get_control_plane().getWaitBatchSize()),
       submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
       override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()) {
