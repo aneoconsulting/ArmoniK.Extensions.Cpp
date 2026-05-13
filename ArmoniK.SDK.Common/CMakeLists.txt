@@ -21,7 +21,7 @@ configure_file(
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common nlohmann_json::nlohmann_json)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common PRIVATE nlohmann_json::nlohmann_json)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
