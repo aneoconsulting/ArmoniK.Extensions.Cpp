@@ -14,6 +14,8 @@ if(NOT TARGET ArmoniK.SDK.Common)
     find_package(ArmoniK.SDK.Common REQUIRED CONFIG)
 endif()
 
+find_package(nlohmann_json REQUIRED)
+
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES})
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
@@ -24,6 +26,7 @@ target_include_directories(${PROJECT_NAME}
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
         PRIVATE
         "$<TARGET_PROPERTY:ArmoniK.SDK.Common,INTERFACE_INCLUDE_DIRECTORIES>"
+        "$<TARGET_PROPERTY:nlohmann_json::nlohmann_json,INTERFACE_INCLUDE_DIRECTORIES>"
         )
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)

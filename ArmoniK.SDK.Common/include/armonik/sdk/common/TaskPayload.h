@@ -55,7 +55,6 @@ struct [[deprecated("Use TaskDefinition with Submit(std::vector<TaskDefinition>)
   static TaskPayload Deserialize(absl::string_view serialized);
 };
 
-
 } // namespace Common
 } // namespace Sdk
 } // namespace ArmoniK

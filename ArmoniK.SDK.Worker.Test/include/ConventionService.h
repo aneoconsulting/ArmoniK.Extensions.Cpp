@@ -1,7 +1,7 @@
 #pragma once
 
 #include <armonik/sdk/worker/ServiceBase.h>
-#include <nlohmann/json.hpp>
+#include <map>
 #include <stdexcept>
 #include <string>
 
@@ -12,15 +12,14 @@ namespace Test {
 
 class ConventionService : ServiceBase {
 public:
-  std::string call(void *, const std::string &name, const std::string &input) override {
-    const auto inputs = nlohmann::json::parse(input).at("inputs");
+  std::string call(void *, const std::string &name, const std::map<std::string, std::string> &inputs) override {
     if (name == "square") {
-      int x = std::stoi(inputs.at("x").get<std::string>());
+      int x = std::stoi(inputs.at("x"));
       return std::to_string(x * x);
     }
     if (name == "add") {
-      int a = std::stoi(inputs.at("a").get<std::string>());
-      int b = std::stoi(inputs.at("b").get<std::string>());
+      int a = std::stoi(inputs.at("a"));
+      int b = std::stoi(inputs.at("b"));
       return std::to_string(a + b);
     }
     throw std::runtime_error("ConventionService: unknown method: " + name);

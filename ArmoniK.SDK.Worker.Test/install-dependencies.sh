@@ -8,16 +8,14 @@ then
       make \
       cmake \
       linux-headers \
-      bash \
-      nlohmann-json
+      bash
 elif which apt-get
 then
     apt-get update
     DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
         g++ \
         make \
-        cmake \
-        nlohmann-json3-dev
+        cmake
     apt-get clean
 elif which yum
 then
@@ -32,8 +30,6 @@ then
           devtoolset-10
   yum --disableplugin=subscription-manager clean all
   echo "source /opt/rh/devtoolset-10/enable" >> /etc/bashrc
-  # nlohmann/json is installed to /app/install by the DynamicWorker ubi7 build
-  # and copied into this image via COPY --from=source /app/install /app/install.
 else
   echo "Unknown distribution"
   exit 1

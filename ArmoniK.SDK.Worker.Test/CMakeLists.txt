@@ -9,7 +9,6 @@ set(CMAKE_CXX_STANDARD 17)
 if(NOT TARGET ArmoniK.SDK.Worker)
     find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
 endif()
-find_package(nlohmann_json REQUIRED)
 
 SET(SOURCES_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -22,7 +21,7 @@ FILE(GLOB_RECURSE HEADER_WORKER_FILES ${WORKER_HEADER_DIR}/*.h)
 
 add_library(${PROJECT_NAME} SHARED ${SRC_WORKER_FILES} ${HEADER_WORKER_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC "-Wl,--whole-archive" ArmoniK.SDK.Worker "-Wl,--no-whole-archive" PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(${PROJECT_NAME} PUBLIC "-Wl,--whole-archive" ArmoniK.SDK.Worker "-Wl,--no-whole-archive")
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
 setup_options(${PROJECT_NAME})
