@@ -8,10 +8,14 @@
 #include <armonik/common/options/ControlPlane.h>
 
 #include "armonik/sdk/client/SessionService.h"
+#include "armonik/sdk/common/BlobDefinition.h"
 #include "armonik/sdk/common/Configuration.h"
+#include "armonik/sdk/common/DynamicLibrary.h"
 #include "armonik/sdk/common/Properties.h"
+#include "armonik/sdk/common/TaskDefinition.h"
 #include "armonik/sdk/common/TaskOptions.h"
-#include "armonik/sdk/common/TaskPayload.h"
+#include <armonik/sdk/common/TaskPayload.h>
+#include <nlohmann/json.hpp>
 
 #include <armonik/client/results_service.grpc.pb.h>
 #include <armonik/client/sessions_service.grpc.pb.h>
@@ -319,6 +323,118 @@ TEST(WaitOption, timeout_test) {
   // Wait for the rest, should still have tasks to retrieve
   service.WaitResults({}, ArmoniK::Sdk::Client::All);
   ASSERT_EQ(handler->received_count, 50);
+
+  service.CloseSession();
+}
+
+// ---------------------------------------------------------------------------
+// TaskDefinition end-to-end tests
+//
+// Uses the convention execution path: DynamicLibrary with a library_path
+// pointing to the test worker library. The default armonik_call provided by
+// ArmoniK.SDK.Worker delegates to ServiceBase::call, so EchoService echoes
+// the JSON payload (with resolved inputs) back as the result.
+// ---------------------------------------------------------------------------
+
+static std::tuple<ArmoniK::Sdk::Common::Properties, armonik::api::common::logger::Logger> init_convention() {
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "Endpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+
+  const std::string version = config.get("WorkerLib__Version");
+
+  ArmoniK::Sdk::Common::DynamicLibrary lib;
+  lib.library_path = ConventionWorkerLibPath(config);
+  lib.symbol = "echo_convention"; // method name forwarded to EchoService::call
+
+  ArmoniK::Sdk::Common::TaskOptions task_options("libArmoniK.SDK.Worker.Test.so", version, "End2EndTest", "EchoService",
+                                                 config.get("PartitionId"));
+  task_options.max_retries = 1;
+  task_options.SetDynamicLibrary(lib);
+
+  return std::make_tuple<ArmoniK::Sdk::Common::Properties, armonik::api::common::logger::Logger>(
+      {config, task_options},
+      {armonik::api::common::logger::writer_console(), armonik::api::common::logger::formatter_plain(true)});
+}
+
+// Submit a single task with one raw-data input. The EchoService reflects the
+// JSON payload (with resolved inputs) back. We verify the result deserializes
+// correctly and contains the original data.
+TEST(SessionService, task_definition_submit_raw_input) {
+  auto p = init_convention();
+  auto &properties = std::get<0>(p);
+  auto &logger = std::get<1>(p);
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+  ASSERT_FALSE(service.getSession().empty());
+
+  auto handler = std::make_shared<ConventionResultHandler>(logger);
+  auto task_ids =
+      service.Submit({ArmoniK::Sdk::Common::TaskDefinition(
+                         "echo_convention", {{"greeting", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello")}})},
+                     handler);
+
+  ASSERT_EQ(task_ids.size(), 1u);
+
+  service.WaitResults();
+
+  ASSERT_TRUE(handler->received);
+  ASSERT_FALSE(handler->is_error);
+
+  // The worker echoes back the resolved inputs as a JSON object; verify the value round-tripped.
+  auto j = nlohmann::json::parse(handler->result_payload);
+  EXPECT_EQ(j.at("inputs").at("greeting").get<std::string>(), "hello");
+
+  service.CloseSession();
+}
+
+// Submit multiple tasks in a single batch, each with distinct inputs, to
+// exercise the batching logic in the upload path.
+TEST(SessionService, task_definition_submit_multiple_tasks) {
+  auto p = init_convention();
+  auto &properties = std::get<0>(p);
+  auto &logger = std::get<1>(p);
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  auto handler = std::make_shared<CountServiceHandler>(logger);
+
+  std::vector<ArmoniK::Sdk::Common::TaskDefinition> requests;
+  const int n = 5;
+  for (int i = 0; i < n; ++i) {
+    requests.emplace_back(
+        "echo_convention",
+        std::map<std::string, ArmoniK::Sdk::Common::BlobDefinition>{
+            {"value", ArmoniK::Sdk::Common::BlobDefinition::FromData("payload-" + std::to_string(i))}});
+  }
+
+  auto task_ids = service.Submit(requests, handler);
+  ASSERT_EQ(task_ids.size(), static_cast<std::size_t>(n));
+
+  service.WaitResults();
+  EXPECT_EQ(handler->success, n);
+  EXPECT_EQ(handler->failure, 0);
+
+  service.CloseSession();
+}
+
+// Submit a task with no inputs to verify the empty-inputs path does not crash.
+TEST(SessionService, task_definition_submit_no_inputs) {
+  auto p = init_convention();
+  auto &properties = std::get<0>(p);
+  auto &logger = std::get<1>(p);
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
+  auto task_ids = service.Submit({ArmoniK::Sdk::Common::TaskDefinition("echo_convention", {})}, handler);
+
+  ASSERT_EQ(task_ids.size(), 1u);
+
+  service.WaitResults();
+  EXPECT_TRUE(handler->received);
+  EXPECT_FALSE(handler->is_error);
 
   service.CloseSession();
 }

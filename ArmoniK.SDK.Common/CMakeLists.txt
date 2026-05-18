@@ -11,6 +11,7 @@ FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_CLIENT_FILES ${HEADER_FILES_DIR}/*.h)
 
 find_package(ArmoniK.Api.Common CONFIG REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
@@ -20,7 +21,7 @@ configure_file(
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common PRIVATE nlohmann_json::nlohmann_json)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC

@@ -13,6 +13,7 @@ namespace Sdk {
 namespace Common {
 struct Properties;
 struct TaskPayload;
+struct TaskDefinition;
 } // namespace Common
 } // namespace Sdk
 } // namespace ArmoniK
@@ -131,6 +132,35 @@ public:
                                   const Common::TaskOptions &task_options);
 
   /**
+   * @brief Submits the given list of task definitions using the session's task options.
+   * Raw input data is uploaded automatically before task submission.
+   * @param task_requests List of task definitions
+   * @param handler Result handler for this batch of requests
+   * @return List of task ids
+   */
+  std::vector<std::string> Submit(const std::vector<Common::TaskDefinition> &task_requests,
+                                  std::shared_ptr<IServiceInvocationHandler> handler);
+
+  /**
+   * @brief Submits the given list of task definitions.
+   * Raw input data is uploaded automatically before task submission.
+   * @param task_requests List of task definitions
+   * @param handler Result handler for this batch of requests
+   * @param task_options Task options to use for this batch of requests
+   * @return List of task ids
+   */
+  std::vector<std::string> Submit(const std::vector<Common::TaskDefinition> &task_requests,
+                                  std::shared_ptr<IServiceInvocationHandler> handler,
+                                  const Common::TaskOptions &task_options);
+
+  /**
+   * @brief Uploads raw library content to ArmoniK blob storage.
+   * @param content Raw bytes of the .so file
+   * @return Blob ID (result ID) of the uploaded library
+   */
+  std::string UploadLibrary(const std::string &content);
+
+  /**
    * @brief Get the session Id associated with this service
    * @return Session Id
    */
@@ -177,6 +207,20 @@ public:
    * the client.
    */
   void CleanupTasks(std::vector<std::string> task_ids);
+
+private:
+  /**
+   * @brief Core submission logic operating on pre-serialized payloads.
+   * @param serialized_payloads Pre-serialized task payload bytes (one per task)
+   * @param data_dependencies Per-task list of data dependency result IDs
+   * @param handler Result handler for this batch
+   * @param task_options Task options
+   * @return List of task ids
+   */
+  std::vector<std::string> SubmitRaw(const std::vector<std::string> &serialized_payloads,
+                                     const std::vector<std::vector<std::string>> &data_dependencies,
+                                     std::shared_ptr<IServiceInvocationHandler> handler,
+                                     const Common::TaskOptions &task_options);
 };
 } // namespace Internal
 } // namespace Client

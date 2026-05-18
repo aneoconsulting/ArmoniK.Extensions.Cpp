@@ -18,7 +18,8 @@ RUN apk update && apk add --no-cache \
     grpc \
     grpc-dev \
     protobuf \
-    protobuf-dev
+    protobuf-dev \
+    nlohmann-json
 
 # Update the PATH environment variable to include the gRPC libraries and binaries
 ENV LD_LIBRARY_PATH="/app/install/lib"

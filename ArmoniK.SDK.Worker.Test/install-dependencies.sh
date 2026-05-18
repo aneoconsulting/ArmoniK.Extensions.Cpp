@@ -5,16 +5,16 @@ then
   apk update
   apk add --no-cache \
       g++ \
-      make\
+      make \
       cmake \
       linux-headers \
       bash
 elif which apt-get
 then
     apt-get update
-    DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y\
+    DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-get install -y \
         g++ \
-        make\
+        make \
         cmake
     apt-get clean
 elif which yum

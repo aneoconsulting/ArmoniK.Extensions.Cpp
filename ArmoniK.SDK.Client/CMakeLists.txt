@@ -17,10 +17,11 @@ find_package(ArmoniK.Api.Client CONFIG REQUIRED)
 if(NOT TARGET ArmoniK.SDK.Common)
     find_package(ArmoniK.SDK.Common CONFIG REQUIRED)
 endif()
+find_package(nlohmann_json REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES} ${PRIVATE_HEADERS_FILES})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common)
+target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common PRIVATE nlohmann_json::nlohmann_json)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC

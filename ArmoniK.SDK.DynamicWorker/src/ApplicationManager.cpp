@@ -1,6 +1,8 @@
 #include "ApplicationManager.h"
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/Configuration.h>
+#include <armonik/sdk/common/TaskPayload.h>
+#include <armonik/sdk/common/internal/ConventionPayload.h>
 #include <sstream>
 
 namespace ArmoniK {
@@ -12,6 +14,7 @@ ApplicationManager &ApplicationManager::UseApplication(const AppId &appId) & {
     return *this;
   }
   service_manager.clear();
+  currentLibraryPath.clear();
   std::string filename(applicationsBasePath + '/' + appId.application_name +
                        (appId.application_version.empty() ? "" : "." + appId.application_version));
   currentLibrary = DynamicLib(filename.c_str());
@@ -40,6 +43,43 @@ armonik::api::worker::ProcessStatus ApplicationManager::Execute(armonik::api::wo
                                                                 const std::string &method_name,
                                                                 const std::string &method_arguments) {
   return service_manager.Execute(taskHandler, method_name, method_arguments);
+}
+
+armonik::api::worker::ProcessStatus ApplicationManager::Execute(armonik::api::worker::TaskHandler &taskHandler,
+                                                                const std::string &method_name,
+                                                                const std::map<std::string, std::string> &inputs,
+                                                                const std::map<std::string, std::string> &outputs) {
+  ArmoniK::Sdk::Common::ConventionPayload payload;
+  payload.method_name = method_name;
+  payload.inputs = inputs;
+  payload.outputs = outputs;
+  return Execute(taskHandler, method_name, payload.Serialize());
+}
+
+ApplicationManager &ApplicationManager::UseLibrary(const ArmoniK::Sdk::Common::DynamicLibrary &lib,
+                                                   const std::string &service_namespace,
+                                                   const std::string &service_name) & {
+  if (lib.library_path == currentLibraryPath && service_name == currentLibraryServiceName) {
+    return *this;
+  }
+  service_manager.clear();
+  currentId.clear();
+  currentLibrary = DynamicLib(lib.library_path.c_str());
+
+  const std::string prefix = "armonik";
+  functionPointers =
+      ArmoniKFunctionPointers{currentLibrary.get<armonik_create_service_t>((prefix + "_create_service").c_str()),
+                              currentLibrary.get<armonik_destroy_service_t>((prefix + "_destroy_service").c_str()),
+                              currentLibrary.get<armonik_enter_session_t>((prefix + "_enter_session").c_str()),
+                              currentLibrary.get<armonik_leave_session_t>((prefix + "_leave_session").c_str()),
+                              currentLibrary.get<armonik_call_t>((prefix + "_call").c_str())};
+
+  currentLibraryPath = lib.library_path;
+  currentLibraryServiceName = service_name;
+  service_manager =
+      ServiceManager(functionPointers, ServiceId({lib.library_path, ""}, service_namespace, service_name));
+  logger.info("Successfully loaded library " + lib.library_path);
+  return *this;
 }
 ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config,
                                        const armonik::api::common::logger::Logger &logger)

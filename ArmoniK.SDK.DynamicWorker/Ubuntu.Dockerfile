@@ -19,6 +19,7 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-ge
     libgrpc-dev \
     libgrpc++-dev \
     libprotobuf-dev \
+    nlohmann-json3-dev \
     git \
     && apt-get clean
 

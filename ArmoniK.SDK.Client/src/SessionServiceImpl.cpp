@@ -12,9 +12,12 @@
 #include <armonik/common/exceptions/ArmoniKTaskError.h>
 #include <armonik/common/objects.pb.h>
 #include <armonik/common/utils/GuuId.h>
+#include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/Properties.h>
+#include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskPayload.h>
 #include <armonik/sdk/common/Version.h>
+#include <armonik/sdk/common/internal/ConventionPayload.h>
 #include <chrono>
 #include <thread>
 #include <utility>
@@ -129,10 +132,10 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
 
 const std::string &SessionServiceImpl::getSession() const { return session; }
 
-[[maybe_unused]] std::vector<std::string>
-SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
-                           std::shared_ptr<IServiceInvocationHandler> handler,
-                           const Common::TaskOptions &task_options) {
+std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::string> &serialized_payloads,
+                                                       const std::vector<std::vector<std::string>> &data_dependencies,
+                                                       std::shared_ptr<IServiceInvocationHandler> handler,
+                                                       const Common::TaskOptions &task_options) {
 
   const std::size_t message_overhead = 128;
   std::size_t data_chunk_max_size =
@@ -145,9 +148,9 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   // Number of bytes to be sent in the next CreateResult request
   std::size_t data_batched = 0;
 
-  std::vector<std::string> input_result_ids(task_requests.size());
-  std::vector<std::string> output_result_ids(task_requests.size());
-  std::vector<std::string> task_ids(task_requests.size());
+  std::vector<std::string> input_result_ids(serialized_payloads.size());
+  std::vector<std::string> output_result_ids(serialized_payloads.size());
+  std::vector<std::string> task_ids(serialized_payloads.size());
 
   ThreadPool::JoinSet join_set(thread_pool_);
 
@@ -180,7 +183,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
               // Upload result using stream
               join_set.Spawn([&, i]() {
-                upload_large_result(channel_pool, session, input_result_ids[i], task_requests[i].Serialize(),
+                upload_large_result(channel_pool, session, input_result_ids[i], serialized_payloads[i],
                                     data_chunk_max_size, logger_);
               });
             }
@@ -197,7 +200,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
       std::vector<std::pair<std::string, std::string>> results(batch.size());
       for (std::size_t j = 0; j < batch.size(); ++j) {
         std::size_t i = batch[j];
-        results[j] = {"input-" + std::to_string(i), task_requests[i].Serialize()};
+        results[j] = {"input-" + std::to_string(i), serialized_payloads[i]};
       }
       auto reply = channel_pool.WithChannel([&](auto channel) {
         return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
@@ -218,14 +221,13 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
       std::vector<armonik::api::common::TaskCreation> requests(batch.size());
       for (std::size_t j = 0; j < batch.size(); ++j) {
         std::size_t i = batch[j];
-        auto &data_dependencies = task_requests[i].data_dependencies;
+        const auto &deps = data_dependencies[i];
         auto &request = requests[j];
 
         request = armonik::api::common::TaskCreation();
         request.payload_id = input_result_ids[i];
         request.expected_output_keys.push_back(output_result_ids[i]);
-        request.data_dependencies.insert(request.data_dependencies.end(), data_dependencies.begin(),
-                                         data_dependencies.end());
+        request.data_dependencies.insert(request.data_dependencies.end(), deps.begin(), deps.end());
       }
 
       auto reply = channel_pool.WithChannel([&](auto channel) {
@@ -246,9 +248,8 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   });
 
   // Create all results
-  for (std::size_t i = 0; i < task_requests.size(); ++i) {
-    auto &task_request = task_requests[i];
-    auto payload_size = task_request.arguments.size();
+  for (std::size_t i = 0; i < serialized_payloads.size(); ++i) {
+    auto payload_size = serialized_payloads[i].size();
 
     create_metadata_and_upload_batcher.Add({i, true});
     if (payload_size + message_overhead >= data_chunk_max_size) {
@@ -270,7 +271,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   join_set.Wait();
 
   // Submit all tasks
-  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+  for (std::size_t i = 0; i < serialized_payloads.size(); ++i) {
     submit_batcher.Add(i);
   }
 
@@ -280,7 +281,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
 
   std::lock_guard<std::mutex> lock(maps_mutex);
 
-  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+  for (std::size_t i = 0; i < serialized_payloads.size(); ++i) {
     const auto &result_id = output_result_ids[i];
     const auto &task_id = task_ids[i];
     result_handlers[result_id] = handler;
@@ -289,6 +290,196 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   }
 
   return task_ids;
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+[[maybe_unused]] std::vector<std::string>
+SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
+                           std::shared_ptr<IServiceInvocationHandler> handler,
+                           const Common::TaskOptions &task_options) {
+  std::vector<std::string> serialized;
+  serialized.reserve(task_requests.size());
+  std::vector<std::vector<std::string>> deps;
+  deps.reserve(task_requests.size());
+  for (const auto &req : task_requests) {
+    serialized.push_back(req.Serialize());
+    deps.push_back(req.data_dependencies);
+  }
+  return SubmitRaw(serialized, deps, std::move(handler), task_options);
+}
+#pragma GCC diagnostic pop
+
+std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
+                                                    std::shared_ptr<IServiceInvocationHandler> handler) {
+  return Submit(task_requests, std::move(handler), taskOptions);
+}
+
+std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
+                                                    std::shared_ptr<IServiceInvocationHandler> handler,
+                                                    const Common::TaskOptions &task_options) {
+  const std::size_t message_overhead = 128;
+  const std::size_t data_chunk_max_size =
+      override_message_size_
+          ? static_cast<std::size_t>(override_message_size_)
+          : channel_pool.WithChannel([](auto channel) {
+              return static_cast<std::size_t>(
+                  armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                      .get_service_configuration()
+                      .data_chunk_max_size);
+            });
+
+  // Flatten all raw-data inputs across all tasks so they can be batch-created
+  struct InputRef {
+    std::size_t task_idx;
+    std::string name;
+    std::string result_key;
+  };
+  std::vector<InputRef> raw_inputs;
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+    for (const auto &[name, blob] : task_requests[i].inputs) {
+      if (blob.IsRawData()) {
+        raw_inputs.push_back({i, name, "input-" + std::to_string(raw_inputs.size())});
+      }
+    }
+  }
+
+  // Parallel to raw_inputs: result IDs assigned after creation
+  std::vector<std::string> raw_result_ids(raw_inputs.size());
+
+  if (!raw_inputs.empty()) {
+    ThreadPool::JoinSet join_set(thread_pool_);
+
+    // Large inputs: create metadata then stream-upload
+    Batcher<std::size_t> large_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
+      join_set.Spawn([&, batch = std::move(batch)]() {
+        std::vector<std::string> keys;
+        keys.reserve(batch.size());
+        for (std::size_t j : batch) {
+          keys.push_back(raw_inputs[j].result_key);
+        }
+
+        auto reply = channel_pool.WithChannel([&](auto channel) {
+          return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+              .create_results_metadata(session, keys);
+        });
+
+        for (std::size_t k = 0; k < batch.size(); ++k) {
+          std::size_t j = batch[k];
+          raw_result_ids[j] = reply.at(keys[k]); // threadsafe: each j is unique across batches
+
+          join_set.Spawn([&, j]() {
+            const auto &ri = raw_inputs[j];
+            upload_large_result(channel_pool, session, raw_result_ids[j],
+                                task_requests[ri.task_idx].inputs.at(ri.name).GetData(), data_chunk_max_size, logger_);
+          });
+        }
+      });
+    });
+
+    // Small inputs: inline create (metadata + data in one RPC)
+    std::size_t data_batched = 0;
+    Batcher<std::size_t> small_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
+      data_batched = 0;
+      join_set.Spawn([&, batch = std::move(batch)]() {
+        std::vector<std::pair<std::string, std::string>> pairs;
+        pairs.reserve(batch.size());
+        for (std::size_t j : batch) {
+          const auto &ri = raw_inputs[j];
+          pairs.push_back({ri.result_key, task_requests[ri.task_idx].inputs.at(ri.name).GetData()});
+        }
+
+        auto reply = channel_pool.WithChannel([&](auto channel) {
+          return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+              .create_results(session, pairs);
+        });
+
+        for (std::size_t k = 0; k < batch.size(); ++k) {
+          raw_result_ids[batch[k]] = reply.at(pairs[k].first); // threadsafe: each j is unique
+        }
+      });
+    });
+
+    for (std::size_t j = 0; j < raw_inputs.size(); ++j) {
+      const auto &data = task_requests[raw_inputs[j].task_idx].inputs.at(raw_inputs[j].name).GetData();
+      if (data.size() + message_overhead >= data_chunk_max_size) {
+        large_batcher.Add(j);
+      } else {
+        if (data_batched + data.size() + message_overhead >= data_chunk_max_size) {
+          small_batcher.ProcessBatch();
+        }
+        data_batched += data.size() + message_overhead;
+        small_batcher.Add(j);
+      }
+    }
+
+    large_batcher.ProcessBatch();
+    small_batcher.ProcessBatch();
+    join_set.Wait();
+  }
+
+  // Build ConventionPayloads: existing-blob inputs resolved directly, raw inputs resolved from upload
+  std::vector<Common::ConventionPayload> payloads(task_requests.size());
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+    payloads[i].method_name = task_requests[i].method_name;
+    for (const auto &[name, blob] : task_requests[i].inputs) {
+      if (!blob.IsRawData()) {
+        payloads[i].inputs[name] = blob.GetBlobId();
+      }
+    }
+  }
+  for (std::size_t j = 0; j < raw_inputs.size(); ++j) {
+    payloads[raw_inputs[j].task_idx].inputs[raw_inputs[j].name] = raw_result_ids[j];
+  }
+
+  // Serialize payloads
+  std::vector<std::string> serialized;
+  serialized.reserve(payloads.size());
+  for (auto &p : payloads) {
+    serialized.push_back(p.Serialize());
+  }
+
+  // Build per-task deps: library blob + all input blob IDs so the DynamicWorker can resolve them
+  std::vector<std::string> library_deps;
+  auto blob_it = task_options.options.find(Common::DynamicLibrary::KeyLibraryBlobId);
+  if (blob_it != task_options.options.end() && !blob_it->second.empty()) {
+    library_deps.push_back(blob_it->second);
+  }
+
+  std::vector<std::vector<std::string>> deps(task_requests.size(), library_deps);
+  for (std::size_t j = 0; j < raw_inputs.size(); ++j) {
+    deps[raw_inputs[j].task_idx].push_back(std::move(raw_result_ids[j]));
+  }
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+    for (const auto &[name, blob] : task_requests[i].inputs) {
+      if (!blob.IsRawData()) {
+        deps[i].push_back(blob.GetBlobId());
+      }
+    }
+  }
+
+  return SubmitRaw(serialized, deps, std::move(handler), task_options);
+}
+
+std::string SessionServiceImpl::UploadLibrary(const std::string &content) {
+  const std::size_t data_chunk_max_size =
+      override_message_size_ ? override_message_size_ : channel_pool.WithChannel([](auto channel) {
+        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+            .get_service_configuration()
+            .data_chunk_max_size;
+      });
+
+  // Create a single result entry to hold the library blob
+  auto reply = channel_pool.WithChannel([&](auto channel) {
+    return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+        .create_results_metadata(session, {"library"});
+  });
+  const std::string result_id = reply.at("library");
+
+  upload_large_result(channel_pool, session, result_id, content, data_chunk_max_size, logger_);
+
+  logger_.info("Uploaded library blob: " + result_id + " (" + std::to_string(content.size()) + " bytes)");
+  return result_id;
 }
 
 SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
@@ -308,10 +499,13 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                : session_id;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler) {
   return Submit(task_requests, std::move(handler), taskOptions);
 }
+#pragma GCC diagnostic pop
 
 void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavior behavior,
                                      const WaitOptions &options) {
@@ -467,7 +661,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           // Call the response handler with the payload
           try {
             if (handler) {
-              handler->HandleResponse(payload, task_id);
+              handler->HandleResponse(payload, task_id, result.result_id());
             } else {
               logger_.debug("No handler to deliver result " + result.result_id());
             }

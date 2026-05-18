@@ -1,6 +1,7 @@
 #pragma once
 
 #include <absl/strings/string_view.h>
+#include <map>
 #include <sstream>
 #include <vector>
 
@@ -9,9 +10,11 @@ namespace Sdk {
 namespace Common {
 
 /**
- * @brief Task definition to submit
+ * @brief Task payload using custom binary encoding.
+ * Used on the legacy execution path (application_name / application_version based loading).
+ * @deprecated Use TaskDefinition with Submit(std::vector<TaskDefinition>) instead.
  */
-struct TaskPayload {
+struct [[deprecated("Use TaskDefinition with Submit(std::vector<TaskDefinition>) instead")]] TaskPayload {
   TaskPayload() = default;
   /**
    * @brief Constructs a task payload
@@ -39,15 +42,15 @@ struct TaskPayload {
   std::vector<std::string> data_dependencies;
 
   /**
-   * @brief Serializes the request into an ArmoniK compatible format
-   * @return Serialized task request
+   * @brief Serializes the payload into the legacy binary format
+   * @return Serialized payload
    */
   [[nodiscard]] std::string Serialize() const;
 
   /**
-   * @brief Deserializes a request from the ArmoniK compatible format
-   * @param serialized Serialized task request
-   * @return Deserialized task request
+   * @brief Deserializes a payload from the legacy binary format
+   * @param serialized Serialized payload
+   * @return Deserialized payload
    */
   static TaskPayload Deserialize(absl::string_view serialized);
 };

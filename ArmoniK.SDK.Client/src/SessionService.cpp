@@ -1,6 +1,8 @@
 #include "armonik/sdk/client/SessionService.h"
 #include "SessionServiceImpl.h"
 #include <armonik/sdk/common/Version.h>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -18,6 +20,8 @@ const std::string &SessionService::getSession() const {
   return impl->getSession();
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 std::vector<std::string>
 ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
                                              std::shared_ptr<IServiceInvocationHandler> handler,
@@ -25,13 +29,37 @@ ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::TaskPaylo
   ensure_valid();
   return impl->Submit(requests, std::move(handler), task_options);
 }
-std::vector<std::string>
-
-SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
-                       std::shared_ptr<IServiceInvocationHandler> handler) {
+std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
+                                                std::shared_ptr<IServiceInvocationHandler> handler) {
   ensure_valid();
   return impl->Submit(requests, std::move(handler));
 }
+#pragma GCC diagnostic pop
+
+std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskDefinition> &requests,
+                                                std::shared_ptr<IServiceInvocationHandler> handler,
+                                                const ArmoniK::Sdk::Common::TaskOptions &task_options) {
+  ensure_valid();
+  return impl->Submit(requests, std::move(handler), task_options);
+}
+
+std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskDefinition> &requests,
+                                                std::shared_ptr<IServiceInvocationHandler> handler) {
+  ensure_valid();
+  return impl->Submit(requests, std::move(handler));
+}
+
+void SessionService::UploadLibrary(const std::string &library_path, Common::DynamicLibrary &lib) {
+  ensure_valid();
+  std::ifstream f(library_path, std::ios::binary);
+  if (!f) {
+    throw std::runtime_error("Cannot open library file: " + library_path);
+  }
+  std::ostringstream buf;
+  buf << f.rdbuf();
+  lib.library_blob_id = impl->UploadLibrary(buf.str());
+}
+
 void SessionService::WaitResults(std::set<std::string> task_ids, WaitBehavior waitBehavior,
                                  const WaitOptions &options) {
   ensure_valid();

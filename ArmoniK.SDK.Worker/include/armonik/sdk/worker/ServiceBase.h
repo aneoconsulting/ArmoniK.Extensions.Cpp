@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 
 namespace ArmoniK {
@@ -31,13 +32,26 @@ public:
   virtual void leave_session(void *session_ctx) { (void)session_ctx; }
 
   /**
-   * @brief Method called when a method is called
+   * @brief Convention-path entry point: called with named, already-resolved inputs.
+   * Override this when using the convention execution path (TaskDefinition / SetDynamicLibrary).
    * @param session_ctx User provided session context
    * @param name Name of the called method
-   * @param input Arguments of the called method, in a serialized form
-   * @return Called method return value in a serialized form
+   * @param inputs Named inputs map (key → resolved string value)
+   * @return Result string stored as a blob
    */
-  virtual std::string call(void *session_ctx, const std::string &name, const std::string &input) = 0;
+  virtual std::string call(void *session_ctx, const std::string &name,
+                           const std::map<std::string, std::string> &inputs);
+
+  /**
+   * @brief Legacy entry point: called with the raw serialized payload.
+   * Override this when using the legacy execution path (application_name / application_version).
+   * The default implementation parses the payload as convention JSON and delegates to the map overload.
+   * @param session_ctx User provided session context
+   * @param name Name of the called method
+   * @param input Raw payload — JSON for convention tasks, binary for legacy tasks
+   * @return Result string stored as a blob
+   */
+  virtual std::string call(void *session_ctx, const std::string &name, const std::string &input);
 
   /**
    * @brief Service destructor

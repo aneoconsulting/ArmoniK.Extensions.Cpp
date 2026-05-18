@@ -10,8 +10,11 @@
 #include <armonik/common/tasks_filters.pb.h>
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <armonik/sdk/client/SessionService.h>
+#include <armonik/sdk/common/BlobDefinition.h>
 #include <armonik/sdk/common/Configuration.h>
+#include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/Properties.h>
+#include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskPayload.h>
 #include <chrono>
 #include <cmath>
@@ -720,3 +723,169 @@ TEST_P(ExceptionServiceTest, HandlesExceptionCases) {
 // exhausted).
 INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
                          ::testing::Values(ExceptionTestParam{"sdkError", 2, 1}, ExceptionTestParam{"retry", 2, 3}));
+
+/* Submit a TaskDefinition via the convention path and verify the task
+ * completes successfully. The method name is carried in the TaskDefinition
+ * and ends up in the payload's "method" field (C++ to C++ usage). */
+TEST(testSDK, testConventionEcho) {
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+
+  ArmoniK::Sdk::Common::DynamicLibrary lib;
+  lib.library_path = ConventionWorkerLibPath(config);
+  lib.symbol = "EchoService"; // passed as function_name to armonik_call for dispatch
+
+  // application_namespace and application_service are forwarded by DynamicWorker to
+  // armonik_create_service — required by the test worker to dispatch to EchoService.
+  ArmoniK::Sdk::Common::TaskOptions task_options("", config.get("WorkerLib__Version"), "End2EndTest", "EchoService",
+                                                 config.get("PartitionId"));
+  task_options.SetDynamicLibrary(lib);
+  task_options.max_retries = 1;
+
+  ArmoniK::Sdk::Common::Properties properties{config, task_options};
+
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+  std::cout << "Session : " << service.getSession() << std::endl;
+
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
+
+  auto tasks = service.Submit(
+      {ArmoniK::Sdk::Common::TaskDefinition(
+          "EchoService", {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-convention")}})},
+      handler);
+  std::cout << "Sent : " << tasks[0] << std::endl;
+
+  service.WaitResults();
+
+  ASSERT_FALSE(tasks.empty());
+  ASSERT_TRUE(handler->received);
+  ASSERT_FALSE(handler->is_error);
+
+  service.CloseSession();
+  std::cout << "Convention echo test done!" << std::endl;
+}
+
+/* Submit a TaskDefinition with no method name, relying on the Symbol task
+ * option for dispatch. This exercises the cross-SDK interoperability path:
+ * a client that does not include "method" in the payload (like the Java SDK)
+ * can still dispatch to the right service via the Symbol key in task options. */
+TEST(testSDK, testConventionMethodNameFallback) {
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+
+  ArmoniK::Sdk::Common::DynamicLibrary lib;
+  lib.library_path = ConventionWorkerLibPath(config);
+  lib.symbol = "armonik";
+
+  // application_namespace and application_service are forwarded by DynamicWorker to
+  // armonik_create_service — required by the test worker to dispatch to EchoService.
+  ArmoniK::Sdk::Common::TaskOptions task_options("", config.get("WorkerLib__Version"), "End2EndTest", "EchoService",
+                                                 config.get("PartitionId"));
+  task_options.SetDynamicLibrary(lib);
+
+  // Provide the method name via task option — the payload will have none.
+  task_options.options[ArmoniK::Sdk::Common::DynamicLibrary::KeySymbol] = "EchoService";
+  task_options.max_retries = 1;
+
+  ArmoniK::Sdk::Common::Properties properties{config, task_options};
+
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+  std::cout << "Session : " << service.getSession() << std::endl;
+
+  auto handler = std::make_shared<EchoServiceHandler>(logger);
+
+  // Empty method_name: the worker falls back to the Symbol key in task options.
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskDefinition(
+                                  "", {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-fallback")}})},
+                              handler);
+  std::cout << "Sent : " << tasks[0] << std::endl;
+
+  service.WaitResults();
+
+  ASSERT_FALSE(tasks.empty());
+  ASSERT_TRUE(handler->received);
+  ASSERT_FALSE(handler->is_error);
+
+  service.CloseSession();
+  std::cout << "Convention method name fallback test done!" << std::endl;
+}
+
+/* Compute 2^2 + 3^2 = 13 using three chained tasks:
+ *   - Task A: square(2) -> result blob containing "4"
+ *   - Task B: square(3) -> result blob containing "9"
+ *   - Task C: add(FromBlobId(A), FromBlobId(B)) -> "13"
+ * Verifies that result_id from HandleResponse can be passed to
+ * BlobDefinition::FromBlobId to wire a task output as input of a downstream task. */
+TEST(testSDK, testConventionChainedSquareThenAdd) {
+  ArmoniK::Sdk::Common::Configuration config;
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
+
+  ArmoniK::Sdk::Common::DynamicLibrary lib;
+  lib.library_path = ConventionWorkerLibPath(config);
+  lib.symbol = "square";
+
+  ArmoniK::Sdk::Common::TaskOptions task_options("libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"),
+                                                 "End2EndTest", "ConventionArithmetic", config.get("PartitionId"));
+  task_options.max_retries = 1;
+  task_options.SetDynamicLibrary(lib);
+
+  ArmoniK::Sdk::Common::Properties properties{config, task_options};
+
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+  ASSERT_FALSE(service.getSession().empty());
+
+  auto opts_square = properties.taskOptions;
+
+  auto handler_a = std::make_shared<ConventionResultHandler>(logger);
+  auto handler_b = std::make_shared<ConventionResultHandler>(logger);
+  service.Submit(
+      {ArmoniK::Sdk::Common::TaskDefinition("square", {{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("2")}})},
+      handler_a, opts_square);
+  service.Submit(
+      {ArmoniK::Sdk::Common::TaskDefinition("square", {{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("3")}})},
+      handler_b, opts_square);
+  service.WaitResults();
+
+  ASSERT_TRUE(handler_a->received);
+  ASSERT_FALSE(handler_a->is_error);
+  EXPECT_EQ(handler_a->result_payload, "4");
+
+  ASSERT_TRUE(handler_b->received);
+  ASSERT_FALSE(handler_b->is_error);
+  EXPECT_EQ(handler_b->result_payload, "9");
+
+  auto opts_add = opts_square;
+  opts_add.options[ArmoniK::Sdk::Common::DynamicLibrary::KeySymbol] = "add";
+
+  auto handler_c = std::make_shared<ConventionResultHandler>(logger);
+  service.Submit({ArmoniK::Sdk::Common::TaskDefinition(
+                     "add", {{"a", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_a->result_id)},
+                             {"b", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_b->result_id)}})},
+                 handler_c, opts_add);
+  service.WaitResults();
+
+  ASSERT_TRUE(handler_c->received);
+  ASSERT_FALSE(handler_c->is_error);
+  EXPECT_EQ(handler_c->result_payload, "13");
+
+  service.CloseSession();
+  std::cout << "Convention chained square then add test done!" << std::endl;
+}

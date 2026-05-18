@@ -1,16 +1,19 @@
 #include "armonik/sdk/common/TaskPayload.h"
 #include "armonik/sdk/common/ArmoniKSdkException.h"
+#include "armonik/sdk/common/internal/ConventionPayload.h"
 #include <cstdint>
 #include <iomanip>
+#include <nlohmann/json.hpp>
 #include <string>
 
 namespace ArmoniK {
 namespace Sdk {
 namespace Common {
 
-/**
- * @brief Type used to define the size of a field in the payload
- */
+// ---------------------------------------------------------------------------
+// Legacy binary format helpers
+// ---------------------------------------------------------------------------
+
 typedef uint32_t field_size_t;
 
 namespace {
@@ -24,25 +27,12 @@ template <typename T> struct TypeParseTraits;
 
 REGISTER_PARSE_TYPE(uint32_t);
 
-/**
- * @brief Converts an integer type to a hex string
- * @tparam T Integer type
- * @param i Integer
- * @return Hex string of this integer
- */
 template <typename T> std::string int_to_hex(T i) {
   std::stringstream stream;
   stream << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << i;
   return stream.str();
 }
 
-/**
- * @brief Converts a hex string into a integer type
- * @tparam T Integer type
- * @param str Hex string
- * @return integer obtained from the string
- * @throws std::runtime_error if the hex string is invalid or if it's too large for the given type
- */
 template <typename T> T hex_to_int(absl::string_view str) {
   char *endPos;
   std::string null_terminated(str.data(), str.size());
@@ -61,18 +51,19 @@ absl::string_view advance_sv(absl::string_view &sv, size_t offset) {
   sv = sv.substr(offset);
   return extracted;
 }
-
 } // namespace
+
+// ---------------------------------------------------------------------------
+// TaskPayload (legacy binary format)
+// ---------------------------------------------------------------------------
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 std::string TaskPayload::Serialize() const {
   std::stringstream ss;
-  // Method name
   ss << int_to_hex((field_size_t)method_name.size()) << method_name << int_to_hex((field_size_t)arguments.size());
-
-  // Writing directly to avoid stopping at null character
   ss.write(arguments.data(), arguments.size());
-
-  // Data dependencies
   for (auto &&dd : data_dependencies) {
     ss << int_to_hex((field_size_t)dd.size()) << dd;
   }
@@ -84,15 +75,12 @@ TaskPayload TaskPayload::Deserialize(absl::string_view serialized) {
   field_size_t fieldSize;
   std::vector<std::string> data_dependencies;
 
-  // Method name
   fieldSize = hex_to_int<field_size_t>(advance_sv(serialized, size_width));
   std::string method_name(advance_sv(serialized, fieldSize));
 
-  // Method arguments
   fieldSize = hex_to_int<field_size_t>(advance_sv(serialized, size_width));
   std::string arguments(advance_sv(serialized, fieldSize));
 
-  // Data dependencies
   while (!serialized.empty()) {
     fieldSize = hex_to_int<field_size_t>(advance_sv(serialized, size_width));
     data_dependencies.emplace_back(advance_sv(serialized, fieldSize));
@@ -100,6 +88,34 @@ TaskPayload TaskPayload::Deserialize(absl::string_view serialized) {
 
   return {std::move(method_name), std::move(arguments), std::move(data_dependencies)};
 }
+
+#pragma GCC diagnostic pop
+
+// ---------------------------------------------------------------------------
+// ConventionPayload (JSON wire format for the convention path)
+// ---------------------------------------------------------------------------
+
+std::string ConventionPayload::Serialize() const {
+  nlohmann::json j;
+  j["method"] = method_name;
+  j["inputs"] = inputs;
+  j["outputs"] = outputs;
+  return j.dump();
+}
+
+ConventionPayload ConventionPayload::Deserialize(absl::string_view serialized) {
+  try {
+    auto j = nlohmann::json::parse(serialized.begin(), serialized.end());
+    ConventionPayload payload;
+    payload.method_name = j.value("method", std::string{});
+    payload.inputs = j.at("inputs").get<std::map<std::string, std::string>>();
+    payload.outputs = j.at("outputs").get<std::map<std::string, std::string>>();
+    return payload;
+  } catch (const nlohmann::json::exception &e) {
+    throw ArmoniKSdkException(std::string("Failed to deserialize convention payload JSON: ") + e.what());
+  }
+}
+
 } // namespace Common
 } // namespace Sdk
 } // namespace ArmoniK
