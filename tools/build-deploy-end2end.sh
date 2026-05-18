@@ -59,7 +59,7 @@ case "$environment" in
     build_base_image="ubuntu:24.04"
   ;;
   "RedHat")
-    build_base_image="dockerhubaneo/armonikworker_base:ubi7.9-0.0.1"
+    build_base_image="registry.access.redhat.com/ubi8"
   ;;
   *)
     printf "Unknown requested environment, please use one of:\n\tAlpine\n\tUbuntu\n\tRedHat"
@@ -68,6 +68,6 @@ esac
 
 "${script_path}"/build-dynamic-worker.sh -e "$environment" -n "$worker_name" -v "$worker_version" -a "$api_version" -w "$working_dir"
 
-docker build --build-arg DynamicWorkerImage="${worker_name}:${worker_tag}" --build-arg BuildBaseImage="${build_base_image}" --build-arg WorkerLibVersion="$worker_version" -f "${working_dir}/ArmoniK.SDK.Worker.Test/Dockerfile" -t "${worker_test}:build-${environment}" ${working_dir}
+docker build --build-arg DynamicWorkerImage="${worker_name}:${worker_tag}" --build-arg BuildBaseImage="${build_base_image}" --build-arg WorkerLibVersion="$worker_version" -f "${working_dir}/ArmoniK.SDK.Worker.Test/Dockerfile" -t "${worker_test}:${worker_tag}" ${working_dir}
 
-docker run --rm -v "$dyn_lib_path:/host" --entrypoint sh "${worker_test}:build-${environment}" -c "cp /app/install/lib*/libArmoniK.SDK.Worker.Test.* /host/"
+docker run --rm -v "$dyn_lib_path:/host" --entrypoint sh "${worker_test}:${worker_tag}" -c "cp /app/install/lib*/libArmoniK.SDK.Worker.Test.* /host/"
