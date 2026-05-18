@@ -52,7 +52,7 @@ case "$environment" in
     dockerfile_name="Ubuntu.Dockerfile"
   ;;
   "RedHat")
-    dockerfile_name="ubi7.Dockerfile"
+    dockerfile_name="ubi8.Dockerfile"
   ;;
   *)
     printf "Unknown requested environment, please use one of:\n\tAlpine\n\tUbuntu\n\tRedHat"
