@@ -20,7 +20,14 @@ RUN yum --disableplugin=subscription-manager update -y && \
     zlib-devel \
     openssl-devel
 
-    RUN yum --disableplugin=subscription-manager clean all
+RUN yum --disableplugin=subscription-manager clean all
+
+RUN git clone --depth 1 https://github.com/nlohmann/json.git -b v3.11.3 /tmp/nlohmann-json && \
+    cmake -S /tmp/nlohmann-json -B /tmp/nlohmann-json/build \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DJSON_BuildTests=OFF && \
+    cmake --build /tmp/nlohmann-json/build --target install && \
+    rm -rf /tmp/nlohmann-json
 
 WORKDIR /tmp
 
