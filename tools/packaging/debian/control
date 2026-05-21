@@ -14,6 +14,6 @@ Section: libs
 Architecture: any
 Multi-Arch: same
 Pre-Depends: ${misc:Pre-Depends}
-Depends: libgrpc-dev (>= 1.50), libgrpc++-dev (>= 1.50), libprotobuf-dev (>= 3.20), libc-ares-dev, protobuf-compiler-grpc (>= 1.50)
+Depends: libgrpc-dev (>= 1.50), libgrpc++-dev (>= 1.50), libprotobuf-dev (>= 3.20), libc-ares-dev, protobuf-compiler-grpc (>= 1.50), nlohmann-json3-dev
 Description: ArmoniK SDK libraries
     This includes the Common, Client and Worker SDKs
