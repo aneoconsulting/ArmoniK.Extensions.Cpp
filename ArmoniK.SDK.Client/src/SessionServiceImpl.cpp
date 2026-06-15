@@ -337,7 +337,9 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
   };
   std::vector<InputRef> raw_inputs;
   for (std::size_t i = 0; i < task_requests.size(); ++i) {
-    for (const auto &[name, blob] : task_requests[i].inputs) {
+    for (const auto &kv : task_requests[i].inputs) {
+      const auto &name = kv.first;
+      const auto &blob = kv.second;
       if (blob.IsRawData()) {
         raw_inputs.push_back({i, name, "input-" + std::to_string(raw_inputs.size())});
       }
@@ -422,7 +424,9 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
   std::vector<Common::ConventionPayload> payloads(task_requests.size());
   for (std::size_t i = 0; i < task_requests.size(); ++i) {
     payloads[i].method_name = task_requests[i].method_name;
-    for (const auto &[name, blob] : task_requests[i].inputs) {
+    for (const auto &kv : task_requests[i].inputs) {
+      const auto &name = kv.first;
+      const auto &blob = kv.second;
       if (!blob.IsRawData()) {
         payloads[i].inputs[name] = blob.GetBlobId();
       }
@@ -451,7 +455,8 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
     deps[raw_inputs[j].task_idx].push_back(std::move(raw_result_ids[j]));
   }
   for (std::size_t i = 0; i < task_requests.size(); ++i) {
-    for (const auto &[name, blob] : task_requests[i].inputs) {
+    for (const auto &kv : task_requests[i].inputs) {
+      const auto &blob = kv.second;
       if (!blob.IsRawData()) {
         deps[i].push_back(blob.GetBlobId());
       }
