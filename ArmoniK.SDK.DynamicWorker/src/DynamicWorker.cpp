@@ -62,7 +62,7 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
       // This handles both inline values (C++ native payloads) and blob ID references (cross-SDK interoperability).
       std::map<std::string, std::string> resolved_inputs;
       for (const auto &pair : payload.inputs) {
-        const std::string &name  = pair.first;
+        const std::string &name = pair.first;
         const std::string &value = pair.second;
         const auto dep_it = deps.find(value);
         resolved_inputs[name] = (dep_it != deps.end()) ? dep_it->second : value;
