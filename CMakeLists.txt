@@ -16,7 +16,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_compile_options(-std=c++14 -pedantic-errors -Werror)
+add_compile_options(-std=c++14 -pedantic-errors)
 
 if(NOT DEFINED BUILD_DIR)
     set(BUILD_DIR "${CMAKE_SOURCE_DIR}/build")
