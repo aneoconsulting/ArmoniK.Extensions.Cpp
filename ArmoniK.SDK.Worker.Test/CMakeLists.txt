@@ -4,8 +4,6 @@ include(CMakePackageConfigHelpers)
 
 project(${PROJECT_NAME})
 
-set(CMAKE_CXX_STANDARD 17)
-
 if(NOT TARGET ArmoniK.SDK.Worker)
     find_package(ArmoniK.SDK.Worker CONFIG REQUIRED)
 endif()
@@ -32,8 +30,6 @@ target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${WORKER_HEADER_DIR}>"
         )
-
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

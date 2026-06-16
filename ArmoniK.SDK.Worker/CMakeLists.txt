@@ -18,8 +18,6 @@ find_package(nlohmann_json REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES})
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
-
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
