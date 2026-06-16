@@ -34,7 +34,6 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
 setup_options(${PROJECT_NAME})
 split_version(${VERSION})
 setup_lib_version(${PROJECT_NAME})
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 
 # generate the version file for the config file
 write_basic_package_version_file(
