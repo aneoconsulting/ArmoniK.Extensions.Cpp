@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cstring>
 #include <iostream>
 
 #include "End2EndHandlers.h"
