@@ -1,6 +1,6 @@
 #pragma once
 
-#include <absl/strings/string_view.h>
+#include <armonik/common/utils/string_view.h>
 #include <map>
 #include <string>
 
@@ -25,7 +25,7 @@ struct ConventionPayload {
   std::map<std::string, std::string> outputs;
 
   [[nodiscard]] std::string Serialize() const;
-  static ConventionPayload Deserialize(absl::string_view serialized);
+  static ConventionPayload Deserialize(armonik::api::string_view serialized);
 };
 
 } // namespace Common

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <absl/strings/string_view.h>
+#include <armonik/common/utils/string_view.h>
 #include <map>
 #include <sstream>
 #include <vector>
@@ -52,7 +52,7 @@ struct [[deprecated("Use TaskDefinition with Submit(std::vector<TaskDefinition>)
    * @param serialized Serialized payload
    * @return Deserialized payload
    */
-  static TaskPayload Deserialize(absl::string_view serialized);
+  static TaskPayload Deserialize(armonik::api::string_view serialized);
 };
 
 } // namespace Common
