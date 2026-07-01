@@ -1,7 +1,7 @@
 #pragma once
 
-#include <absl/strings/string_view.h>
 #include <armonik/common/logger/fwd.h>
+#include <armonik/common/utils/string_view.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -76,35 +76,35 @@ public:
    * @return Endpoint address
    * @note Configuration key: `GrpcClient__Endpoint`
    */
-  [[nodiscard]] absl::string_view getEndpoint() const;
+  [[nodiscard]] armonik::api::string_view getEndpoint() const;
 
   /**
    * @brief Path to the client's certificate in PEM format
    * @return Client certificate's path
    * @note Configuration key: `GrpcClient__CertPem` (optional)
    */
-  [[nodiscard]] absl::string_view getUserCertPemPath() const;
+  [[nodiscard]] armonik::api::string_view getUserCertPemPath() const;
 
   /**
    * @brief Path to the client's key in PEM format (PKCS#1 or PKCS#8)
    * @return Client key path
    * @note Configuration key: `GrpcClient__KeyPem` (optional)
    */
-  [[nodiscard]] absl::string_view getUserKeyPemPath() const;
+  [[nodiscard]] armonik::api::string_view getUserKeyPemPath() const;
 
   /**
    * @brief Path to the client's PKCS#12 certificate/key
    * @return Client P12 path
    * @note Configuration key: `GrpcClient__CertP12` (optional)
    */
-  [[nodiscard]] absl::string_view getUserP12Path() const;
+  [[nodiscard]] armonik::api::string_view getUserP12Path() const;
 
   /**
    * @brief Path to the server's CA certificate
    * @return CA certificate path
    * @note Configuration key: `GrpcClient__CaCert` (optional)
    */
-  [[nodiscard]] absl::string_view getCaCertPemPath() const;
+  [[nodiscard]] armonik::api::string_view getCaCertPemPath() const;
 
   /**
    * @brief Is SSL validation enabled ?
@@ -199,7 +199,7 @@ public:
    * @brief Returns the server address.
    * @return A reference to the server address string.
    */
-  [[nodiscard]] absl::string_view get_server_address() const;
+  [[nodiscard]] armonik::api::string_view get_server_address() const;
 
   /**
    * @brief Sets the worker address with the given socket address.
@@ -217,7 +217,7 @@ public:
    * @brief Returns the agent address.
    * @return A reference to the agent address string.
    */
-  [[nodiscard]] absl::string_view get_agent_address() const;
+  [[nodiscard]] armonik::api::string_view get_agent_address() const;
 
 private:
   std::unique_ptr<armonik::api::common::options::ComputePlane> impl;
@@ -288,7 +288,7 @@ public:
    * @param file_path Path to the JSON file.
    * @return Reference to the current Configuration object.
    */
-  Configuration &add_json_configuration(absl::string_view file_path);
+  Configuration &add_json_configuration(armonik::api::string_view file_path);
 
   /**
    * @brief Add environment variable configuration.

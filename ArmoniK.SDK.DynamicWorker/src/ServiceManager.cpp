@@ -1,5 +1,6 @@
 #include "ServiceManager.h"
 #include "ContextIds.h"
+#include <armonik/common/utils/string_view.h>
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/worker/Worker/ProcessStatus.h>
 #include <stdexcept>
@@ -68,7 +69,8 @@ void ServiceManager::UploadResult(void *opaque_context, armonik_status_t status,
     context->output.set_error(std::string(data, data_size));
     return;
   }
-  context->taskHandler.send_result(context->taskHandler.getExpectedResults()[0], absl::string_view(data, data_size));
+  context->taskHandler.send_result(context->taskHandler.getExpectedResults()[0],
+                                   armonik::api::string_view(data, data_size));
   context->output.set_ok();
 }
 bool ServiceManager::matches(const ServiceId &other) { return other == serviceId; }

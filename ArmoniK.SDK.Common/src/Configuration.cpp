@@ -29,13 +29,13 @@ ComputePlane &ComputePlane::operator=(const ComputePlane &computeplane) {
 ComputePlane &ComputePlane::operator=(ComputePlane &&) noexcept = default;
 ComputePlane::~ComputePlane() = default;
 
-absl::string_view ComputePlane::get_server_address() const { return impl->get_server_address(); }
+armonik::api::string_view ComputePlane::get_server_address() const { return impl->get_server_address(); }
 void ComputePlane::set_worker_address(std::string socket_address) {
   impl->set_worker_address(std::move(socket_address));
 }
 
 void ComputePlane::set_agent_address(std::string agent_address) { impl->set_agent_address(std::move(agent_address)); }
-absl::string_view ComputePlane::get_agent_address() const { return impl->get_agent_address(); }
+armonik::api::string_view ComputePlane::get_agent_address() const { return impl->get_agent_address(); }
 
 const armonik::api::common::options::ComputePlane &ComputePlane::get_impl() const {
   const static armonik::api::common::options::ComputePlane default_config =
@@ -91,11 +91,11 @@ ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
 ControlPlane &ControlPlane::operator=(ControlPlane &&) noexcept = default;
 ControlPlane::~ControlPlane() = default;
 
-absl::string_view ControlPlane::getEndpoint() const { return impl->getEndpoint(); }
-absl::string_view ControlPlane::getUserCertPemPath() const { return impl->getUserCertPemPath(); }
-absl::string_view ControlPlane::getUserKeyPemPath() const { return impl->getUserKeyPemPath(); }
-absl::string_view ControlPlane::getUserP12Path() const { return impl->getUserP12Path(); }
-absl::string_view ControlPlane::getCaCertPemPath() const { return impl->getCaCertPemPath(); }
+armonik::api::string_view ControlPlane::getEndpoint() const { return impl->getEndpoint(); }
+armonik::api::string_view ControlPlane::getUserCertPemPath() const { return impl->getUserCertPemPath(); }
+armonik::api::string_view ControlPlane::getUserKeyPemPath() const { return impl->getUserKeyPemPath(); }
+armonik::api::string_view ControlPlane::getUserP12Path() const { return impl->getUserP12Path(); }
+armonik::api::string_view ControlPlane::getCaCertPemPath() const { return impl->getCaCertPemPath(); }
 bool ControlPlane::isSslValidation() const { return impl->isSslValidation(); }
 
 int ControlPlane::getWaitBatchSize() const { return wait_batch_size_; }
@@ -138,7 +138,7 @@ std::string Configuration::get(const std::string &key) const { return get_impl()
 void Configuration::set(const std::string &key, const std::string &value) { set_impl().set(key, value); }
 
 const std::map<std::string, std::string> &Configuration::list() const { return get_impl().list(); }
-Configuration &Configuration::add_json_configuration(absl::string_view file_path) {
+Configuration &Configuration::add_json_configuration(armonik::api::string_view file_path) {
   set_impl().add_json_configuration(file_path);
   return *this;
 }
