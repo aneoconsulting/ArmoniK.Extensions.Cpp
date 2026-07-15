@@ -14,7 +14,6 @@ RUN yum --disableplugin=subscription-manager update -y && \
     wget \
     rpm-build \
     libcurl-devel \
-    fmt-devel \
     simdjson-devel \
     re2-devel \
     zlib-devel \
