@@ -44,8 +44,9 @@ RUN wget "https://github.com/aneoconsulting/grpc-rpm/releases/download/${GRPC_BU
 
 # Default value read from tools/common.sh file
 ARG API_VERSION
-RUN wget "https://github.com/aneoconsulting/ArmoniK.Api/releases/download/${API_VERSION}/libarmonik-${API_VERSION}-Linux.rpm" && \
-    rpm -ivh "libarmonik-${API_VERSION}-Linux.rpm"
+RUN wget "https://github.com/aneoconsulting/ArmoniK.Api/releases/download/${API_VERSION}/libarmonik-${API_VERSION}-Linux.rpm" \
+         "https://github.com/aneoconsulting/ArmoniK.Api/releases/download/${API_VERSION}/libarmonik-devel-${API_VERSION}-Linux.rpm" && \
+    rpm -ivh "libarmonik-${API_VERSION}-Linux.rpm" "libarmonik-devel-${API_VERSION}-Linux.rpm"
 
 RUN rm -rf *.rpm
 
