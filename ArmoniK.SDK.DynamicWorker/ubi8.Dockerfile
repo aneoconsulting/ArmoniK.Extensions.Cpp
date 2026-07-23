@@ -89,6 +89,12 @@ WORKDIR /tmp
 RUN wget https://github.com/aneoconsulting/grpc-rpm/releases/download/1.62.2.0/grpc-1.62.2-1.el8.x86_64.rpm && \
     rpm -ivh grpc-1.62.2-1.el8.x86_64.rpm && rm grpc-1.62.2-1.el8.x86_64.rpm
 
+# ArmoniK.Api ships shared libraries (libArmoniK.Api.*.so), so the runtime rpm must be installed here too,
+# not just in the builder stage, or the worker fails to start with a missing shared library error.
+ARG API_VERSION
+RUN wget "https://github.com/aneoconsulting/ArmoniK.Api/releases/download/${API_VERSION}/libarmonik-${API_VERSION}-Linux.rpm" && \
+    rpm -ivh "libarmonik-${API_VERSION}-Linux.rpm" && rm "libarmonik-${API_VERSION}-Linux.rpm"
+
 RUN adduser -d /home/armonikuser -u 5000 -U --shell /bin/sh armonikuser
 USER armonikuser
 
