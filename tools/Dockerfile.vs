@@ -6,7 +6,6 @@ RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="Europe/London" apt-ge
     g++ \
     make \
     build-essential \
-    libfmt-dev \
     cmake \
     ssh \
     gdb \
