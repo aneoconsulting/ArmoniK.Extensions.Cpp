@@ -33,7 +33,7 @@ template <typename T> std::string int_to_hex(T i) {
   return stream.str();
 }
 
-template <typename T> T hex_to_int(absl::string_view str) {
+template <typename T> T hex_to_int(armonik::api::string_view str) {
   char *endPos;
   std::string null_terminated(str.data(), str.size());
   T result = std::strtol(null_terminated.data(), &endPos, 16);
@@ -46,8 +46,8 @@ template <typename T> T hex_to_int(absl::string_view str) {
   return result;
 }
 
-absl::string_view advance_sv(absl::string_view &sv, size_t offset) {
-  absl::string_view extracted = sv.substr(0, offset);
+armonik::api::string_view advance_sv(armonik::api::string_view &sv, size_t offset) {
+  armonik::api::string_view extracted = sv.substr(0, offset);
   sv = sv.substr(offset);
   return extracted;
 }
@@ -70,7 +70,7 @@ std::string TaskPayload::Serialize() const {
   return ss.str();
 }
 
-TaskPayload TaskPayload::Deserialize(absl::string_view serialized) {
+TaskPayload TaskPayload::Deserialize(armonik::api::string_view serialized) {
   constexpr size_t size_width = sizeof(field_size_t) * 2;
   field_size_t fieldSize;
   std::vector<std::string> data_dependencies;
@@ -103,7 +103,7 @@ std::string ConventionPayload::Serialize() const {
   return j.dump();
 }
 
-ConventionPayload ConventionPayload::Deserialize(absl::string_view serialized) {
+ConventionPayload ConventionPayload::Deserialize(armonik::api::string_view serialized) {
   try {
     auto j = nlohmann::json::parse(serialized.begin(), serialized.end());
     ConventionPayload payload;

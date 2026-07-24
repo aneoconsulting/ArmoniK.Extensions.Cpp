@@ -12,6 +12,7 @@
 #include <armonik/common/exceptions/ArmoniKTaskError.h>
 #include <armonik/common/objects.pb.h>
 #include <armonik/common/utils/GuuId.h>
+#include <armonik/common/utils/string_view.h>
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskDefinition.h>
@@ -39,7 +40,7 @@ namespace {
  * @param logger Logger
  */
 void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std::string session, std::string result_id,
-                         absl::string_view data, std::size_t data_chunk_max_size,
+                         armonik::api::string_view data, std::size_t data_chunk_max_size,
                          armonik::api::common::logger::ILogger &logger) {
 
   std::exception_ptr eptr;
