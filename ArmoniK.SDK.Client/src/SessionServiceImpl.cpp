@@ -140,11 +140,13 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
 
   const std::size_t message_overhead = 128;
   std::size_t data_chunk_max_size =
-      override_message_size_ ? override_message_size_ : channel_pool.WithChannel([](std::shared_ptr<grpc::Channel> channel) {
-        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-            .get_service_configuration()
-            .data_chunk_max_size;
-      });
+      override_message_size_
+          ? override_message_size_
+          : channel_pool.WithChannel([](std::shared_ptr<grpc::Channel> channel) {
+              return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                  .get_service_configuration()
+                  .data_chunk_max_size;
+            });
 
   // Number of bytes to be sent in the next CreateResult request
   std::size_t data_batched = 0;
@@ -479,11 +481,13 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 
 std::string SessionServiceImpl::UploadLibrary(const std::string &content) {
   const std::size_t data_chunk_max_size =
-      override_message_size_ ? override_message_size_ : channel_pool.WithChannel([](std::shared_ptr<grpc::Channel> channel) {
-        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-            .get_service_configuration()
-            .data_chunk_max_size;
-      });
+      override_message_size_
+          ? override_message_size_
+          : channel_pool.WithChannel([](std::shared_ptr<grpc::Channel> channel) {
+              return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                  .get_service_configuration()
+                  .data_chunk_max_size;
+            });
 
   // Create a single result entry to hold the library blob
   auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
@@ -663,7 +667,8 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
         switch (status) {
         // Unreachable, generate an error to avoid missing results
         case armonik::api::grpc::v1::result_status::RESULT_STATUS_CREATED:
-          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Unreachable: result in CREATED status"), "");
+          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Unreachable: result in CREATED status"),
+                       "");
           break;
 
         // If the result is completed, we download it
