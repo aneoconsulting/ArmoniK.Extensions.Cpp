@@ -65,9 +65,9 @@ protected:
 
   void SetUp() override {
     // Initialize logger for tests
-    logger_ = std::make_unique<armonik::api::common::logger::Logger>(
+    logger_.reset(new armonik::api::common::logger::Logger(
         armonik::api::common::logger::writer_console(), armonik::api::common::logger::formatter_plain(true),
-        armonik::api::common::logger::Level::Verbose);
+        armonik::api::common::logger::Level::Verbose));
   }
 };
 

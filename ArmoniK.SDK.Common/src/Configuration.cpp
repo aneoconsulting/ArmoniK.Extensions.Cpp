@@ -17,13 +17,13 @@ namespace Common {
 
 // Compute Plane
 ComputePlane::ComputePlane(const Configuration &configuration)
-    : impl(std::make_unique<armonik::api::common::options::ComputePlane>(*configuration.impl)) {}
+    : impl(std::unique_ptr<armonik::api::common::options::ComputePlane>(new armonik::api::common::options::ComputePlane(*configuration.impl))) {}
 ComputePlane::ComputePlane(const ComputePlane &computeplane)
-    : impl(std::make_unique<armonik::api::common::options::ComputePlane>(*computeplane.impl)) {}
+    : impl(std::unique_ptr<armonik::api::common::options::ComputePlane>(new armonik::api::common::options::ComputePlane(*computeplane.impl))) {}
 ComputePlane::ComputePlane(ComputePlane &&) noexcept = default;
 
 ComputePlane &ComputePlane::operator=(const ComputePlane &computeplane) {
-  impl = std::make_unique<armonik::api::common::options::ComputePlane>(*computeplane.impl);
+  impl = std::unique_ptr<armonik::api::common::options::ComputePlane>(new armonik::api::common::options::ComputePlane(*computeplane.impl));
   return *this;
 }
 ComputePlane &ComputePlane::operator=(ComputePlane &&) noexcept = default;
@@ -47,7 +47,7 @@ const armonik::api::common::options::ComputePlane &ComputePlane::get_impl() cons
 }
 armonik::api::common::options::ComputePlane &ComputePlane::set_impl() {
   if (!impl) {
-    impl = std::make_unique<armonik::api::common::options::ComputePlane>(armonik::api::common::utils::Configuration());
+    impl = std::unique_ptr<armonik::api::common::options::ComputePlane>(new armonik::api::common::options::ComputePlane(armonik::api::common::utils::Configuration()));
   }
   return *impl;
 }
@@ -68,20 +68,20 @@ int getIntFromConfig(const Configuration &config, const std::string &key, int de
 } // namespace
 
 ControlPlane::ControlPlane(const Configuration &config)
-    : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*config.impl)),
+    : impl(std::unique_ptr<armonik::api::common::options::ControlPlane>(new armonik::api::common::options::ControlPlane(*config.impl))),
       wait_batch_size_(getIntFromConfig(config, "GrpcClient__WaitBatchSize", 200)),
       submit_batch_size_(getIntFromConfig(config, "GrpcClient__SubmitBatchSize", 200)),
       thread_pool_size_(getIntFromConfig(config, "GrpcClient__ThreadPoolSize", 0)),
       override_message_size_(getIntFromConfig(config, "GrpcClient__OverrideMessageSize", 0)) {}
 
 ControlPlane::ControlPlane(const ControlPlane &controlplane)
-    : impl(std::make_unique<armonik::api::common::options::ControlPlane>(*controlplane.impl)),
+    : impl(std::unique_ptr<armonik::api::common::options::ControlPlane>(new armonik::api::common::options::ControlPlane(*controlplane.impl))),
       wait_batch_size_(controlplane.wait_batch_size_), submit_batch_size_(controlplane.submit_batch_size_),
       thread_pool_size_(controlplane.thread_pool_size_), override_message_size_(controlplane.override_message_size_) {}
 ControlPlane::ControlPlane(ControlPlane &&) noexcept = default;
 
 ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
-  impl = std::make_unique<armonik::api::common::options::ControlPlane>(*controlplane.impl);
+  impl = std::unique_ptr<armonik::api::common::options::ControlPlane>(new armonik::api::common::options::ControlPlane(*controlplane.impl));
   wait_batch_size_ = controlplane.wait_batch_size_;
   submit_batch_size_ = controlplane.submit_batch_size_;
   thread_pool_size_ = controlplane.thread_pool_size_;
@@ -114,23 +114,23 @@ const armonik::api::common::options::ControlPlane &ControlPlane::get_impl() cons
 
 armonik::api::common::options::ControlPlane &ControlPlane::set_impl() {
   if (!impl) {
-    impl = std::make_unique<armonik::api::common::options::ControlPlane>(armonik::api::common::utils::Configuration());
+    impl = std::unique_ptr<armonik::api::common::options::ControlPlane>(new armonik::api::common::options::ControlPlane(armonik::api::common::utils::Configuration()));
   }
   return *impl;
 }
 
 // Configuration
 
-Configuration::Configuration() : impl(std::make_unique<armonik::api::common::utils::Configuration>()) {}
+Configuration::Configuration() : impl(std::unique_ptr<armonik::api::common::utils::Configuration>(new armonik::api::common::utils::Configuration())) {}
 Configuration::Configuration(const Configuration &config)
-    : impl(std::make_unique<armonik::api::common::utils::Configuration>(*config.impl)) {}
+    : impl(std::unique_ptr<armonik::api::common::utils::Configuration>(new armonik::api::common::utils::Configuration(*config.impl))) {}
 Configuration::Configuration(Configuration &&) noexcept = default;
 
 Configuration::~Configuration() = default;
 
 Configuration &Configuration::operator=(Configuration &&) noexcept = default;
 Configuration &Configuration::operator=(const Configuration &config) {
-  impl = std::make_unique<armonik::api::common::utils::Configuration>(*config.impl);
+  impl = std::unique_ptr<armonik::api::common::utils::Configuration>(new armonik::api::common::utils::Configuration(*config.impl));
   return *this;
 }
 
@@ -155,7 +155,7 @@ Configuration::operator armonik::api::common::utils::Configuration() { return ge
 
 armonik::api::common::utils::Configuration &Configuration::set_impl() {
   if (!impl) {
-    impl = std::make_unique<armonik::api::common::utils::Configuration>();
+    impl = std::unique_ptr<armonik::api::common::utils::Configuration>(new armonik::api::common::utils::Configuration());
   }
   return *impl;
 }
