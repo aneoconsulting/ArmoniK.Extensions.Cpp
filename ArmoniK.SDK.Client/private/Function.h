@@ -68,7 +68,7 @@ public:
   /**
    * @brief Constructs a Function from a callable
    */
-  template <class F> Function(F f) : callable_(std::make_unique<Impl<F>>(std::move(f))) {}
+  template <class F> Function(F f) : callable_(new Impl<F>(std::move(f))) {}
 
   /**
    * @brief Copy constructor (deleted)

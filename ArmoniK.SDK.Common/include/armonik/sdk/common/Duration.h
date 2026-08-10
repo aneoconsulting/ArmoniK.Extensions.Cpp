@@ -17,6 +17,9 @@ struct Duration {
    * @brief Nanoseconds
    */
   int32_t nanos = 0;
+
+  Duration() = default;
+  Duration(int64_t seconds, int32_t nanos) : seconds(seconds), nanos(nanos) {}
 };
 } // namespace Common
 } // namespace Sdk

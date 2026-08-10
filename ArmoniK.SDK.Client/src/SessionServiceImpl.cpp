@@ -101,7 +101,7 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
 
       // If the uploaded size is different, delete the uploaded data from the object storage
       try {
-        pool.WithChannel([&](auto channel) {
+        pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
           armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
               .delete_results_data(session, {std::move(*response.mutable_result()->mutable_result_id())});
         });
@@ -140,11 +140,13 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
 
   const std::size_t message_overhead = 128;
   std::size_t data_chunk_max_size =
-      override_message_size_ ? override_message_size_ : channel_pool.WithChannel([](auto channel) {
-        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-            .get_service_configuration()
-            .data_chunk_max_size;
-      });
+      override_message_size_
+          ? override_message_size_
+          : channel_pool.WithChannel([](std::shared_ptr<grpc::Channel> channel) {
+              return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                  .get_service_configuration()
+                  .data_chunk_max_size;
+            });
 
   // Number of bytes to be sent in the next CreateResult request
   std::size_t data_batched = 0;
@@ -158,7 +160,9 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
   // Batch Result metadata creation (for outputs and large inputs) and upload inputs
   Batcher<std::pair<std::size_t, bool>> create_metadata_and_upload_batcher(
       submit_batch_size_, [&](std::vector<std::pair<std::size_t, bool>> &&batch) {
-        join_set.Spawn([&, batch = std::move(batch)]() {
+        auto batch_ptr = std::make_shared<std::vector<std::pair<std::size_t, bool>>>(std::move(batch));
+        join_set.Spawn([&, batch_ptr]() {
+          auto &batch = *batch_ptr;
           std::vector<std::string> names(batch.size());
           for (std::size_t j = 0; j < batch.size(); ++j) {
             int i = batch[j].first;
@@ -167,7 +171,7 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
             names[j] = (is_output ? "output-" : "input-") + std::to_string(i);
           }
 
-          auto reply = channel_pool.WithChannel([&](auto channel) {
+          auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
             return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
                 .create_results_metadata(session, names);
           });
@@ -197,13 +201,15 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
     // Reset the number of bytes to be sent in the current batch
     data_batched = 0;
 
-    join_set.Spawn([&, batch = std::move(batch)]() {
+    auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
+    join_set.Spawn([&, batch_ptr]() {
+      auto &batch = *batch_ptr;
       std::vector<std::pair<std::string, std::string>> results(batch.size());
       for (std::size_t j = 0; j < batch.size(); ++j) {
         std::size_t i = batch[j];
         results[j] = {"input-" + std::to_string(i), serialized_payloads[i]};
       }
-      auto reply = channel_pool.WithChannel([&](auto channel) {
+      auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
         return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
             .create_results(session, results);
       });
@@ -218,7 +224,9 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
 
   // Batch task submission
   Batcher<std::size_t> submit_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
-    join_set.Spawn([&, batch = std::move(batch)]() {
+    auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
+    join_set.Spawn([&, batch_ptr]() {
+      auto &batch = *batch_ptr;
       std::vector<armonik::api::common::TaskCreation> requests(batch.size());
       for (std::size_t j = 0; j < batch.size(); ++j) {
         std::size_t i = batch[j];
@@ -231,7 +239,7 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
         request.data_dependencies.insert(request.data_dependencies.end(), deps.begin(), deps.end());
       }
 
-      auto reply = channel_pool.WithChannel([&](auto channel) {
+      auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
         return armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
             .submit_tasks(session, std::move(requests), static_cast<armonik::api::grpc::v1::TaskOptions>(task_options));
       });
@@ -323,7 +331,7 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
   const std::size_t data_chunk_max_size =
       override_message_size_
           ? static_cast<std::size_t>(override_message_size_)
-          : channel_pool.WithChannel([](auto channel) {
+          : channel_pool.WithChannel([](std::shared_ptr<grpc::Channel> channel) {
               return static_cast<std::size_t>(
                   armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
                       .get_service_configuration()
@@ -355,14 +363,16 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 
     // Large inputs: create metadata then stream-upload
     Batcher<std::size_t> large_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
-      join_set.Spawn([&, batch = std::move(batch)]() {
+      auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
+      join_set.Spawn([&, batch_ptr]() {
+        auto &batch = *batch_ptr;
         std::vector<std::string> keys;
         keys.reserve(batch.size());
         for (std::size_t j : batch) {
           keys.push_back(raw_inputs[j].result_key);
         }
 
-        auto reply = channel_pool.WithChannel([&](auto channel) {
+        auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
           return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
               .create_results_metadata(session, keys);
         });
@@ -384,7 +394,9 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
     std::size_t data_batched = 0;
     Batcher<std::size_t> small_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
       data_batched = 0;
-      join_set.Spawn([&, batch = std::move(batch)]() {
+      auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
+      join_set.Spawn([&, batch_ptr]() {
+        auto &batch = *batch_ptr;
         std::vector<std::pair<std::string, std::string>> pairs;
         pairs.reserve(batch.size());
         for (std::size_t j : batch) {
@@ -392,7 +404,7 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
           pairs.push_back({ri.result_key, task_requests[ri.task_idx].inputs.at(ri.name).GetData()});
         }
 
-        auto reply = channel_pool.WithChannel([&](auto channel) {
+        auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
           return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
               .create_results(session, pairs);
         });
@@ -469,14 +481,16 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 
 std::string SessionServiceImpl::UploadLibrary(const std::string &content) {
   const std::size_t data_chunk_max_size =
-      override_message_size_ ? override_message_size_ : channel_pool.WithChannel([](auto channel) {
-        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-            .get_service_configuration()
-            .data_chunk_max_size;
-      });
+      override_message_size_
+          ? override_message_size_
+          : channel_pool.WithChannel([](std::shared_ptr<grpc::Channel> channel) {
+              return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                  .get_service_configuration()
+                  .data_chunk_max_size;
+            });
 
   // Create a single result entry to hold the library blob
-  auto reply = channel_pool.WithChannel([&](auto channel) {
+  auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
     return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
         .create_results_metadata(session, {"library"});
   });
@@ -497,7 +511,7 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
       submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
       override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()) {
   // Creates a new session
-  session = session_id.empty() ? channel_pool.WithChannel([&](auto &&channel) {
+  session = session_id.empty() ? channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
         .create_session(static_cast<armonik::api::grpc::v1::TaskOptions>(properties.taskOptions),
                         {properties.taskOptions.partition_id});
@@ -556,7 +570,9 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
 
   // Batcher to get results in batches
   Batcher<std::string> batcher(wait_batch_size_, [&](std::vector<std::string> &&batch) {
-    join_set.Spawn([&, batch = std::move(batch)]() mutable {
+    auto batch_ptr = std::make_shared<std::vector<std::string>>(std::move(batch));
+    join_set.Spawn([&, batch_ptr]() {
+      auto &batch = *batch_ptr;
       armonik::api::grpc::v1::results::Filters filters{};
       for (auto &result_id : batch) {
 
@@ -567,7 +583,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
         filter->mutable_filter_string()->set_operator_(armonik::api::grpc::v1::FILTER_STRING_OPERATOR_EQUAL);
       }
 
-      auto response = channel_pool.WithChannel([&](auto &&channel) {
+      auto response = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
         armonik::api::client::ResultsClient resultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel));
         int total = 0;
         return resultsClient.list_results(std::move(filters), total, 0, filters.or__size());
@@ -602,7 +618,9 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
         continue;
       }
 
-      join_set.Spawn([&, result = std::move(result), status]() mutable {
+      auto result_ptr = std::make_shared<armonik::api::grpc::v1::results::ResultRaw>(std::move(result));
+      join_set.Spawn([&, result_ptr, status]() {
+        auto &result = *result_ptr;
         std::shared_ptr<IServiceInvocationHandler> handler{};
         std::string task_id{};
 
@@ -622,7 +640,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
         }
 
         // function to be called upon errors
-        auto handle_error = [&](const std::exception &e, const std::string &reason = {}) {
+        auto handle_error = [&](const std::exception &e, const std::string &reason) {
           hasError.store(true, std::memory_order_relaxed);
           std::stringstream message;
           message << "Error while handling result " << result.result_id() << " for task "
@@ -649,14 +667,15 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
         switch (status) {
         // Unreachable, generate an error to avoid missing results
         case armonik::api::grpc::v1::result_status::RESULT_STATUS_CREATED:
-          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Unreachable: result in CREATED status"));
+          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Unreachable: result in CREATED status"),
+                       "");
           break;
 
         // If the result is completed, we download it
         case armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED:
           // Download the payload
           try {
-            payload = channel_pool.WithChannel([&](auto &&channel) {
+            payload = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
               return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
                   .download_result_data(session, result.result_id());
             });
@@ -685,14 +704,14 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           }
 
           if (owner_task_id.empty()) {
-            handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result is aborted"));
+            handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result is aborted"), "");
           } else {
             armonik::api::grpc::v1::TaskError error{};
             error.set_task_id(owner_task_id);
 
             // Retrieve the task error details
             try {
-              channel_pool.WithChannel([&](auto &&channel) {
+              channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
                 auto task = armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
                                 .get_task(owner_task_id);
                 auto task_error = error.add_errors();
@@ -702,19 +721,19 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
             } catch (const std::exception &e) {
               error.add_errors()->set_detail(e.what());
             }
-            handle_error(armonik::api::common::exceptions::ArmoniKTaskError("Result is aborted", error));
+            handle_error(armonik::api::common::exceptions::ArmoniKTaskError("Result is aborted", error), "");
           }
           break;
 
         // In all other cases, we just call the handler on a generic error
         case armonik::api::grpc::v1::result_status::RESULT_STATUS_DELETED:
-          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result is deleted"));
+          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result is deleted"), "");
           break;
         case armonik::api::grpc::v1::result_status::RESULT_STATUS_NOTFOUND:
-          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result was not found"));
+          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result was not found"), "");
           break;
         default:
-          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result status is unknown"));
+          handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result status is unknown"), "");
           break;
         }
       });
