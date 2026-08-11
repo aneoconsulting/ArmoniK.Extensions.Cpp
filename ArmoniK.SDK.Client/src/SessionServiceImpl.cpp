@@ -1,5 +1,6 @@
 #include "SessionServiceImpl.h"
 #include "Batcher.h"
+#include "ParallelFor.h"
 #include "armonik/sdk/client/IServiceInvocationHandler.h"
 #include <armonik/client/results/ResultsClient.h>
 #include <armonik/client/results_common.pb.h>
@@ -307,14 +308,12 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
 SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
                            std::shared_ptr<IServiceInvocationHandler> handler,
                            const Common::TaskOptions &task_options) {
-  std::vector<std::string> serialized;
-  serialized.reserve(task_requests.size());
-  std::vector<std::vector<std::string>> deps;
-  deps.reserve(task_requests.size());
-  for (const auto &req : task_requests) {
-    serialized.push_back(req.Serialize());
-    deps.push_back(req.data_dependencies);
-  }
+  std::vector<std::string> serialized(task_requests.size());
+  std::vector<std::vector<std::string>> deps(task_requests.size());
+  ParallelFor(thread_pool_, task_requests.size(), [&](std::size_t i) {
+    serialized[i] = task_requests[i].Serialize();
+    deps[i] = task_requests[i].data_dependencies;
+  });
   return SubmitRaw(serialized, deps, std::move(handler), task_options);
 }
 #pragma GCC diagnostic pop
@@ -450,11 +449,8 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
   }
 
   // Serialize payloads
-  std::vector<std::string> serialized;
-  serialized.reserve(payloads.size());
-  for (auto &p : payloads) {
-    serialized.push_back(p.Serialize());
-  }
+  std::vector<std::string> serialized(payloads.size());
+  ParallelFor(thread_pool_, payloads.size(), [&](std::size_t i) { serialized[i] = payloads[i].Serialize(); });
 
   // Build per-task deps: library blob + all input blob IDs so the DynamicWorker can resolve them
   std::vector<std::string> library_deps;
