@@ -7,6 +7,7 @@
 #include <grpcpp/channel.h>
 #include <mutex>
 #include <queue>
+#include <utility>
 
 namespace ArmoniK {
 namespace Sdk {
@@ -112,6 +113,38 @@ public:
      * @param properties
      */
     ChannelGuard(Internal::ChannelPool *pool);
+
+    /**
+     * @brief Copy constructor (deleted, the guard owns a single release of the channel)
+     */
+    ChannelGuard(const ChannelGuard &) = delete;
+
+    /**
+     * @brief Copy assignment operator (deleted, the guard owns a single release of the channel)
+     */
+    ChannelGuard &operator=(const ChannelGuard &) = delete;
+
+    /**
+     * @brief Move constructor
+     */
+    ChannelGuard(ChannelGuard &&other) noexcept : channel(std::move(other.channel)), pool_(other.pool_) {
+      other.pool_ = nullptr;
+    }
+
+    /**
+     * @brief Move assignment operator
+     */
+    ChannelGuard &operator=(ChannelGuard &&other) noexcept {
+      if (this != &other) {
+        if (pool_ != nullptr) {
+          pool_->ReleaseChannel(channel);
+        }
+        channel = std::move(other.channel);
+        pool_ = other.pool_;
+        other.pool_ = nullptr;
+      }
+      return *this;
+    }
 
     /**
      * @brief Destroy the Channel Guard object

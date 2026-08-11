@@ -86,7 +86,11 @@ ChannelPool::ChannelGuard::ChannelGuard(Internal::ChannelPool *pool) : pool_(poo
   }
 }
 
-ChannelPool::ChannelGuard::~ChannelGuard() { pool_->ReleaseChannel(channel); }
+ChannelPool::ChannelGuard::~ChannelGuard() {
+  if (pool_ != nullptr) {
+    pool_->ReleaseChannel(channel);
+  }
+}
 
 ChannelPool::ChannelGuard ChannelPool::GetChannel() { return ChannelGuard(this); }
 
