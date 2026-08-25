@@ -505,7 +505,8 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
       logger_(logger.local({{"sdk_version", ArmoniK::Sdk::Common::getVersion()}})),
       wait_batch_size_(properties.configuration.get_control_plane().getWaitBatchSize()),
       submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
-      override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()) {
+      override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()),
+      download_byte_budget_(properties.configuration.get_control_plane().getDownloadByteBudget()) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
@@ -614,8 +615,27 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
         continue;
       }
 
+      // Only a COMPLETED result actually downloads payload bytes; reserve the budget for those
+      // before spawning. This blocks here, in the single-threaded driving loop, rather than
+      // inside a pool worker, so a tight budget throttles admission instead of occupying (and
+      // potentially starving) thread_pool_ slots shared with unrelated Submit() work.
+      std::int64_t result_bytes =
+          status == armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED ? result.size() : 0;
+      if (download_byte_budget_.Acquire(result_bytes)) {
+        logger_.warning("Downloading a " + std::to_string(result_bytes) +
+                        " byte result alone exceeds GrpcClient__DownloadByteBudget (" +
+                        std::to_string(download_byte_budget_.capacity()) +
+                        "). Consider raising it to bound peak download memory more evenly.");
+      }
+
       auto result_ptr = std::make_shared<armonik::api::grpc::v1::results::ResultRaw>(std::move(result));
-      join_set.Spawn([&, result_ptr, status]() {
+      join_set.Spawn([&, result_ptr, status, result_bytes]() {
+        struct BudgetGuard {
+          ByteBudget &budget;
+          std::int64_t bytes;
+          ~BudgetGuard() { budget.Release(bytes); }
+        } budget_guard{download_byte_budget_, result_bytes};
+
         auto &result = *result_ptr;
         std::shared_ptr<IServiceInvocationHandler> handler{};
         std::string task_id{};
