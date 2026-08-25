@@ -160,8 +160,8 @@ TEST(DownloadByteBudget, tight_budget_bounds_peak_download_memory) {
   // how many results are ready in a given polling round or how many threads the pool has.
   long tight_peak_kb = RunBatchAndMeasurePeak(kTaskCount, kPayloadBytes, 2 * static_cast<std::int64_t>(kPayloadBytes));
 
-  std::cout << "Peak RSS delta - unbounded: " << unbounded_peak_kb << " KB, tight budget (2 payloads): "
-            << tight_peak_kb << " KB" << std::endl;
+  std::cout << "Peak RSS delta - unbounded: " << unbounded_peak_kb
+            << " KB, tight budget (2 payloads): " << tight_peak_kb << " KB" << std::endl;
 
   // The tight budget should hold less payload data in memory at once than the unbounded run. Not
   // asserting a specific ratio (e.g. half): peak RSS delta here also includes overhead the budget
