@@ -2,6 +2,7 @@
 
 #include <armonik/common/logger/fwd.h>
 #include <armonik/common/utils/string_view.h>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -144,15 +145,13 @@ public:
   [[nodiscard]] int getOverrideMessageSize() const;
 
   /**
-   * @brief Number of attempts for a full result-data download RPC
-   * @return Max download attempts
-   * @note Configuration key: `GrpcClient__DownloadMaxRetry` (default: 3)
-   * @note gRPC's own transparent retry only covers a download that fails before its first
-   *       response chunk is received; once the stream has started, a broken connection is
-   *       not retried by gRPC. This setting bounds how many times WaitResults re-issues the
-   *       whole download RPC from scratch after such a mid-stream failure.
+   * @brief Maximum number of result-payload bytes reserved at once (downloaded but not yet
+   * handled) while WaitResults() is running
+   * @return Byte budget
+   * @note Configuration key: `GrpcClient__DownloadByteBudget` (default: 0)
+   * @note 0 means unlimited (no backpressure), matching pre-existing behavior
    */
-  [[nodiscard]] int getDownloadMaxRetry() const;
+  [[nodiscard]] std::int64_t getDownloadByteBudget() const;
 
 private:
   std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
@@ -162,7 +161,7 @@ private:
   int submit_batch_size_;
   int thread_pool_size_;
   int override_message_size_;
-  int download_max_retry_;
+  std::int64_t download_byte_budget_;
 };
 
 /**
