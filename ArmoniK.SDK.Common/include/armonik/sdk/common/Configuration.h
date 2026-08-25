@@ -153,6 +153,15 @@ public:
    */
   [[nodiscard]] std::int64_t getDownloadByteBudget() const;
 
+  /**
+   * @brief Maximum number of task-payload/raw-input bytes reserved at once (being uploaded but not
+   * yet acknowledged by the server) while Submit()/SubmitRaw() are running
+   * @return Byte budget
+   * @note Configuration key: `GrpcClient__UploadByteBudget` (default: 0)
+   * @note 0 means unlimited (no backpressure), matching pre-existing behavior
+   */
+  [[nodiscard]] std::int64_t getUploadByteBudget() const;
+
 private:
   std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
   [[nodiscard]] const armonik::api::common::options::ControlPlane &get_impl() const;
@@ -162,6 +171,7 @@ private:
   int thread_pool_size_;
   int override_message_size_;
   std::int64_t download_byte_budget_;
+  std::int64_t upload_byte_budget_;
 };
 
 /**
