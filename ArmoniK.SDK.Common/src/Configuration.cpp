@@ -97,7 +97,8 @@ ControlPlane::ControlPlane(const ControlPlane &controlplane)
           new armonik::api::common::options::ControlPlane(*controlplane.impl))),
       wait_batch_size_(controlplane.wait_batch_size_), submit_batch_size_(controlplane.submit_batch_size_),
       thread_pool_size_(controlplane.thread_pool_size_), override_message_size_(controlplane.override_message_size_),
-      download_byte_budget_(controlplane.download_byte_budget_), upload_byte_budget_(controlplane.upload_byte_budget_) {}
+      download_byte_budget_(controlplane.download_byte_budget_), upload_byte_budget_(controlplane.upload_byte_budget_) {
+}
 ControlPlane::ControlPlane(ControlPlane &&) noexcept = default;
 
 ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {

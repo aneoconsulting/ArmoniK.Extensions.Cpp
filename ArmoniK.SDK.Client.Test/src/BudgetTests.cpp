@@ -184,8 +184,8 @@ TEST(DownloadByteBudget, tight_budget_bounds_peak_download_memory) {
   long tight_peak_kb =
       RunDownloadBatchAndMeasurePeak(kTaskCount, kPayloadBytes, 2 * static_cast<std::int64_t>(kPayloadBytes));
 
-  std::cout << "Peak RSS delta - unbounded: " << unbounded_peak_kb << " KB, tight budget (2 payloads): "
-            << tight_peak_kb << " KB" << std::endl;
+  std::cout << "Peak RSS delta - unbounded: " << unbounded_peak_kb
+            << " KB, tight budget (2 payloads): " << tight_peak_kb << " KB" << std::endl;
 
   EXPECT_LT(tight_peak_kb, unbounded_peak_kb);
 }
