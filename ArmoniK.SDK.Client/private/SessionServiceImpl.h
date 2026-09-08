@@ -91,6 +91,12 @@ private:
   int wait_batch_size_;
 
   /**
+   * @brief Max number of attempts for a full result-data download RPC after a mid-stream
+   *        failure (see Configuration::getDownloadMaxRetry)
+   */
+  int download_max_retry_;
+
+  /**
    * @brief Batch size for task submission
    */
   int submit_batch_size_;
