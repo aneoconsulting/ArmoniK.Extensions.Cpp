@@ -693,7 +693,8 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
               if (attempt < download_max_retry_) {
                 logger_.warning("Download attempt " + std::to_string(attempt) + "/" +
                                 std::to_string(download_max_retry_) + " failed for result " + result.result_id() +
-                                ": " + e.what() + ". Retrying.");
+                                " (expected size " + std::to_string(result.size()) + " B): " + e.what() +
+                                ". Retrying.");
               }
             }
           }
@@ -702,7 +703,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
               std::rethrow_exception(download_error);
             } catch (const std::exception &e) {
               handle_error(e, "Failed to download result data after " + std::to_string(download_max_retry_) +
-                                  " attempt(s)");
+                                  " attempt(s), expected size " + std::to_string(result.size()) + " B");
             }
             break;
           }
