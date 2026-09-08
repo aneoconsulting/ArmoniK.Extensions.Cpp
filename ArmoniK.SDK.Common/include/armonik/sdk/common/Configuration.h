@@ -143,6 +143,17 @@ public:
    */
   [[nodiscard]] int getOverrideMessageSize() const;
 
+  /**
+   * @brief Number of attempts for a full result-data download RPC
+   * @return Max download attempts
+   * @note Configuration key: `GrpcClient__DownloadMaxRetry` (default: 3)
+   * @note gRPC's own transparent retry only covers a download that fails before its first
+   *       response chunk is received; once the stream has started, a broken connection is
+   *       not retried by gRPC. This setting bounds how many times WaitResults re-issues the
+   *       whole download RPC from scratch after such a mid-stream failure.
+   */
+  [[nodiscard]] int getDownloadMaxRetry() const;
+
 private:
   std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
   [[nodiscard]] const armonik::api::common::options::ControlPlane &get_impl() const;
@@ -151,6 +162,7 @@ private:
   int submit_batch_size_;
   int thread_pool_size_;
   int override_message_size_;
+  int download_max_retry_;
 };
 
 /**

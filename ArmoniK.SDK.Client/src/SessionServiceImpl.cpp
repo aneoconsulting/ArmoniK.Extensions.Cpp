@@ -504,6 +504,7 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
       thread_pool_(properties.configuration.get_control_plane().getThreadPoolSize(), logger),
       logger_(logger.local({{"sdk_version", ArmoniK::Sdk::Common::getVersion()}})),
       wait_batch_size_(properties.configuration.get_control_plane().getWaitBatchSize()),
+      download_max_retry_(properties.configuration.get_control_plane().getDownloadMaxRetry()),
       submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
       override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()) {
   // Creates a new session
@@ -668,15 +669,41 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           break;
 
         // If the result is completed, we download it
-        case armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED:
-          // Download the payload
-          try {
-            payload = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
-              return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-                  .download_result_data(session, result.result_id());
-            });
-          } catch (const std::exception &e) {
-            handle_error(e, "Failed to download result data");
+        case armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED: {
+          // Download the payload.
+          //
+          // gRPC's own transparent retry (the service-config retryPolicy set up in
+          // ChannelFactory) only covers an attempt that fails before any response chunk has
+          // reached us: once download_result_data's stream has started delivering data, a
+          // dropped connection or a transient storage-backend error surfaces here instead,
+          // and gRPC will not silently redial mid-stream. Re-issue the whole RPC from
+          // scratch: download_result_data reads already-completed, immutable data, so
+          // repeating it has no side effects and is always safe.
+          std::exception_ptr download_error;
+          for (int attempt = 1; attempt <= download_max_retry_; ++attempt) {
+            try {
+              payload = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
+                return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                    .download_result_data(session, result.result_id());
+              });
+              download_error = nullptr;
+              break;
+            } catch (const std::exception &e) {
+              download_error = std::current_exception();
+              if (attempt < download_max_retry_) {
+                logger_.warning("Download attempt " + std::to_string(attempt) + "/" +
+                                std::to_string(download_max_retry_) + " failed for result " + result.result_id() +
+                                ": " + e.what() + ". Retrying.");
+              }
+            }
+          }
+          if (download_error) {
+            try {
+              std::rethrow_exception(download_error);
+            } catch (const std::exception &e) {
+              handle_error(e, "Failed to download result data after " + std::to_string(download_max_retry_) +
+                                  " attempt(s)");
+            }
             break;
           }
 
@@ -691,6 +718,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
             handle_error(e, "Failed to execute result handler");
           }
           break;
+        }
 
         // If the result is aborted, we retrieve the task error
         case armonik::api::grpc::v1::result_status::RESULT_STATUS_ABORTED:

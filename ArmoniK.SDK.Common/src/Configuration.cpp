@@ -77,13 +77,15 @@ ControlPlane::ControlPlane(const Configuration &config)
       wait_batch_size_(getIntFromConfig(config, "GrpcClient__WaitBatchSize", 200)),
       submit_batch_size_(getIntFromConfig(config, "GrpcClient__SubmitBatchSize", 200)),
       thread_pool_size_(getIntFromConfig(config, "GrpcClient__ThreadPoolSize", 0)),
-      override_message_size_(getIntFromConfig(config, "GrpcClient__OverrideMessageSize", 0)) {}
+      override_message_size_(getIntFromConfig(config, "GrpcClient__OverrideMessageSize", 0)),
+      download_max_retry_(getIntFromConfig(config, "GrpcClient__DownloadMaxRetry", 3)) {}
 
 ControlPlane::ControlPlane(const ControlPlane &controlplane)
     : impl(std::unique_ptr<armonik::api::common::options::ControlPlane>(
           new armonik::api::common::options::ControlPlane(*controlplane.impl))),
       wait_batch_size_(controlplane.wait_batch_size_), submit_batch_size_(controlplane.submit_batch_size_),
-      thread_pool_size_(controlplane.thread_pool_size_), override_message_size_(controlplane.override_message_size_) {}
+      thread_pool_size_(controlplane.thread_pool_size_), override_message_size_(controlplane.override_message_size_),
+      download_max_retry_(controlplane.download_max_retry_) {}
 ControlPlane::ControlPlane(ControlPlane &&) noexcept = default;
 
 ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
@@ -93,6 +95,7 @@ ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
   submit_batch_size_ = controlplane.submit_batch_size_;
   thread_pool_size_ = controlplane.thread_pool_size_;
   override_message_size_ = controlplane.override_message_size_;
+  download_max_retry_ = controlplane.download_max_retry_;
   return *this;
 }
 ControlPlane &ControlPlane::operator=(ControlPlane &&) noexcept = default;
@@ -109,6 +112,7 @@ int ControlPlane::getWaitBatchSize() const { return wait_batch_size_; }
 int ControlPlane::getSubmitBatchSize() const { return submit_batch_size_; }
 int ControlPlane::getThreadPoolSize() const { return thread_pool_size_; }
 int ControlPlane::getOverrideMessageSize() const { return override_message_size_; }
+int ControlPlane::getDownloadMaxRetry() const { return download_max_retry_; }
 
 const armonik::api::common::options::ControlPlane &ControlPlane::get_impl() const {
   const static armonik::api::common::options::ControlPlane default_config =
