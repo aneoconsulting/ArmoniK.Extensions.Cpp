@@ -677,6 +677,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
             });
           } catch (const std::exception &e) {
             handle_error(e, "Failed to download result data");
+            break;
           }
 
           // Call the response handler with the payload
