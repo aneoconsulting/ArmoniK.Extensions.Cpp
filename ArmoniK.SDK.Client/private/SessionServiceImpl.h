@@ -106,6 +106,12 @@ private:
    */
   ByteBudget download_byte_budget_;
 
+  /**
+   * @brief Bounds the total task-payload/raw-input bytes reserved at once during
+   * Submit()/SubmitRaw()
+   */
+  ByteBudget upload_byte_budget_;
+
 public:
   SessionServiceImpl() = delete;
   SessionServiceImpl(const SessionServiceImpl &) = delete;

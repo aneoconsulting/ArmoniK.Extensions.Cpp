@@ -187,8 +187,25 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
             } else {
               input_result_ids[i] = std::move(reply[names[j]]);
 
-              // Upload result using stream
+              // Upload result using stream. Reserve this item's bytes from upload_byte_budget_
+              // here (once this upload is already about to run), not in the driving loop that
+              // dispatches items to batches: acquiring before an item joins a batch can block
+              // the very code that would later flush that batch and release earlier items'
+              // bytes, deadlocking once the budget is smaller than a full batch.
               join_set.Spawn([&, i]() {
+                std::int64_t payload_bytes = static_cast<std::int64_t>(serialized_payloads[i].size());
+                if (upload_byte_budget_.Acquire(payload_bytes)) {
+                  logger_.warning("Uploading a " + std::to_string(payload_bytes) +
+                                  " byte payload alone exceeds GrpcClient__UploadByteBudget (" +
+                                  std::to_string(upload_byte_budget_.capacity()) +
+                                  "). Consider raising it to bound peak upload memory more evenly.");
+                }
+                struct BudgetGuard {
+                  ByteBudget &budget;
+                  std::int64_t bytes;
+                  ~BudgetGuard() { budget.Release(bytes); }
+                } budget_guard{upload_byte_budget_, payload_bytes};
+
                 upload_large_result(channel_pool, session, input_result_ids[i], serialized_payloads[i],
                                     data_chunk_max_size, logger_);
               });
@@ -205,6 +222,28 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
     auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
     join_set.Spawn([&, batch_ptr]() {
       auto &batch = *batch_ptr;
+
+      // Reserve this batch's total bytes from upload_byte_budget_ here (once this batch is
+      // already flushing), not in the driving loop that dispatches items to batches: acquiring
+      // before an item joins a batch can block the very code that would later flush that batch
+      // and release earlier items' bytes, deadlocking once the budget is smaller than a full
+      // batch. Released once the batch's data has been sent (or throws).
+      std::int64_t batch_bytes = 0;
+      for (std::size_t i : batch) {
+        batch_bytes += static_cast<std::int64_t>(serialized_payloads[i].size());
+      }
+      if (upload_byte_budget_.Acquire(batch_bytes)) {
+        logger_.warning("Uploading a " + std::to_string(batch_bytes) +
+                        " byte batch alone exceeds GrpcClient__UploadByteBudget (" +
+                        std::to_string(upload_byte_budget_.capacity()) +
+                        "). Consider raising it to bound peak upload memory more evenly.");
+      }
+      struct BudgetGuard {
+        ByteBudget &budget;
+        std::int64_t bytes;
+        ~BudgetGuard() { budget.Release(bytes); }
+      } budget_guard{upload_byte_budget_, batch_bytes};
+
       std::vector<std::pair<std::string, std::string>> results(batch.size());
       for (std::size_t j = 0; j < batch.size(); ++j) {
         std::size_t i = batch[j];
@@ -380,10 +419,28 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
           std::size_t j = batch[k];
           raw_result_ids[j] = reply.at(keys[k]); // threadsafe: each j is unique across batches
 
+          // Reserve this raw input's bytes from upload_byte_budget_ here (once this upload is
+          // already about to run), not in the driving loop that dispatches items to batches:
+          // acquiring before an item joins a batch can block the very code that would later flush
+          // that batch and release earlier items' bytes, deadlocking once the budget is smaller
+          // than a full batch.
           join_set.Spawn([&, j]() {
             const auto &ri = raw_inputs[j];
-            upload_large_result(channel_pool, session, raw_result_ids[j],
-                                task_requests[ri.task_idx].inputs.at(ri.name).GetData(), data_chunk_max_size, logger_);
+            const auto &data = task_requests[ri.task_idx].inputs.at(ri.name).GetData();
+            std::int64_t data_bytes = static_cast<std::int64_t>(data.size());
+            if (upload_byte_budget_.Acquire(data_bytes)) {
+              logger_.warning("Uploading a " + std::to_string(data_bytes) +
+                              " byte raw input alone exceeds GrpcClient__UploadByteBudget (" +
+                              std::to_string(upload_byte_budget_.capacity()) +
+                              "). Consider raising it to bound peak upload memory more evenly.");
+            }
+            struct BudgetGuard {
+              ByteBudget &budget;
+              std::int64_t bytes;
+              ~BudgetGuard() { budget.Release(bytes); }
+            } budget_guard{upload_byte_budget_, data_bytes};
+
+            upload_large_result(channel_pool, session, raw_result_ids[j], data, data_chunk_max_size, logger_);
           });
         }
       });
@@ -396,6 +453,29 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
       auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
       join_set.Spawn([&, batch_ptr]() {
         auto &batch = *batch_ptr;
+
+        // Reserve this batch's total bytes from upload_byte_budget_ here (once this batch is
+        // already flushing), not in the driving loop that dispatches items to batches: acquiring
+        // before an item joins a batch can block the very code that would later flush that batch
+        // and release earlier items' bytes, deadlocking once the budget is smaller than a full
+        // batch. Released once the batch's data has been sent (or throws).
+        std::int64_t batch_bytes = 0;
+        for (std::size_t j : batch) {
+          const auto &ri = raw_inputs[j];
+          batch_bytes += static_cast<std::int64_t>(task_requests[ri.task_idx].inputs.at(ri.name).GetData().size());
+        }
+        if (upload_byte_budget_.Acquire(batch_bytes)) {
+          logger_.warning("Uploading a " + std::to_string(batch_bytes) +
+                          " byte batch alone exceeds GrpcClient__UploadByteBudget (" +
+                          std::to_string(upload_byte_budget_.capacity()) +
+                          "). Consider raising it to bound peak upload memory more evenly.");
+        }
+        struct BudgetGuard {
+          ByteBudget &budget;
+          std::int64_t bytes;
+          ~BudgetGuard() { budget.Release(bytes); }
+        } budget_guard{upload_byte_budget_, batch_bytes};
+
         std::vector<std::pair<std::string, std::string>> pairs;
         pairs.reserve(batch.size());
         for (std::size_t j : batch) {
@@ -416,6 +496,7 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 
     for (std::size_t j = 0; j < raw_inputs.size(); ++j) {
       const auto &data = task_requests[raw_inputs[j].task_idx].inputs.at(raw_inputs[j].name).GetData();
+
       if (data.size() + message_overhead >= data_chunk_max_size) {
         large_batcher.Add(j);
       } else {
@@ -506,7 +587,8 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
       wait_batch_size_(properties.configuration.get_control_plane().getWaitBatchSize()),
       submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
       override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()),
-      download_byte_budget_(properties.configuration.get_control_plane().getDownloadByteBudget()) {
+      download_byte_budget_(properties.configuration.get_control_plane().getDownloadByteBudget()),
+      upload_byte_budget_(properties.configuration.get_control_plane().getUploadByteBudget()) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
