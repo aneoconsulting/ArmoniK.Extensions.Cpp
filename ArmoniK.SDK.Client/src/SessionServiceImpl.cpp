@@ -674,17 +674,21 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           //
           // gRPC's own transparent retry (the service-config retryPolicy set up in
           // ChannelFactory) only covers an attempt that fails before any response chunk has
-          // reached us: once download_result_data's stream has started delivering data, a
+          // reached us: once download_result_data_in's stream has started delivering data, a
           // dropped connection or a transient storage-backend error surfaces here instead,
           // and gRPC will not silently redial mid-stream. Re-issue the whole RPC from
-          // scratch: download_result_data reads already-completed, immutable data, so
-          // repeating it has no side effects and is always safe.
+          // scratch: download_result_data_in reads already-completed, immutable data, so
+          // repeating it has no side effects and is always safe. The payload buffer is
+          // cleared (keeping its capacity) before each attempt to avoid appending stale
+          // data from a previous partial download.
           std::exception_ptr download_error;
+          payload.reserve(result.size());
           for (int attempt = 1; attempt <= download_max_retry_; ++attempt) {
             try {
-              payload = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
-                return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-                    .download_result_data(session, result.result_id());
+              payload.clear();
+              channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
+                armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+                    .download_result_data_in(session, result.result_id(), payload);
               });
               download_error = nullptr;
               break;
