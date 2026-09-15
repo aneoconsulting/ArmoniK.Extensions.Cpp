@@ -151,8 +151,8 @@ long RunDownloadBatchAndMeasurePeak(unsigned int task_count, size_t payload_byte
 // budget mostly bounds concurrency, not resident memory. That shows up as wall-clock time: a tight
 // budget forces calls into more, smaller waves. Returns the elapsed time for all calls to complete,
 // not including result draining.
-long long RunUploadBatchAndMeasureElapsedMs(unsigned int call_count, unsigned int tasks_per_call,
-                                            size_t payload_bytes, std::int64_t upload_byte_budget) {
+long long RunUploadBatchAndMeasureElapsedMs(unsigned int call_count, unsigned int tasks_per_call, size_t payload_bytes,
+                                            std::int64_t upload_byte_budget) {
   auto p = init_with_byte_budgets(/*download_byte_budget=*/0, upload_byte_budget);
   auto &properties = std::get<0>(p);
   auto &logger = std::get<1>(p);
