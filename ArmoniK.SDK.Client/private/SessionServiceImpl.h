@@ -118,6 +118,12 @@ private:
    */
   ByteBudget upload_byte_budget_;
 
+  /**
+   * @brief Bounds concurrent Submit()/SubmitRaw() calls to thread_pool_'s worker count minus one, so
+   * a call blocked on upload_byte_budget_ can never occupy every worker
+   */
+  ConcurrencySemaphore submit_admission_;
+
 public:
   SessionServiceImpl() = delete;
   SessionServiceImpl(const SessionServiceImpl &) = delete;

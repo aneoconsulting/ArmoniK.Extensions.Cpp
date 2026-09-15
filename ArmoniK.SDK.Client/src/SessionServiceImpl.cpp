@@ -131,17 +131,6 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
   }
 }
 
-// Submit()/SubmitRaw() reserve upload_byte_budget_ bytes for the whole call up front, on the calling
-// thread, before spawning anything. A result handler chaining a new submission from inside
-// WaitResults() runs on thread_pool_, so that reservation blocks a pool worker whose freedom is
-// needed to finish (and release the budget for) whichever call currently holds it. With enough
-// concurrent chained calls, every worker ends up blocked this way, deadlocking the pool.
-void EnsureNotCalledFromWorkerThread(const char *entry_point) {
-  if (ThreadPool::IsWorkerThread()) {
-    throw armonik::api::common::exceptions::ArmoniKApiException(std::string(entry_point) +
-                                                                " was called from a result handler (risk of deadlock)");
-  }
-}
 } // namespace
 
 const std::string &SessionServiceImpl::getSession() const { return session; }
@@ -150,7 +139,14 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
                                                        const std::vector<std::vector<std::string>> &data_dependencies,
                                                        std::shared_ptr<IServiceInvocationHandler> handler,
                                                        const Common::TaskOptions &task_options) {
-  EnsureNotCalledFromWorkerThread("SubmitRaw");
+  // A result handler chaining a new Submit() from inside WaitResults() runs on thread_pool_. This
+  // admission keeps at least one worker free of Submit()/SubmitRaw() calls, so this call blocking
+  // on upload_byte_budget_ below can't be the reason every worker is occupied.
+  submit_admission_.Acquire();
+  struct AdmissionGuard {
+    ConcurrencySemaphore &admission;
+    ~AdmissionGuard() { admission.Release(); }
+  } admission_guard{submit_admission_};
 
   const std::size_t message_overhead = 128;
   std::size_t data_chunk_max_size =
@@ -359,8 +355,6 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler,
                                                     const Common::TaskOptions &task_options) {
-  EnsureNotCalledFromWorkerThread("Submit");
-
   const std::size_t message_overhead = 128;
   const std::size_t data_chunk_max_size =
       override_message_size_
@@ -393,6 +387,15 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
   std::vector<std::string> raw_result_ids(raw_inputs.size());
 
   if (!raw_inputs.empty()) {
+    // A result handler chaining a new Submit() from inside WaitResults() runs on thread_pool_.
+    // This admission keeps at least one worker free of Submit()/SubmitRaw() calls, so this call
+    // blocking on upload_byte_budget_ below can't be the reason every worker is occupied.
+    submit_admission_.Acquire();
+    struct AdmissionGuard {
+      ConcurrencySemaphore &admission;
+      ~AdmissionGuard() { admission.Release(); }
+    } admission_guard{submit_admission_};
+
     // Reserve all raw-input upload bytes up front, before any thread-pool work is spawned, to
     // bound peak allocated memory per Submit call. Released once this block exits (or throws).
     std::int64_t total_upload_bytes = 0;
@@ -565,7 +568,8 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
       submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
       override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()),
       download_byte_budget_(properties.configuration.get_control_plane().getDownloadByteBudget()),
-      upload_byte_budget_(properties.configuration.get_control_plane().getUploadByteBudget()) {
+      upload_byte_budget_(properties.configuration.get_control_plane().getUploadByteBudget()),
+      submit_admission_(thread_pool_.MaxThreads() > 1 ? thread_pool_.MaxThreads() - 1 : 1) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))

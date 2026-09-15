@@ -186,11 +186,9 @@ public:
   void Spawn(Function<void()> &&f);
 
   /**
-   * @brief Whether the calling thread is currently executing a task dispatched by (any) ThreadPool.
-   * Used to reject reentrant calls that would block waiting for pool capacity or resources released by
-   * pool work, which can deadlock a bounded pool.
+   * @brief The configured maximum number of worker threads in the pool
    */
-  static bool IsWorkerThread();
+  [[nodiscard]] std::size_t MaxThreads() const { return max_threads_; }
 };
 
 /**
