@@ -144,10 +144,16 @@ long RunDownloadBatchAndMeasurePeak(unsigned int task_count, size_t payload_byte
   return peak_kb;
 }
 
-// Submits kTaskCount same-sized tasks under the given upload byte budget (download budget
-// disabled), returns the peak RSS delta observed during Submit() itself, then drains completion
-// (not measured) before returning.
-long RunUploadBatchAndMeasurePeak(unsigned int task_count, size_t payload_bytes, std::int64_t upload_byte_budget) {
+// Submits call_count * tasks_per_call same-sized tasks as call_count concurrent Submit() calls
+// (tasks_per_call tasks per call, each call on its own thread), under the given upload byte budget
+// (download budget disabled). The budget is reserved once for each whole Submit() call, so bounding
+// shows up as calls serializing against each other. call_count is kept small: each concurrent call
+// carries its own thread and gRPC round trips, and that per-call overhead scales with call_count,
+// easily swamping the payload-driven RSS signal once call_count gets into the dozens. Returns the
+// peak RSS delta observed while those concurrent calls are in flight, then drains completion (not
+// measured) before returning.
+long RunUploadBatchAndMeasurePeak(unsigned int call_count, unsigned int tasks_per_call, size_t payload_bytes,
+                                  std::int64_t upload_byte_budget) {
   auto p = init_with_byte_budgets(/*download_byte_budget=*/0, upload_byte_budget);
   auto &properties = std::get<0>(p);
   auto &logger = std::get<1>(p);
@@ -155,11 +161,28 @@ long RunUploadBatchAndMeasurePeak(unsigned int task_count, size_t payload_bytes,
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
 
   auto handler = std::make_shared<SizedEchoHandler>();
-  auto payloads = generate_sized_payloads(task_count, payload_bytes);
+  std::vector<std::vector<std::string>> task_ids_per_call(call_count);
 
-  std::vector<std::string> task_ids;
-  long peak_kb = MeasurePeakRssDeltaKB([&] { task_ids = service.Submit(payloads, handler); });
-  EXPECT_EQ(task_ids.size(), task_count);
+  long peak_kb = MeasurePeakRssDeltaKB([&] {
+    std::vector<std::thread> threads;
+    threads.reserve(call_count);
+    for (unsigned int c = 0; c < call_count; ++c) {
+      threads.emplace_back([&, c] {
+        auto payloads = generate_sized_payloads(tasks_per_call, payload_bytes);
+        task_ids_per_call[c] = service.Submit(payloads, handler);
+      });
+    }
+    for (auto &thread : threads) {
+      thread.join();
+    }
+  });
+
+  std::size_t total_task_ids = 0;
+  for (const auto &ids : task_ids_per_call) {
+    total_task_ids += ids.size();
+  }
+  unsigned int task_count = call_count * tasks_per_call;
+  EXPECT_EQ(total_task_ids, task_count);
 
   service.WaitResults();
   EXPECT_EQ(handler->received, static_cast<int>(task_count));
@@ -191,20 +214,24 @@ TEST(DownloadByteBudget, tight_budget_bounds_peak_download_memory) {
 }
 
 TEST(UploadByteBudget, tight_budget_bounds_peak_upload_memory) {
-  constexpr unsigned int kTaskCount = 64;
+  constexpr unsigned int kCallCount = 8;
+  constexpr unsigned int kTasksPerCall = 8;         // 64 tasks total, spread across kCallCount concurrent calls
   constexpr size_t kPayloadBytes = 1 * 1024 * 1024; // 1 MiB per task payload
+  constexpr std::int64_t kCallBytes =
+      static_cast<std::int64_t>(kTasksPerCall) * static_cast<std::int64_t>(kPayloadBytes);
 
   // Disabled budget: unbounded, matching pre-existing behavior (concurrency limited only by
-  // GrpcClient__ThreadPoolSize).
-  long unbounded_peak_kb = RunUploadBatchAndMeasurePeak(kTaskCount, kPayloadBytes, 0);
+  // GrpcClient__ThreadPoolSize and how many of the kCallCount concurrent calls the test itself
+  // issues at once).
+  long unbounded_peak_kb = RunUploadBatchAndMeasurePeak(kCallCount, kTasksPerCall, kPayloadBytes, 0);
 
-  // Tight budget: room for only a couple of payloads' worth of bytes in flight at once, regardless
-  // of how many items land in the same batch or how many threads the pool has.
-  long tight_peak_kb =
-      RunUploadBatchAndMeasurePeak(kTaskCount, kPayloadBytes, 2 * static_cast<std::int64_t>(kPayloadBytes));
+  // Tight budget: room for only a couple of calls' worth of payload bytes in flight at once,
+  // regardless of how many calls are issued concurrently. Each call's own bytes (kTasksPerCall
+  // payloads) stay well within capacity, so calls get gated against each other.
+  long tight_peak_kb = RunUploadBatchAndMeasurePeak(kCallCount, kTasksPerCall, kPayloadBytes, 2 * kCallBytes);
 
-  std::cout << "Peak RSS delta - unbounded: " << unbounded_peak_kb
-            << " KB, tight budget (2 payloads): " << tight_peak_kb << " KB" << std::endl;
+  std::cout << "Peak RSS delta - unbounded: " << unbounded_peak_kb << " KB, tight budget (2 calls): " << tight_peak_kb
+            << " KB" << std::endl;
 
   EXPECT_LT(tight_peak_kb, unbounded_peak_kb);
 }
