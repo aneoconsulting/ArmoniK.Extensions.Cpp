@@ -1,8 +1,8 @@
 // Reproduction tests for the client's two byte-budget backpressure knobs: GrpcClient__DownloadByteBudget
-// (WaitResults) and GrpcClient__UploadByteBudget (Submit/SubmitRaw). Each compares peak RSS delta
-// under a disabled budget against a tight one. Asserting a specific ratio isn't reliable -- RSS
-// also includes overhead the budget doesn't bound (gRPC channel buffers, allocator behavior) -- so
-// each test only checks the tight run holds less payload data in memory than the unbounded one.
+// (WaitResults) and GrpcClient__UploadByteBudget (Submit/SubmitRaw). The download test compares peak
+// RSS delta between a disabled and a tight budget, since WaitResults() holds each received result in
+// memory. The upload test compares elapsed time instead, since Submit() streams from the caller's own
+// buffer rather than copying it, so the budget shows up as serialization, not resident memory.
 //
 // Requires a deployed ArmoniK cluster with the C++ end2end worker, same as the rest of this test
 // binary (see .docs/content/guide/2.tests.md).
@@ -146,14 +146,13 @@ long RunDownloadBatchAndMeasurePeak(unsigned int task_count, size_t payload_byte
 
 // Submits call_count * tasks_per_call same-sized tasks as call_count concurrent Submit() calls
 // (tasks_per_call tasks per call, each call on its own thread), under the given upload byte budget
-// (download budget disabled). The budget is reserved once for each whole Submit() call, so bounding
-// shows up as calls serializing against each other. call_count is kept small: each concurrent call
-// carries its own thread and gRPC round trips, and that per-call overhead scales with call_count,
-// easily swamping the payload-driven RSS signal once call_count gets into the dozens. Returns the
-// peak RSS delta observed while those concurrent calls are in flight, then drains completion (not
-// measured) before returning.
-long RunUploadBatchAndMeasurePeak(unsigned int call_count, unsigned int tasks_per_call, size_t payload_bytes,
-                                  std::int64_t upload_byte_budget) {
+// (download budget disabled). Unlike downloaded results, a call's payload is never copied by the
+// client -- it's streamed from the caller's own buffer in data_chunk_max_size chunks -- so the
+// budget mostly bounds concurrency, not resident memory. That shows up as wall-clock time: a tight
+// budget forces calls into more, smaller waves. Returns the elapsed time for all calls to complete,
+// not including result draining.
+long long RunUploadBatchAndMeasureElapsedMs(unsigned int call_count, unsigned int tasks_per_call,
+                                            size_t payload_bytes, std::int64_t upload_byte_budget) {
   auto p = init_with_byte_budgets(/*download_byte_budget=*/0, upload_byte_budget);
   auto &properties = std::get<0>(p);
   auto &logger = std::get<1>(p);
@@ -162,8 +161,8 @@ long RunUploadBatchAndMeasurePeak(unsigned int call_count, unsigned int tasks_pe
 
   auto handler = std::make_shared<SizedEchoHandler>();
 
-  // Pre-generate payloads outside the measured region, so the RSS delta reflects Submit()'s own
-  // allocations, not the payload data itself.
+  // Pre-generate payloads outside the measured region, so the timing reflects Submit()'s own
+  // admission/serialization, not payload construction.
   std::vector<std::vector<ArmoniK::Sdk::Common::TaskPayload>> payloads_per_call;
   payloads_per_call.reserve(call_count);
   for (unsigned int c = 0; c < call_count; ++c) {
@@ -172,7 +171,8 @@ long RunUploadBatchAndMeasurePeak(unsigned int call_count, unsigned int tasks_pe
 
   std::vector<std::vector<std::string>> task_ids_per_call(call_count);
 
-  long peak_kb = MeasurePeakRssDeltaKB([&] {
+  auto start = std::chrono::steady_clock::now();
+  {
     std::vector<std::thread> threads;
     threads.reserve(call_count);
     for (unsigned int c = 0; c < call_count; ++c) {
@@ -181,7 +181,9 @@ long RunUploadBatchAndMeasurePeak(unsigned int call_count, unsigned int tasks_pe
     for (auto &thread : threads) {
       thread.join();
     }
-  });
+  }
+  auto elapsed_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
 
   std::size_t total_task_ids = 0;
   for (const auto &ids : task_ids_per_call) {
@@ -195,7 +197,7 @@ long RunUploadBatchAndMeasurePeak(unsigned int call_count, unsigned int tasks_pe
   EXPECT_EQ(handler->errors, 0);
 
   service.CloseSession();
-  return peak_kb;
+  return elapsed_ms;
 }
 
 } // namespace
@@ -219,25 +221,21 @@ TEST(DownloadByteBudget, tight_budget_bounds_peak_download_memory) {
   EXPECT_LT(tight_peak_kb, unbounded_peak_kb);
 }
 
-TEST(UploadByteBudget, tight_budget_bounds_peak_upload_memory) {
+TEST(UploadByteBudget, tight_budget_serializes_concurrent_uploads) {
   constexpr unsigned int kCallCount = 8;
   constexpr unsigned int kTasksPerCall = 8;         // 64 tasks total, spread across kCallCount concurrent calls
   constexpr size_t kPayloadBytes = 1 * 1024 * 1024; // 1 MiB per task payload
   constexpr std::int64_t kCallBytes =
       static_cast<std::int64_t>(kTasksPerCall) * static_cast<std::int64_t>(kPayloadBytes);
 
-  // Disabled budget: unbounded, matching pre-existing behavior (concurrency limited only by
-  // GrpcClient__ThreadPoolSize and how many of the kCallCount concurrent calls the test itself
-  // issues at once).
-  long unbounded_peak_kb = RunUploadBatchAndMeasurePeak(kCallCount, kTasksPerCall, kPayloadBytes, 0);
+  long long unbounded_ms = RunUploadBatchAndMeasureElapsedMs(kCallCount, kTasksPerCall, kPayloadBytes, 0);
 
-  // Tight budget: room for only a couple of calls' worth of payload bytes in flight at once,
-  // regardless of how many calls are issued concurrently. Each call's own bytes (kTasksPerCall
-  // payloads) stay well within capacity, so calls get gated against each other.
-  long tight_peak_kb = RunUploadBatchAndMeasurePeak(kCallCount, kTasksPerCall, kPayloadBytes, 2 * kCallBytes);
+  // Tight budget: room for only 2 calls' worth of bytes in flight at once, which is stricter than
+  // submit_admission_'s own per-worker cap, so it forces extra waves on top of that.
+  long long tight_ms = RunUploadBatchAndMeasureElapsedMs(kCallCount, kTasksPerCall, kPayloadBytes, 2 * kCallBytes);
 
-  std::cout << "Peak RSS delta - unbounded: " << unbounded_peak_kb << " KB, tight budget (2 calls): " << tight_peak_kb
-            << " KB" << std::endl;
+  std::cout << "Elapsed - unbounded: " << unbounded_ms << " ms, tight budget (2 calls): " << tight_ms << " ms"
+            << std::endl;
 
-  EXPECT_LT(tight_peak_kb, unbounded_peak_kb);
+  EXPECT_GT(tight_ms, unbounded_ms);
 }
