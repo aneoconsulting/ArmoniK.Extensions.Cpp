@@ -130,6 +130,18 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
     std::rethrow_exception(eptr);
   }
 }
+
+// Submit()/SubmitRaw() reserve upload_byte_budget_ bytes for the whole call up front, on the calling
+// thread, before spawning anything. A result handler chaining a new submission from inside
+// WaitResults() runs on thread_pool_, so that reservation blocks a pool worker whose freedom is
+// needed to finish (and release the budget for) whichever call currently holds it. With enough
+// concurrent chained calls, every worker ends up blocked this way, deadlocking the pool.
+void EnsureNotCalledFromWorkerThread(const char *entry_point) {
+  if (ThreadPool::IsWorkerThread()) {
+    throw armonik::api::common::exceptions::ArmoniKApiException(std::string(entry_point) +
+                                                                " was called from a result handler (risk of deadlock)");
+  }
+}
 } // namespace
 
 const std::string &SessionServiceImpl::getSession() const { return session; }
@@ -138,6 +150,7 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
                                                        const std::vector<std::vector<std::string>> &data_dependencies,
                                                        std::shared_ptr<IServiceInvocationHandler> handler,
                                                        const Common::TaskOptions &task_options) {
+  EnsureNotCalledFromWorkerThread("SubmitRaw");
 
   const std::size_t message_overhead = 128;
   std::size_t data_chunk_max_size =
@@ -346,6 +359,8 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler,
                                                     const Common::TaskOptions &task_options) {
+  EnsureNotCalledFromWorkerThread("Submit");
+
   const std::size_t message_overhead = 128;
   const std::size_t data_chunk_max_size =
       override_message_size_

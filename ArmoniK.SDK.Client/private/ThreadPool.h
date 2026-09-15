@@ -184,6 +184,13 @@ public:
    * @param f The task to execute
    */
   void Spawn(Function<void()> &&f);
+
+  /**
+   * @brief Whether the calling thread is currently executing a task dispatched by (any) ThreadPool.
+   * Used to reject reentrant calls that would block waiting for pool capacity or resources released by
+   * pool work, which can deadlock a bounded pool.
+   */
+  static bool IsWorkerThread();
 };
 
 /**
