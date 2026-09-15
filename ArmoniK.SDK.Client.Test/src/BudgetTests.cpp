@@ -161,16 +161,22 @@ long RunUploadBatchAndMeasurePeak(unsigned int call_count, unsigned int tasks_pe
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
 
   auto handler = std::make_shared<SizedEchoHandler>();
+
+  // Pre-generate payloads outside the measured region, so the RSS delta reflects Submit()'s own
+  // allocations, not the payload data itself.
+  std::vector<std::vector<ArmoniK::Sdk::Common::TaskPayload>> payloads_per_call;
+  payloads_per_call.reserve(call_count);
+  for (unsigned int c = 0; c < call_count; ++c) {
+    payloads_per_call.push_back(generate_sized_payloads(tasks_per_call, payload_bytes));
+  }
+
   std::vector<std::vector<std::string>> task_ids_per_call(call_count);
 
   long peak_kb = MeasurePeakRssDeltaKB([&] {
     std::vector<std::thread> threads;
     threads.reserve(call_count);
     for (unsigned int c = 0; c < call_count; ++c) {
-      threads.emplace_back([&, c] {
-        auto payloads = generate_sized_payloads(tasks_per_call, payload_bytes);
-        task_ids_per_call[c] = service.Submit(payloads, handler);
-      });
+      threads.emplace_back([&, c] { task_ids_per_call[c] = service.Submit(payloads_per_call[c], handler); });
     }
     for (auto &thread : threads) {
       thread.join();
