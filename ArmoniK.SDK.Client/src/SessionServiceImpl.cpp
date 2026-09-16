@@ -130,6 +130,18 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
     std::rethrow_exception(eptr);
   }
 }
+
+// Submit()/SubmitRaw() reserve upload_byte_budget_ bytes for the whole call up front, on the calling
+// thread, before spawning anything. A result handler chaining a new submission from inside
+// WaitResults() runs on thread_pool_, so that reservation blocks a pool worker whose freedom is
+// needed to finish (and release the budget for) whichever call currently holds it. With enough
+// concurrent chained calls, every worker ends up blocked this way, deadlocking the pool.
+void EnsureNotCalledFromWorkerThread(const char *entry_point) {
+  if (ThreadPool::IsWorkerThread()) {
+    throw armonik::api::common::exceptions::ArmoniKApiException(std::string(entry_point) +
+                                                                " was called from a result handler (risk of deadlock)");
+  }
+}
 } // namespace
 
 const std::string &SessionServiceImpl::getSession() const { return session; }
@@ -138,6 +150,7 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
                                                        const std::vector<std::vector<std::string>> &data_dependencies,
                                                        std::shared_ptr<IServiceInvocationHandler> handler,
                                                        const Common::TaskOptions &task_options) {
+  EnsureNotCalledFromWorkerThread("SubmitRaw");
 
   const std::size_t message_overhead = 128;
   std::size_t data_chunk_max_size =
@@ -155,6 +168,24 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
   std::vector<std::string> input_result_ids(serialized_payloads.size());
   std::vector<std::string> output_result_ids(serialized_payloads.size());
   std::vector<std::string> task_ids(serialized_payloads.size());
+
+  // Reserve this call's total upload bytes up front, before any thread-pool work is spawned, to
+  // bound peak allocated memory per SubmitRaw call. Released once the call returns (or throws).
+  std::int64_t total_upload_bytes = 0;
+  for (const auto &payload : serialized_payloads) {
+    total_upload_bytes += static_cast<std::int64_t>(payload.size());
+  }
+  if (upload_byte_budget_.Acquire(total_upload_bytes)) {
+    logger_.warning("Uploading " + std::to_string(total_upload_bytes) +
+                    " bytes alone exceeds GrpcClient__UploadByteBudget (" +
+                    std::to_string(upload_byte_budget_.capacity()) +
+                    "). Consider raising it to bound peak upload memory more evenly.");
+  }
+  struct BudgetGuard {
+    ByteBudget &budget;
+    std::int64_t bytes;
+    ~BudgetGuard() { budget.Release(bytes); }
+  } budget_guard{upload_byte_budget_, total_upload_bytes};
 
   ThreadPool::JoinSet join_set(thread_pool_);
 
@@ -187,7 +218,8 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
             } else {
               input_result_ids[i] = std::move(reply[names[j]]);
 
-              // Upload result using stream
+              // Upload result using stream. The upload bytes for this whole SubmitRaw call were
+              // already reserved from upload_byte_budget_ up front (see budget_guard above).
               join_set.Spawn([&, i]() {
                 upload_large_result(channel_pool, session, input_result_ids[i], serialized_payloads[i],
                                     data_chunk_max_size, logger_);
@@ -205,6 +237,7 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
     auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
     join_set.Spawn([&, batch_ptr]() {
       auto &batch = *batch_ptr;
+
       std::vector<std::pair<std::string, std::string>> results(batch.size());
       for (std::size_t j = 0; j < batch.size(); ++j) {
         std::size_t i = batch[j];
@@ -326,6 +359,8 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler,
                                                     const Common::TaskOptions &task_options) {
+  EnsureNotCalledFromWorkerThread("Submit");
+
   const std::size_t message_overhead = 128;
   const std::size_t data_chunk_max_size =
       override_message_size_
@@ -358,6 +393,24 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
   std::vector<std::string> raw_result_ids(raw_inputs.size());
 
   if (!raw_inputs.empty()) {
+    // Reserve all raw-input upload bytes up front, before any thread-pool work is spawned, to
+    // bound peak allocated memory per Submit call. Released once this block exits (or throws).
+    std::int64_t total_upload_bytes = 0;
+    for (const auto &ri : raw_inputs) {
+      total_upload_bytes += static_cast<std::int64_t>(task_requests[ri.task_idx].inputs.at(ri.name).GetData().size());
+    }
+    if (upload_byte_budget_.Acquire(total_upload_bytes)) {
+      logger_.warning("Uploading " + std::to_string(total_upload_bytes) +
+                      " bytes alone exceeds GrpcClient__UploadByteBudget (" +
+                      std::to_string(upload_byte_budget_.capacity()) +
+                      "). Consider raising it to bound peak upload memory more evenly.");
+    }
+    struct BudgetGuard {
+      ByteBudget &budget;
+      std::int64_t bytes;
+      ~BudgetGuard() { budget.Release(bytes); }
+    } budget_guard{upload_byte_budget_, total_upload_bytes};
+
     ThreadPool::JoinSet join_set(thread_pool_);
 
     // Large inputs: create metadata then stream-upload
@@ -380,10 +433,12 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
           std::size_t j = batch[k];
           raw_result_ids[j] = reply.at(keys[k]); // threadsafe: each j is unique across batches
 
+          // Upload this raw input. The upload bytes for this whole call were already reserved
+          // from upload_byte_budget_ up front (see budget_guard above).
           join_set.Spawn([&, j]() {
             const auto &ri = raw_inputs[j];
-            upload_large_result(channel_pool, session, raw_result_ids[j],
-                                task_requests[ri.task_idx].inputs.at(ri.name).GetData(), data_chunk_max_size, logger_);
+            const auto &data = task_requests[ri.task_idx].inputs.at(ri.name).GetData();
+            upload_large_result(channel_pool, session, raw_result_ids[j], data, data_chunk_max_size, logger_);
           });
         }
       });
@@ -396,6 +451,7 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
       auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
       join_set.Spawn([&, batch_ptr]() {
         auto &batch = *batch_ptr;
+
         std::vector<std::pair<std::string, std::string>> pairs;
         pairs.reserve(batch.size());
         for (std::size_t j : batch) {
@@ -416,6 +472,7 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 
     for (std::size_t j = 0; j < raw_inputs.size(); ++j) {
       const auto &data = task_requests[raw_inputs[j].task_idx].inputs.at(raw_inputs[j].name).GetData();
+
       if (data.size() + message_overhead >= data_chunk_max_size) {
         large_batcher.Add(j);
       } else {
@@ -507,7 +564,8 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
       download_max_retry_(properties.configuration.get_control_plane().getDownloadMaxRetry()),
       submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
       override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()),
-      download_byte_budget_(properties.configuration.get_control_plane().getDownloadByteBudget()) {
+      download_byte_budget_(properties.configuration.get_control_plane().getDownloadByteBudget()),
+      upload_byte_budget_(properties.configuration.get_control_plane().getUploadByteBudget()) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
