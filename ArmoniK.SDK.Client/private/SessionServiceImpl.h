@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ByteBudget.h"
 #include "ChannelPool.h"
 #include "ThreadPool.h"
 #include "armonik/sdk/client/WaitBehavior.h"
@@ -105,6 +106,11 @@ private:
    * @brief Override message size for result upload and creation
    */
   int override_message_size_;
+
+  /**
+   * @brief Bounds the total result-payload bytes reserved at once during WaitResults()
+   */
+  ByteBudget download_byte_budget_;
 
 public:
   SessionServiceImpl() = delete;

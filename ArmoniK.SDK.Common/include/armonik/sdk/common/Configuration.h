@@ -2,6 +2,7 @@
 
 #include <armonik/common/logger/fwd.h>
 #include <armonik/common/utils/string_view.h>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -154,6 +155,15 @@ public:
    */
   [[nodiscard]] int getDownloadMaxRetry() const;
 
+  /**
+   * @brief Maximum number of result-payload bytes reserved at once (downloaded but not yet
+   * handled) while WaitResults() is running
+   * @return Byte budget
+   * @note Configuration key: `GrpcClient__DownloadByteBudget` (default: 0)
+   * @note 0 means unlimited (no backpressure), matching pre-existing behavior
+   */
+  [[nodiscard]] std::int64_t getDownloadByteBudget() const;
+
 private:
   std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
   [[nodiscard]] const armonik::api::common::options::ControlPlane &get_impl() const;
@@ -163,6 +173,7 @@ private:
   int thread_pool_size_;
   int override_message_size_;
   int download_max_retry_;
+  std::int64_t download_byte_budget_;
 };
 
 /**
