@@ -396,3 +396,4 @@ build/
 .doxygen-warnings
 
 .docs/content/cpp/doxygen
+.docs/content/guide/4.environment-variables.md
