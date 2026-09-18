@@ -1,0 +1,258 @@
+#!/usr/bin/env python3
+"""Regenerate the environment-variables guide page from Doxygen XML.
+
+The SDK documents every configuration key it reads with a Doxygen
+`@note Configuration key: \\`SOME__KEY\\` (default: ...)` annotation on the
+accessor that reads it (see Configuration.h). This script parses the
+Doxygen XML output (produced by `doxygen tools/Doxyfile`, which must run
+first) for that pattern and writes a Markdown page (grouped nested lists,
+one section per key prefix, matching the layout of ArmoniK.Api's own
+environment-variables reference), so the guide page can never drift from
+the annotations it is generated from.
+
+Each key's type is inferred from the C++ return type of the accessor it is
+documented on (via TYPE_MAP below) rather than hand-annotated, since it is
+already known and would otherwise just be duplicated information that can
+drift from the real signature. When the return type isn't inferable --
+a constructor (no return type), or an enum whose config value is really a
+string (e.g. `get_log_level`'s `Level`) -- add an explicit `(type: ...)`
+tag to the note, which always overrides inference.
+
+Likewise, `owner` is inferred rather than hand-annotated: `owner: sdk` means
+the key's name is a plain string literal somewhere in this repo's own
+library source (listed in SOURCE_DIRS below) -- it's read directly by the
+ArmoniK.Extensions.Cpp library. Otherwise it's `owner: api`: the accessor is
+a pass-through to the underlying ArmoniK.Api ControlPlane object, which
+owns and reads the key itself. `owner: api` keys are intentionally left out
+of the page (see ArmoniK.Api's own environment-variables reference, linked
+in the page). An explicit `(owner: sdk|api)` tag in the note overrides the
+inference, for the rare case a key's name isn't found as a literal where
+you'd expect (e.g. built up piecewise, or in a currently-unbuilt code path).
+
+This annotation convention is for the shipped library's own accessors only
+-- it is not used on test-suite code, which reads a few of its own
+configuration keys (e.g. `PartitionId`, `Worker__Type`) that are not part
+of the SDK's public surface and are deliberately left undocumented here.
+
+To document a new environment variable, add a `@note Configuration key:
+\\`KEY\\` (default: ... | optional)` annotation to its accessor (plus
+`(type: ...)` and/or `(owner: ...)` overrides if inference doesn't apply,
+see above) and re-run the docs build; no other step is needed.
+"""
+import glob
+import os
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+XML_DIR = os.path.join(REPO_ROOT, ".docs", "content", "cpp", "doxygen", "xml")
+OUTPUT_PATH = os.path.join(REPO_ROOT, ".docs", "content", "guide", "4.environment-variables.md")
+GITHUB_BLOB = "https://github.com/aneoconsulting/ArmoniK.Extensions.Cpp/blob/main"
+
+# First-party library source directories to scan when inferring an "owner".
+# Deliberately excludes build/, install/ and .docs/ (which may hold vendored
+# or generated copies of ArmoniK.Api headers) and the *.Test directories
+# (whose own config keys are a separate, undocumented concern -- see the
+# module docstring).
+SOURCE_DIRS = [
+    "ArmoniK.SDK.Common",
+    "ArmoniK.SDK.Client",
+    "ArmoniK.SDK.Worker",
+    "ArmoniK.SDK.DynamicWorker",
+]
+
+# Maps a C++ return type (as Doxygen prints it) to the type shown in the page.
+# Anything not listed here (an enum, or a constructor's empty return type)
+# needs an explicit `(type: ...)` override in the note.
+TYPE_MAP = {
+    "int": "int",
+    "std::int64_t": "int64",
+    "int64_t": "int64",
+    "bool": "bool",
+    "armonik::api::string_view": "string",
+    "std::string": "string",
+}
+
+SKIP_FILES = {"index.xml", "Doxyfile.xml"}
+KEY_RE = re.compile(r"Configuration key:\s*`([A-Za-z0-9_]+)`(.*)")
+OWNER_RE = re.compile(r"owner:\s*(api|sdk)", re.IGNORECASE)
+TYPE_RE = re.compile(r"type:\s*([A-Za-z0-9_]+)", re.IGNORECASE)
+DEFAULT_RE = re.compile(r"default:\s*([^()]+?)\s*\)", re.IGNORECASE)
+OPTIONAL_RE = re.compile(r"\boptional\b", re.IGNORECASE)
+
+
+def flatten(el):
+  """Join all text of an element, including inside nested tags such as <ref>."""
+  return "".join(el.itertext()).strip()
+
+
+def iter_memberdefs():
+  for path in sorted(glob.glob(os.path.join(XML_DIR, "*.xml"))):
+    if os.path.basename(path) in SKIP_FILES:
+      continue
+    try:
+      root = ET.parse(path).getroot()
+    except ET.ParseError:
+      continue
+    for memberdef in root.iter("memberdef"):
+      yield memberdef
+
+
+def load_source_text():
+  chunks = []
+  for source_dir in SOURCE_DIRS:
+    for ext in ("*.cpp", "*.h", "*.hpp"):
+      for path in glob.glob(os.path.join(REPO_ROOT, source_dir, "**", ext), recursive=True):
+        with open(path, encoding="utf-8", errors="ignore") as f:
+          chunks.append(f.read())
+  return "\n".join(chunks)
+
+
+def extract_entries(source_text):
+  entries = {}
+  for memberdef in iter_memberdefs():
+    name_el = memberdef.find("qualifiedname")
+    if name_el is None:
+      name_el = memberdef.find("name")
+    symbol = flatten(name_el) if name_el is not None else "?"
+
+    brief_el = memberdef.find("briefdescription/para")
+    description = flatten(brief_el) if brief_el is not None else ""
+
+    type_el = memberdef.find("type")
+    return_type = flatten(type_el) if type_el is not None else ""
+    inferred_type = TYPE_MAP.get(return_type)
+
+    loc = memberdef.find("location")
+    file_ref = loc.get("file") if loc is not None else None
+    line = loc.get("line") if loc is not None else None
+
+    key_match = None
+    other_notes = []
+    for note in memberdef.iter("simplesect"):
+      if note.get("kind") != "note":
+        continue
+      para = note.find("para")
+      if para is None:
+        continue
+      text = flatten(para)
+      match = KEY_RE.search(text)
+      if match and key_match is None:
+        key_match = match
+      else:
+        other_notes.append(text)
+
+    if key_match is None:
+      continue
+
+    var_name, tail = key_match.group(1), key_match.group(2)
+    where = f"{file_ref}:{line}" if file_ref else symbol
+
+    owner_match = OWNER_RE.search(tail)
+    if owner_match:
+      owner = owner_match.group(1).lower()
+    else:
+      owner = "sdk" if f'"{var_name}"' in source_text else "api"
+
+    type_match = TYPE_RE.search(tail)
+    if type_match:
+      var_type = type_match.group(1).lower()
+    elif inferred_type:
+      var_type = inferred_type
+    else:
+      sys.exit(f"Configuration key `{var_name}` ({where}) has no inferable return type "
+                f"(return type: {return_type!r}) -- add an explicit (type: ...) tag")
+
+    default_match = DEFAULT_RE.search(tail)
+    default_value = default_match.group(1).strip() if default_match else None
+    optional = bool(OPTIONAL_RE.search(tail))
+
+    description = " ".join([description] + other_notes) if other_notes else description
+    entries.setdefault(var_name, {
+        "var": var_name,
+        "owner": owner,
+        "type": var_type,
+        "default": default_value,
+        "optional": optional,
+        "description": description,
+        "symbol": symbol,
+        "file": file_ref,
+        "line": line,
+    })
+  return entries
+
+
+def format_default(entry):
+  if entry["default"] is not None:
+    return f"(default: `{entry['default']}`)"
+  if entry["optional"]:
+    return "(optional)"
+  return "(required)"
+
+
+def section_of(var_name):
+  return var_name.split("__", 1)[0] if "__" in var_name else var_name
+
+
+def render(entries):
+  rows = [e for e in entries.values() if e["owner"] == "sdk"]
+  sections = {}
+  for e in rows:
+    sections.setdefault(section_of(e["var"]), []).append(e)
+
+  lines = [
+      "<!-- AUTO-GENERATED by tools/docs/generate_env_vars_table.py -- do not edit by hand. -->",
+      "<!-- Regenerated from `@note Configuration key:` Doxygen annotations on every docs build. -->",
+      "",
+      "# Environment variables",
+      "",
+      "Every configuration key read directly by the ArmoniK.Extensions.Cpp library itself (via "
+      "`Configuration::add_env_configuration()`, or the equivalent JSON configuration key). This "
+      "page is generated from the `Configuration key:` notes attached to the accessors in the "
+      "C++ source: to document a new environment variable, annotate its accessor the same way "
+      "and it appears here automatically on the next docs build.",
+      "",
+      "Some `ControlPlane` accessors (`getEndpoint`, `getUserCertPemPath`, ...) are plain "
+      "pass-throughs to the underlying [ArmoniK.Api](https://github.com/aneoconsulting/ArmoniK.Api) "
+      "client library, which owns and reads those keys itself (`GrpcClient__Endpoint`, "
+      "`GrpcClient__CertPem`/`CertP12`/`KeyPem`/`CaCert`, `GrpcClient__AllowUnsafeConnection`, plus "
+      "the gRPC channel's own keep-alive/retry/backoff/timeout keys). Those are intentionally left "
+      "out of this page; see "
+      "[ArmoniK.Api's environment variables reference]"
+      "(https://armonikapi.readthedocs.io/en/latest/content/usage/envars/ArmoniK.Api.EnvVars.html) "
+      "for them.",
+      "",
+  ]
+  for section in sorted(sections):
+    lines.append(f"## {section}")
+    lines.append("")
+    for e in sorted(sections[section], key=lambda e: e["var"]):
+      lines.append(f"- **{e['var']}**: {e['type']} {format_default(e)}")
+      lines.append("")
+      lines.append(f"  {e['description']}")
+      if e["file"]:
+        lines.append("")
+        lines.append(f"  *(defined in [`{e['symbol']}`]({GITHUB_BLOB}/{e['file']}#L{e['line']}))*")
+      lines.append("")
+  return "\n".join(lines)
+
+
+def main():
+  if not os.path.isdir(XML_DIR):
+    sys.exit(f"Doxygen XML not found at {XML_DIR}; run `doxygen tools/Doxyfile` first")
+
+  entries = extract_entries(load_source_text())
+  if not entries:
+    sys.exit("No `Configuration key:` annotations found in the Doxygen XML")
+
+  sdk_count = sum(1 for e in entries.values() if e["owner"] == "sdk")
+  os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+  with open(OUTPUT_PATH, "w") as f:
+    f.write(render(entries))
+  print(f"Wrote {sdk_count} environment variable(s) to {OUTPUT_PATH} "
+        f"({len(entries) - sdk_count} owner:api key(s) excluded)")
+
+
+if __name__ == "__main__":
+  main()

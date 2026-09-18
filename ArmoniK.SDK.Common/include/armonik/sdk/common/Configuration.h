@@ -344,6 +344,8 @@ public:
   /**
    * @brief Get the configured log level
    * @return Log level
+   * @note Configuration key: `Serilog__MinimumLevel` (default: Info) (type: string)
+   * @note Accepted values (case-insensitive): Verbose, Debug, Info, Warning, Error, Fatal
    */
   [[nodiscard]] armonik::api::common::logger::Level get_log_level() const;
 
