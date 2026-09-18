@@ -30,7 +30,7 @@ public:
   /**
    * @brief Creates an application manager
    * @param config Configuration
-   * @note Configuration key: `Worker__ApplicationBasePath` (default: /data) (owner: sdk) (type: string)
+   * @note Configuration key: `Worker__ApplicationBasePath` (default: /data) (type: string)
    * @note Base directory used to locate the legacy-path application shared library by filename
    *       (`application_name.application_version` or `application_name`)
    */

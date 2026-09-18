@@ -2,11 +2,11 @@
 """Regenerate the environment-variables guide page from Doxygen XML.
 
 The SDK documents every configuration key it reads with a Doxygen
-`@note Configuration key: \\`SOME__KEY\\` (default: ...) (owner: sdk|api)`
-annotation on the accessor that reads it (see Configuration.h). This script
-parses the Doxygen XML output (produced by `doxygen tools/Doxyfile`, which
-must run first) for that pattern and writes a Markdown page (grouped nested
-lists, one section per key prefix, matching the layout of ArmoniK.Api's own
+`@note Configuration key: \\`SOME__KEY\\` (default: ...)` annotation on the
+accessor that reads it (see Configuration.h). This script parses the
+Doxygen XML output (produced by `doxygen tools/Doxyfile`, which must run
+first) for that pattern and writes a Markdown page (grouped nested lists,
+one section per key prefix, matching the layout of ArmoniK.Api's own
 environment-variables reference), so the guide page can never drift from
 the annotations it is generated from.
 
@@ -18,24 +18,26 @@ a constructor (no return type), or an enum whose config value is really a
 string (e.g. `get_log_level`'s `Level`) -- add an explicit `(type: ...)`
 tag to the note, which always overrides inference.
 
-`owner: sdk` means the key is read directly by the ArmoniK.Extensions.Cpp
-library (its name is a plain string literal somewhere in this repo's own
-library source, listed in SOURCE_DIRS below). `owner: api` means the
-accessor is a pass-through to the underlying ArmoniK.Api ControlPlane
-object, which owns and reads the key itself; those keys are intentionally
-left out of the page (see ArmoniK.Api's own environment-variables
-reference, linked in the page) and are only cross-checked here so a wrongly
-tagged owner fails the docs build instead of silently drifting.
+Likewise, `owner` is inferred rather than hand-annotated: `owner: sdk` means
+the key's name is a plain string literal somewhere in this repo's own
+library source (listed in SOURCE_DIRS below) -- it's read directly by the
+ArmoniK.Extensions.Cpp library. Otherwise it's `owner: api`: the accessor is
+a pass-through to the underlying ArmoniK.Api ControlPlane object, which
+owns and reads the key itself. `owner: api` keys are intentionally left out
+of the page (see ArmoniK.Api's own environment-variables reference, linked
+in the page). An explicit `(owner: sdk|api)` tag in the note overrides the
+inference, for the rare case a key's name isn't found as a literal where
+you'd expect (e.g. built up piecewise, or in a currently-unbuilt code path).
 
 This annotation convention is for the shipped library's own accessors only
 -- it is not used on test-suite code, which reads a few of its own
 configuration keys (e.g. `PartitionId`, `Worker__Type`) that are not part
 of the SDK's public surface and are deliberately left undocumented here.
 
-To document a new environment variable, add the same `@note Configuration
-key: \\`KEY\\` (default: ... | optional) (owner: sdk|api)` annotation to its
-accessor (plus a `(type: ...)` override if needed, see above) and re-run the
-docs build; no other step is needed.
+To document a new environment variable, add a `@note Configuration key:
+\\`KEY\\` (default: ... | optional)` annotation to its accessor (plus
+`(type: ...)` and/or `(owner: ...)` overrides if inference doesn't apply,
+see above) and re-run the docs build; no other step is needed.
 """
 import glob
 import os
@@ -48,11 +50,11 @@ XML_DIR = os.path.join(REPO_ROOT, ".docs", "content", "cpp", "doxygen", "xml")
 OUTPUT_PATH = os.path.join(REPO_ROOT, ".docs", "content", "guide", "4.environment-variables.md")
 GITHUB_BLOB = "https://github.com/aneoconsulting/ArmoniK.Extensions.Cpp/blob/main"
 
-# First-party library source directories to scan when cross-checking an "owner"
-# tag. Deliberately excludes build/, install/ and .docs/ (which may hold
-# vendored or generated copies of ArmoniK.Api headers) and the *.Test
-# directories (whose own config keys are a separate, undocumented concern --
-# see the module docstring).
+# First-party library source directories to scan when inferring an "owner".
+# Deliberately excludes build/, install/ and .docs/ (which may hold vendored
+# or generated copies of ArmoniK.Api headers) and the *.Test directories
+# (whose own config keys are a separate, undocumented concern -- see the
+# module docstring).
 SOURCE_DIRS = [
     "ArmoniK.SDK.Common",
     "ArmoniK.SDK.Client",
@@ -97,7 +99,17 @@ def iter_memberdefs():
       yield memberdef
 
 
-def extract_entries():
+def load_source_text():
+  chunks = []
+  for source_dir in SOURCE_DIRS:
+    for ext in ("*.cpp", "*.h", "*.hpp"):
+      for path in glob.glob(os.path.join(REPO_ROOT, source_dir, "**", ext), recursive=True):
+        with open(path, encoding="utf-8", errors="ignore") as f:
+          chunks.append(f.read())
+  return "\n".join(chunks)
+
+
+def extract_entries(source_text):
   entries = {}
   for memberdef in iter_memberdefs():
     name_el = memberdef.find("qualifiedname")
@@ -138,9 +150,10 @@ def extract_entries():
     where = f"{file_ref}:{line}" if file_ref else symbol
 
     owner_match = OWNER_RE.search(tail)
-    if not owner_match:
-      sys.exit(f"Configuration key `{var_name}` ({where}) is missing an (owner: sdk|api) tag")
-    owner = owner_match.group(1).lower()
+    if owner_match:
+      owner = owner_match.group(1).lower()
+    else:
+      owner = "sdk" if f'"{var_name}"' in source_text else "api"
 
     type_match = TYPE_RE.search(tail)
     if type_match:
@@ -168,32 +181,6 @@ def extract_entries():
         "line": line,
     })
   return entries
-
-
-def load_source_text():
-  chunks = []
-  for source_dir in SOURCE_DIRS:
-    for ext in ("*.cpp", "*.h", "*.hpp"):
-      for path in glob.glob(os.path.join(REPO_ROOT, source_dir, "**", ext), recursive=True):
-        with open(path, encoding="utf-8", errors="ignore") as f:
-          chunks.append(f.read())
-  return "\n".join(chunks)
-
-
-def validate_owners(entries, source_text):
-  errors = []
-  for e in entries.values():
-    literal_present = f'"{e["var"]}"' in source_text
-    if e["owner"] == "sdk" and not literal_present:
-      errors.append(
-          f"`{e['var']}` is tagged (owner: sdk) but is not read as a string literal "
-          f"anywhere in {'/'.join(SOURCE_DIRS)} -- looks like an (owner: api) pass-through instead")
-    if e["owner"] == "api" and literal_present:
-      errors.append(
-          f"`{e['var']}` is tagged (owner: api) but is read as a string literal directly in "
-          f"this repo's library source -- looks like an (owner: sdk) key instead")
-  if errors:
-    sys.exit("Owner-tag validation failed:\n" + "\n".join(f"  - {msg}" for msg in errors))
 
 
 def format_default(entry):
@@ -255,11 +242,9 @@ def main():
   if not os.path.isdir(XML_DIR):
     sys.exit(f"Doxygen XML not found at {XML_DIR}; run `doxygen tools/Doxyfile` first")
 
-  entries = extract_entries()
+  entries = extract_entries(load_source_text())
   if not entries:
     sys.exit("No `Configuration key:` annotations found in the Doxygen XML")
-
-  validate_owners(entries, load_source_text())
 
   sdk_count = sum(1 for e in entries.values() if e["owner"] == "sdk")
   os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
