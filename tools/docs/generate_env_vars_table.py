@@ -2,13 +2,21 @@
 """Regenerate the environment-variables guide page from Doxygen XML.
 
 The SDK documents every configuration key it reads with a Doxygen
-`@note Configuration key: \\`SOME__KEY\\` (default: ...) (owner: sdk|api) (type: ...)`
+`@note Configuration key: \\`SOME__KEY\\` (default: ...) (owner: sdk|api)`
 annotation on the accessor that reads it (see Configuration.h). This script
 parses the Doxygen XML output (produced by `doxygen tools/Doxyfile`, which
 must run first) for that pattern and writes a Markdown page (grouped nested
 lists, one section per key prefix, matching the layout of ArmoniK.Api's own
 environment-variables reference), so the guide page can never drift from
 the annotations it is generated from.
+
+Each key's type is inferred from the C++ return type of the accessor it is
+documented on (via TYPE_MAP below) rather than hand-annotated, since it is
+already known and would otherwise just be duplicated information that can
+drift from the real signature. When the return type isn't inferable --
+a constructor (no return type), or an enum whose config value is really a
+string (e.g. `get_log_level`'s `Level`) -- add an explicit `(type: ...)`
+tag to the note, which always overrides inference.
 
 `owner: sdk` means the key is read directly by the ArmoniK.Extensions.Cpp
 library (its name is a plain string literal somewhere in this repo's own
@@ -25,9 +33,9 @@ configuration keys (e.g. `PartitionId`, `Worker__Type`) that are not part
 of the SDK's public surface and are deliberately left undocumented here.
 
 To document a new environment variable, add the same `@note Configuration
-key: \\`KEY\\` (default: ... | optional) (owner: sdk|api) (type: string|int|
-int64|bool)` annotation to its accessor and re-run the docs build; no other
-step is needed.
+key: \\`KEY\\` (default: ... | optional) (owner: sdk|api)` annotation to its
+accessor (plus a `(type: ...)` override if needed, see above) and re-run the
+docs build; no other step is needed.
 """
 import glob
 import os
@@ -51,6 +59,18 @@ SOURCE_DIRS = [
     "ArmoniK.SDK.Worker",
     "ArmoniK.SDK.DynamicWorker",
 ]
+
+# Maps a C++ return type (as Doxygen prints it) to the type shown in the page.
+# Anything not listed here (an enum, or a constructor's empty return type)
+# needs an explicit `(type: ...)` override in the note.
+TYPE_MAP = {
+    "int": "int",
+    "std::int64_t": "int64",
+    "int64_t": "int64",
+    "bool": "bool",
+    "armonik::api::string_view": "string",
+    "std::string": "string",
+}
 
 SKIP_FILES = {"index.xml", "Doxyfile.xml"}
 KEY_RE = re.compile(r"Configuration key:\s*`([A-Za-z0-9_]+)`(.*)")
@@ -88,6 +108,10 @@ def extract_entries():
     brief_el = memberdef.find("briefdescription/para")
     description = flatten(brief_el) if brief_el is not None else ""
 
+    type_el = memberdef.find("type")
+    return_type = flatten(type_el) if type_el is not None else ""
+    inferred_type = TYPE_MAP.get(return_type)
+
     loc = memberdef.find("location")
     file_ref = loc.get("file") if loc is not None else None
     line = loc.get("line") if loc is not None else None
@@ -119,9 +143,13 @@ def extract_entries():
     owner = owner_match.group(1).lower()
 
     type_match = TYPE_RE.search(tail)
-    if not type_match:
-      sys.exit(f"Configuration key `{var_name}` ({where}) is missing a (type: ...) tag")
-    var_type = type_match.group(1).lower()
+    if type_match:
+      var_type = type_match.group(1).lower()
+    elif inferred_type:
+      var_type = inferred_type
+    else:
+      sys.exit(f"Configuration key `{var_name}` ({where}) has no inferable return type "
+                f"(return type: {return_type!r}) -- add an explicit (type: ...) tag")
 
     default_match = DEFAULT_RE.search(tail)
     default_value = default_match.group(1).strip() if default_match else None

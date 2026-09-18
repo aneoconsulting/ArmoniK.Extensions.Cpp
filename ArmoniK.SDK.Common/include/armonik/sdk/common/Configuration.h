@@ -74,63 +74,63 @@ public:
   /**
    * @brief ArmoniK control plane endpoint
    * @return Endpoint address
-   * @note Configuration key: `GrpcClient__Endpoint` (owner: api) (type: string)
+   * @note Configuration key: `GrpcClient__Endpoint` (owner: api)
    */
   [[nodiscard]] armonik::api::string_view getEndpoint() const;
 
   /**
    * @brief Path to the client's certificate in PEM format
    * @return Client certificate's path
-   * @note Configuration key: `GrpcClient__CertPem` (optional) (owner: api) (type: string)
+   * @note Configuration key: `GrpcClient__CertPem` (optional) (owner: api)
    */
   [[nodiscard]] armonik::api::string_view getUserCertPemPath() const;
 
   /**
    * @brief Path to the client's key in PEM format (PKCS#1 or PKCS#8)
    * @return Client key path
-   * @note Configuration key: `GrpcClient__KeyPem` (optional) (owner: api) (type: string)
+   * @note Configuration key: `GrpcClient__KeyPem` (optional) (owner: api)
    */
   [[nodiscard]] armonik::api::string_view getUserKeyPemPath() const;
 
   /**
    * @brief Path to the client's PKCS#12 certificate/key
    * @return Client P12 path
-   * @note Configuration key: `GrpcClient__CertP12` (optional) (owner: api) (type: string)
+   * @note Configuration key: `GrpcClient__CertP12` (optional) (owner: api)
    */
   [[nodiscard]] armonik::api::string_view getUserP12Path() const;
 
   /**
    * @brief Path to the server's CA certificate
    * @return CA certificate path
-   * @note Configuration key: `GrpcClient__CaCert` (optional) (owner: api) (type: string)
+   * @note Configuration key: `GrpcClient__CaCert` (optional) (owner: api)
    */
   [[nodiscard]] armonik::api::string_view getCaCertPemPath() const;
 
   /**
    * @brief Is SSL validation enabled ?
    * @return True if SSL validation is enabled, false otherwise
-   * @note Configuration key: `GrpcClient__AllowUnsafeConnection` (default: false) (owner: api) (type: bool)
+   * @note Configuration key: `GrpcClient__AllowUnsafeConnection` (default: false) (owner: api)
    */
   [[nodiscard]] bool isSslValidation() const;
 
   /**
    * @brief Batch size for waiting results
    * @return Batch size
-   * @note Configuration key: `GrpcClient__WaitBatchSize` (default: 200) (owner: sdk) (type: int)
+   * @note Configuration key: `GrpcClient__WaitBatchSize` (default: 200) (owner: sdk)
    */
   [[nodiscard]] int getWaitBatchSize() const;
 
   /**
    * @brief Batch size for task submission
    * @return Batch size
-   * @note Configuration key: `GrpcClient__SubmitBatchSize` (default: 200) (owner: sdk) (type: int)
+   * @note Configuration key: `GrpcClient__SubmitBatchSize` (default: 200) (owner: sdk)
    */
   [[nodiscard]] int getSubmitBatchSize() const;
 
   /**
    * @brief Number of threads in the thread pool to upload and download results
    * @return Thread pool size
-   * @note Configuration key: `GrpcClient__ThreadPoolSize` (default: 0) (owner: sdk) (type: int)
+   * @note Configuration key: `GrpcClient__ThreadPoolSize` (default: 0) (owner: sdk)
    * @note 0 means hardware concurrency
    */
   [[nodiscard]] int getThreadPoolSize() const;
@@ -138,7 +138,7 @@ public:
   /**
    * @brief Override the message size for result upload and creation
    * @return Message size
-   * @note Configuration key: `GrpcClient__OverrideMessageSize` (default: 0) (owner: sdk) (type: int)
+   * @note Configuration key: `GrpcClient__OverrideMessageSize` (default: 0) (owner: sdk)
    * @note When 0, use the message size from the server
    */
   [[nodiscard]] int getOverrideMessageSize() const;
@@ -146,7 +146,7 @@ public:
   /**
    * @brief Number of attempts for a full result-data download RPC
    * @return Max download attempts
-   * @note Configuration key: `GrpcClient__DownloadMaxRetry` (default: 3) (owner: sdk) (type: int)
+   * @note Configuration key: `GrpcClient__DownloadMaxRetry` (default: 3) (owner: sdk)
    * @note gRPC's own transparent retry only covers a download that fails before its first
    *       response chunk is received; once the stream has started, a broken connection is
    *       not retried by gRPC. This setting bounds how many times WaitResults re-issues the
