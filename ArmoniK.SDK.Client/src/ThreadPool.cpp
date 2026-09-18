@@ -8,15 +8,6 @@ namespace Sdk {
 namespace Client {
 namespace Internal {
 
-namespace {
-// Set for the duration of Task::Execute() on whichever OS thread runs it, regardless of which
-// ThreadPool instance owns that thread. Lets code detect (and refuse) reentrant calls made from
-// within pool-dispatched work, e.g. a result handler submitting new tasks from inside WaitResults().
-thread_local bool tls_in_thread_pool_worker = false;
-} // namespace
-
-bool ThreadPool::IsWorkerThread() { return tls_in_thread_pool_worker; }
-
 ThreadPool::Task::Task() = default;
 
 ThreadPool::Task::Task(Function<void()> &&func, ThreadPool::JoinSet *join_set)
@@ -143,9 +134,7 @@ void ThreadPool::Run() {
     task_logger.verbose("Got a new task to execute");
 
     // Execute the task
-    tls_in_thread_pool_worker = true;
     task.Execute(task_logger);
-    tls_in_thread_pool_worker = false;
 
     // Task destructor will handle JoinSet bookkeeping
   }

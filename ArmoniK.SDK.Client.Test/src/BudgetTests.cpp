@@ -91,9 +91,12 @@ public:
 
 // Configures a session with both byte budgets pinned explicitly (rather than leaving either to
 // whatever add_env_configuration() picks up from the environment), so the download and upload
-// tests stay hermetic with respect to each other and to ambient env vars.
+// tests stay hermetic with respect to each other and to ambient env vars. thread_pool_size, if
+// non-zero, pins GrpcClient__ThreadPoolSize instead of leaving it at the hardware_concurrency()
+// default, which varies across CI runners.
 std::tuple<ArmoniK::Sdk::Common::Properties, armonik::api::common::logger::Logger>
-init_with_byte_budgets(std::int64_t download_byte_budget, std::int64_t upload_byte_budget) {
+init_with_byte_budgets(std::int64_t download_byte_budget, std::int64_t upload_byte_budget,
+                       unsigned int thread_pool_size = 0) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
   if (config.get("Worker__Type").empty()) {
@@ -101,6 +104,9 @@ init_with_byte_budgets(std::int64_t download_byte_budget, std::int64_t upload_by
   }
   config.set("GrpcClient__DownloadByteBudget", std::to_string(download_byte_budget));
   config.set("GrpcClient__UploadByteBudget", std::to_string(upload_byte_budget));
+  if (thread_pool_size != 0) {
+    config.set("GrpcClient__ThreadPoolSize", std::to_string(thread_pool_size));
+  }
 
   ArmoniK::Sdk::Common::TaskOptions task_options("libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"),
                                                  "End2EndTest", "EchoService", config.get("PartitionId"));
@@ -151,9 +157,15 @@ long RunDownloadBatchAndMeasurePeak(unsigned int task_count, size_t payload_byte
 // budget mostly bounds concurrency, not resident memory. That shows up as wall-clock time: a tight
 // budget forces calls into more, smaller waves. Returns the elapsed time for all calls to complete,
 // not including result draining.
+//
+// Pins a thread pool comfortably larger than call_count, so submit_admission_ (capped to
+// thread_pool_'s worker count minus one) never becomes the binding concurrency constraint here --
+// the byte budget must stay the only difference between the unbounded and tight runs, or the
+// comparison collapses onto ambient hardware_concurrency() and stops being a reliable signal.
 long long RunUploadBatchAndMeasureElapsedMs(unsigned int call_count, unsigned int tasks_per_call, size_t payload_bytes,
                                             std::int64_t upload_byte_budget) {
-  auto p = init_with_byte_budgets(/*download_byte_budget=*/0, upload_byte_budget);
+  auto p = init_with_byte_budgets(/*download_byte_budget=*/0, upload_byte_budget,
+                                  /*thread_pool_size=*/call_count + 4);
   auto &properties = std::get<0>(p);
   auto &logger = std::get<1>(p);
 

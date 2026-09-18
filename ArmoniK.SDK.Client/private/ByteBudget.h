@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <condition_variable>
 #include <cstdint>
 #include <mutex>
@@ -79,6 +80,43 @@ private:
   std::int64_t used_;
   std::mutex mutex_;
   std::condition_variable cv_;
+};
+
+/**
+ * @brief Bounds how many callers may hold a permit at once, blocking Acquire() until one frees up.
+ *
+ * Caps concurrent Submit()/SubmitRaw() calls to thread_pool_'s worker count minus one. A result
+ * handler chaining a new Submit() from inside WaitResults() runs on a thread_pool_ worker, and that
+ * call can block reserving upload_byte_budget_; this cap keeps at least one worker free to run the
+ * uploads that release the budget for whichever call currently holds it.
+ *
+ * Implemented as a ByteBudget reserved 1 unit at a time. Unlike a byte budget, a concurrency limit
+ * must never be disabled, so the capacity is clamped to at least 1 instead of treating <= 0 as
+ * "unbounded".
+ */
+class ConcurrencySemaphore {
+public:
+  /**
+   * @brief Construct a semaphore
+   * @param capacity Maximum number of permits that may be held at once. Clamped to at least 1.
+   */
+  explicit ConcurrencySemaphore(std::int64_t capacity) : budget_(std::max<std::int64_t>(capacity, 1)) {}
+
+  ConcurrencySemaphore(const ConcurrencySemaphore &) = delete;
+  ConcurrencySemaphore &operator=(const ConcurrencySemaphore &) = delete;
+
+  /**
+   * @brief Acquire a permit, blocking until one is free.
+   */
+  void Acquire() { budget_.Acquire(1); }
+
+  /**
+   * @brief Release a permit previously acquired via Acquire().
+   */
+  void Release() { budget_.Release(1); }
+
+private:
+  ByteBudget budget_;
 };
 
 } // namespace Internal
