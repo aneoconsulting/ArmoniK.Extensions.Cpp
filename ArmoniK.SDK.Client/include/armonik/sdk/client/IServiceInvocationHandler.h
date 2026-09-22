@@ -23,11 +23,10 @@ public:
    * Override this version. The default delegates to the deprecated two-parameter overload for
    * backward compatibility with existing handlers that already override it.
    */
-  virtual void HandleResponse(const std::string &result_payload, const std::string &taskId,
-                              const std::string &result_id) {
+  virtual void HandleResponse(std::string &&result_payload, const std::string &taskId, const std::string &result_id) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    HandleResponse(result_payload, taskId);
+    HandleResponse(std::move(result_payload), taskId);
 #pragma GCC diagnostic pop
   }
 
@@ -37,7 +36,7 @@ public:
    *             This overload exists only for backward compatibility and will be removed in a future release.
    */
   [[deprecated("Override HandleResponse(result_payload, taskId, result_id) instead")]]
-  virtual void HandleResponse(const std::string &result_payload, const std::string &taskId) {
+  virtual void HandleResponse(std::string &&result_payload, const std::string &taskId) {
     (void)result_payload;
     (void)taskId;
     throw std::logic_error(
