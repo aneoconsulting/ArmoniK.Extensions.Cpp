@@ -1,5 +1,6 @@
 #include "ThreadPool.h"
 
+#include <algorithm>
 #include <sstream>
 #include <string>
 
@@ -7,15 +8,6 @@ namespace ArmoniK {
 namespace Sdk {
 namespace Client {
 namespace Internal {
-
-namespace {
-// Set for the duration of Task::Execute() on whichever OS thread runs it, regardless of which
-// ThreadPool instance owns that thread. Lets code detect (and refuse) reentrant calls made from
-// within pool-dispatched work, e.g. a result handler submitting new tasks from inside WaitResults().
-thread_local bool tls_in_thread_pool_worker = false;
-} // namespace
-
-bool ThreadPool::IsWorkerThread() { return tls_in_thread_pool_worker; }
 
 ThreadPool::Task::Task() = default;
 
@@ -78,8 +70,11 @@ void ThreadPool::Task::RecordError() {
   }
 }
 
+thread_local ThreadPool *ThreadPool::current_pool_ = nullptr;
+thread_local ThreadPool::Worker *ThreadPool::current_worker_ = nullptr;
+
 ThreadPool::ThreadPool(int max_threads, armonik::api::common::logger::Logger &logger)
-    : max_threads_(max_threads == 0 ? std::thread::hardware_concurrency() : max_threads), sleeping_threads_(0),
+    : max_threads_(max_threads > 0 ? max_threads : std::max(1u, std::thread::hardware_concurrency())), running_(0),
       logger_(logger), stop_(false) {
   Logger().debug("ThreadPool created", {{"max_threads", std::to_string(max_threads_)}});
 }
@@ -87,18 +82,31 @@ ThreadPool::ThreadPool(int max_threads, armonik::api::common::logger::Logger &lo
 ThreadPool::~ThreadPool() {
   auto logger = Logger();
   logger.verbose("ThreadPool is stopping...");
-  { // Notify all threads to stop
+  { // Notify all idle threads to stop
     std::lock_guard<std::mutex> lock(mutex_);
     stop_ = true;
 
     logger.verbose("Notifying all threads to stop...");
-    condition_.notify_all();
+    for (Worker *worker : ready_) {
+      worker->wake.notify_one();
+    }
+    for (Worker *worker : reserved_) {
+      worker->wake.notify_one();
+    }
   }
 
-  // Wait for all threads to finish
-  for (std::thread &thread : threads_) {
-    if (thread.joinable()) {
-      thread.join();
+  // Wait for all threads to finish. Threads still draining the queue may create new ones.
+  for (std::size_t i = 0;; ++i) {
+    Worker *worker;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (i == workers_.size()) {
+        break;
+      }
+      worker = workers_[i].get();
+    }
+    if (worker->thread.joinable()) {
+      worker->thread.join();
     }
   }
 
@@ -110,7 +118,10 @@ armonik::api::common::logger::LocalLogger ThreadPool::Logger(armonik::api::commo
   return logger_.local(std::move(context));
 }
 
-void ThreadPool::Run() {
+void ThreadPool::Run(Worker &worker) {
+  current_pool_ = this;
+  current_worker_ = &worker;
+
   std::stringstream ss;
   ss << std::this_thread::get_id();
   armonik::api::common::logger::Context context{{"thread_id", ss.str()}};
@@ -118,39 +129,147 @@ void ThreadPool::Run() {
 
   logger.debug("Thread started");
 
+  std::unique_lock<std::mutex> lock(mutex_);
   while (true) {
-    Task task;
+    // The thread is Running here
 
-    { // Lock the pool to get a new task
-      std::unique_lock<std::mutex> lock(mutex_);
+    if (!pending_.empty()) {
+      // A Pending thread waits for a slot to resume its task: swap places with it
+      Worker *pending = pending_.front();
+      pending_.pop_front();
+      pending->state = WorkerState::Running;
+      pending->wake.notify_one();
 
-      // Wait for a task or stop signal
-      ++sleeping_threads_;
-      condition_.wait(lock, [this]() { return stop_ || !pending_tasks_.empty(); });
-      --sleeping_threads_;
-
-      // If the stopping of the pool has been requested and there is no more task, exit the thread
-      if (stop_ && pending_tasks_.empty()) {
+      worker.state = WorkerState::Reserved;
+      reserved_.push_back(&worker);
+      if (!Idle(worker, lock)) {
         break;
       }
-
-      // Get the next task
-      task = std::move(pending_tasks_.front());
-      pending_tasks_.pop();
+      continue;
     }
 
-    auto task_logger = task.join_set_ ? task.join_set_->Logger(context) : Logger(context);
-    task_logger.verbose("Got a new task to execute");
+    if (!pending_tasks_.empty()) {
+      {
+        Task task = std::move(pending_tasks_.front());
+        pending_tasks_.pop();
+        lock.unlock();
 
-    // Execute the task
-    tls_in_thread_pool_worker = true;
-    task.Execute(task_logger);
-    tls_in_thread_pool_worker = false;
+        auto task_logger = task.join_set_ ? task.join_set_->Logger(context) : Logger(context);
+        task_logger.verbose("Got a new task to execute");
 
-    // Task destructor will handle JoinSet bookkeeping
+        // Execute the task
+        task.Execute(task_logger);
+
+        // Task destructor will handle JoinSet bookkeeping, outside of the pool lock
+      }
+
+      lock.lock();
+      continue;
+    }
+
+    // If the stopping of the pool has been requested and there is no more task, exit the thread
+    if (stop_) {
+      --running_;
+      // Idle threads may be waiting for the queue to drain before exiting
+      for (Worker *idle : ready_) {
+        idle->wake.notify_one();
+      }
+      for (Worker *idle : reserved_) {
+        idle->wake.notify_one();
+      }
+      break;
+    }
+
+    --running_;
+    worker.state = WorkerState::Ready;
+    ready_.push_back(&worker);
+    if (!Idle(worker, lock)) {
+      break;
+    }
   }
+  lock.unlock();
 
   logger.debug("Thread stopped");
+}
+
+bool ThreadPool::Idle(Worker &worker, std::unique_lock<std::mutex> &lock) {
+  worker.wake.wait(lock, [&]() { return worker.state == WorkerState::Running || (stop_ && pending_tasks_.empty()); });
+  if (worker.state == WorkerState::Running) {
+    return true;
+  }
+
+  // The pool is stopping: leave the idle list, so that no one hands this thread a task anymore
+  auto &idle = worker.state == WorkerState::Ready ? ready_ : reserved_;
+  idle.erase(std::find(idle.begin(), idle.end(), &worker));
+  return false;
+}
+
+void ThreadPool::StartThread() {
+  ++running_;
+  if (!reserved_.empty()) {
+    Worker *worker = reserved_.back();
+    reserved_.pop_back();
+    worker->state = WorkerState::Running;
+    worker->wake.notify_one();
+    return;
+  }
+
+  workers_.emplace_back(new Worker());
+  Worker *worker = workers_.back().get();
+  worker->thread = std::thread([this, worker]() { Run(*worker); });
+}
+
+void ThreadPool::Block(Worker &worker) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  --running_;
+  worker.state = WorkerState::Blocked;
+
+  // Hand the released slot over, first to a Pending thread, then to a queued task
+  if (!pending_.empty()) {
+    Worker *pending = pending_.front();
+    pending_.pop_front();
+    ++running_;
+    pending->state = WorkerState::Running;
+    pending->wake.notify_one();
+  } else if (!pending_tasks_.empty()) {
+    StartThread();
+  }
+}
+
+void ThreadPool::Unblock(Worker &worker) {
+  std::unique_lock<std::mutex> lock(mutex_);
+  if (running_ < max_threads_) {
+    ++running_;
+    worker.state = WorkerState::Running;
+    if (running_ + ready_.size() > max_threads_) {
+      // Keep #Running + #Ready <= max_threads_
+      Worker *ready = ready_.back();
+      ready_.pop_back();
+      ready->state = WorkerState::Reserved;
+      reserved_.push_back(ready);
+    }
+    return;
+  }
+
+  // No free slot: wait for a Running thread to hand over its own
+  worker.state = WorkerState::Pending;
+  pending_.push_back(&worker);
+  worker.wake.wait(lock, [&]() { return worker.state == WorkerState::Running; });
+}
+
+ThreadPool::BlockingScope::BlockingScope() : pool_(current_pool_), worker_(current_worker_) {
+  if (worker_) {
+    // Nested scopes are no-ops
+    current_worker_ = nullptr;
+    pool_->Block(*worker_);
+  }
+}
+
+ThreadPool::BlockingScope::~BlockingScope() {
+  if (worker_) {
+    pool_->Unblock(*worker_);
+    current_worker_ = worker_;
+  }
 }
 
 void ThreadPool::Spawn(Task &&task) {
@@ -166,13 +285,17 @@ void ThreadPool::Spawn(Task &&task) {
     // Enqueue the task
     pending_tasks_.push(std::move(task));
 
-    // If there are no sleeping threads and we have not reached max threads, create a new thread
-    if (sleeping_threads_ == 0 && threads_.size() < max_threads_) {
-      threads_.emplace_back([this]() { Run(); });
+    if (!ready_.empty()) {
+      // A Ready thread already holds a slot
+      Worker *worker = ready_.back();
+      ready_.pop_back();
+      ++running_;
+      worker->state = WorkerState::Running;
+      worker->wake.notify_one();
+    } else if (running_ < max_threads_) {
+      StartThread();
     }
-
-    // Notify one thread that there is a new task available
-    condition_.notify_one();
+    // Otherwise, a Running thread will pick the task once done with its own
   }
 }
 
@@ -183,8 +306,7 @@ ThreadPool::JoinSet::JoinSet(ThreadPool &thread_pool) : thread_pool_(thread_pool
 }
 
 ThreadPool::JoinSet::~JoinSet() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  wake_condition_.wait(lock, [this]() { return task_count_ == 0; });
+  BlockingWait(mutex_, wake_condition_, [this]() { return task_count_ == 0; });
 
   Logger().debug("JoinSet destroyed");
 }
@@ -197,8 +319,9 @@ armonik::api::common::logger::LocalLogger ThreadPool::JoinSet::Logger(armonik::a
 void ThreadPool::JoinSet::Spawn(Function<void()> &&f) { thread_pool_.Spawn(Task(std::move(f), this)); }
 
 void ThreadPool::JoinSet::Wait() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  wake_condition_.wait(lock, [this]() { return task_count_ == 0 || exception_; });
+  BlockingWait(mutex_, wake_condition_, [this]() { return task_count_ == 0 || exception_; });
+
+  std::lock_guard<std::mutex> lock(mutex_);
 
   if (exception_) {
     Logger().debug("Rethrow JoinSet error");

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ThreadPool.h"
 #include <condition_variable>
 #include <cstdint>
 #include <mutex>
@@ -38,18 +39,20 @@ public:
       return false;
     }
 
-    std::unique_lock<std::mutex> lock(mutex_);
     bool oversized = false;
-    cv_.wait(lock, [&] {
+    // Waiting may take a while if the budget is held by other thread-pool work: leave the pool slot
+    // meanwhile, so that this work can run and release it.
+    ThreadPool::BlockingWait(mutex_, cv_, [&]() -> bool {
       if (used_ == 0 && bytes > capacity_) {
         // Nothing else reserved and this single request alone exceeds the budget: waiting
         // further would block forever without ever freeing room. Let it through instead.
         oversized = true;
-        return true;
+      } else if (used_ + bytes > capacity_) {
+        return false;
       }
-      return used_ + bytes <= capacity_;
+      used_ += bytes;
+      return true;
     });
-    used_ += bytes;
     return oversized;
   }
 
