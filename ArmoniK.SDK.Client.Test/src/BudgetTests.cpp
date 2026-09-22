@@ -72,7 +72,7 @@ long MeasurePeakRssDeltaKB(const std::function<void()> &work) {
 
 class SizedEchoHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
-  void HandleResponse(const std::string &result_payload, const std::string & /*taskId*/,
+  void HandleResponse(std::string &&result_payload, const std::string & /*taskId*/,
                       const std::string & /*result_id*/) override {
     std::lock_guard<std::mutex> _(mutex);
     ++received;
