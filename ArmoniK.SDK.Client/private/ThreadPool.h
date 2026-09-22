@@ -5,7 +5,9 @@
 #include <armonik/common/logger/logger.h>
 #include <armonik/common/logger/writer.h>
 #include <condition_variable>
+#include <deque>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -93,14 +95,37 @@ private:
 
 private:
   /**
-   * @brief The maximum number of threads in the pool
+   * @brief Scheduling state of a pool thread
+   *
+   * Invariant, with L = max_threads_: #Running + #Ready <= L. Reserved, Blocked and Pending threads
+   * are not counted against L, so the pool may own more than L threads.
+   */
+  enum class WorkerState {
+    Running,  ///< Executing a task, or about to pick one from the queue
+    Ready,    ///< Idle, holding one of the L slots
+    Reserved, ///< Idle, holding no slot; woken up before creating a new thread
+    Blocked,  ///< Inside a BlockingScope, holding no slot
+    Pending,  ///< Left a BlockingScope, waiting for a slot to resume its task
+  };
+
+  /**
+   * @brief A thread owned by the pool
+   */
+  struct Worker {
+    WorkerState state = WorkerState::Running;
+    std::condition_variable wake;
+    std::thread thread;
+  };
+
+  /**
+   * @brief The maximum number of threads that may be Running or Ready at once
    */
   std::size_t max_threads_;
 
   /**
-   * @brief The number of sleeping threads
+   * @brief Number of Running threads
    */
-  std::size_t sleeping_threads_;
+  std::size_t running_;
 
   /**
    * @brief Mutex to protect the pool
@@ -108,22 +133,32 @@ private:
   std::mutex mutex_;
 
   /**
-   * @brief Condition variable to notify threads of new tasks
-   */
-  std::condition_variable condition_;
-
-  /**
    * @brief Logger
    */
   armonik::api::common::logger::Logger &logger_;
 
   /**
-   * @brief The threads in the pool
+   * @brief All the threads ever created by the pool, joined on destruction
    */
-  std::vector<std::thread> threads_;
+  std::vector<std::unique_ptr<Worker>> workers_;
 
   /**
-   * @brief The pending tasks waiting to be executed by the pool
+   * @brief Ready threads
+   */
+  std::vector<Worker *> ready_;
+
+  /**
+   * @brief Reserved threads
+   */
+  std::vector<Worker *> reserved_;
+
+  /**
+   * @brief Pending threads, resumed in FIFO order
+   */
+  std::deque<Worker *> pending_;
+
+  /**
+   * @brief The tasks waiting for a Running thread
    */
   std::queue<Task> pending_tasks_;
 
@@ -131,6 +166,16 @@ private:
    * @brief Flag to stop the pool
    */
   bool stop_;
+
+  /**
+   * @brief The pool owning the calling thread, if any
+   */
+  static thread_local ThreadPool *current_pool_;
+
+  /**
+   * @brief The calling thread, if owned by a pool and not inside a BlockingScope
+   */
+  static thread_local Worker *current_worker_;
 
 private:
   /**
@@ -141,7 +186,7 @@ private:
   /**
    * @brief The main loop for each thread
    */
-  void Run();
+  void Run(Worker &worker);
 
   /**
    * @brief Spawn a task on the pool
@@ -150,10 +195,54 @@ private:
    */
   void Spawn(Task &&);
 
+  /**
+   * @brief Make a Reserved thread (or a new one) Running, for a queued task. Requires mutex_.
+   */
+  void StartThread();
+
+  /**
+   * @brief Make the calling Running thread wait as Ready or Reserved until it is Running again.
+   * Requires mutex_ held through lock.
+   * @return false if the pool is stopping and the thread must exit
+   */
+  bool Idle(Worker &worker, std::unique_lock<std::mutex> &lock);
+
+  /**
+   * @brief Running -> Blocked, handing the released slot to a Pending thread or to a queued task
+   */
+  void Block(Worker &worker);
+
+  /**
+   * @brief Blocked -> Running if a slot is free, Blocked -> Pending (waiting for one) otherwise
+   */
+  void Unblock(Worker &worker);
+
 public:
   /**
+   * @brief RAII marker for a section where the calling thread waits on a condition that other pool
+   * tasks may have to satisfy (JoinSet::Wait(), a ByteBudget reservation...).
+   *
+   * On a pool thread, the thread leaves its slot for the duration of the section, so the tasks it
+   * waits for can still run. Leaving the section may wait for a slot to free up. Off a pool thread,
+   * or nested inside another BlockingScope, it does nothing.
+   *
+   * @warning Do not hold a lock while leaving the section: it may wait for other pool tasks.
+   */
+  class BlockingScope {
+  public:
+    BlockingScope();
+    ~BlockingScope();
+    BlockingScope(const BlockingScope &) = delete;
+    BlockingScope &operator=(const BlockingScope &) = delete;
+
+  private:
+    ThreadPool *pool_;
+    Worker *worker_;
+  };
+
+  /**
    * @brief Creates a thread pool
-   * @param max_threads Maximum number of threads
+   * @param max_threads Maximum number of threads running tasks at once, 0 for hardware concurrency
    * @param logger Logger
    */
   explicit ThreadPool(int max_threads, armonik::api::common::logger::Logger &logger);
@@ -186,11 +275,22 @@ public:
   void Spawn(Function<void()> &&f);
 
   /**
-   * @brief Whether the calling thread is currently executing a task dispatched by (any) ThreadPool.
-   * Used to reject reentrant calls that would block waiting for pool capacity or resources released by
-   * pool work, which can deadlock a bounded pool.
+   * @brief Wait on cv until pred() holds, inside a BlockingScope if it does not hold right away
+   *
+   * pred() is always evaluated with m locked, and may update the state m protects when it returns
+   * true (e.g. to reserve a resource atomically with the check). Returns with m unlocked.
    */
-  static bool IsWorkerThread();
+  template <typename Pred> static void BlockingWait(std::mutex &m, std::condition_variable &cv, Pred pred) {
+    {
+      std::lock_guard<std::mutex> lock(m);
+      if (pred()) {
+        return;
+      }
+    }
+    BlockingScope blocking;
+    std::unique_lock<std::mutex> lock(m);
+    cv.wait(lock, pred);
+  }
 };
 
 /**
