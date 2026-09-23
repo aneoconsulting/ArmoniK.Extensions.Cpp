@@ -285,3 +285,105 @@ TEST_F(ThreadPoolTest, ConcurrentTaskExecution) {
   ASSERT_GT(max_concurrent, 1);
   WITH_TIMEOUT(TIMEOUT, delete pool);
 }
+
+TEST_F(ThreadPoolTest, NestedJoinSetWaitOnSingleThread) {
+  // A task waiting on its own subtasks leaves its slot, so the subtasks can run even with one slot
+  ThreadPool *pool = new ThreadPool(1, *logger_);
+  auto count = std::make_shared<std::atomic<int>>();
+  std::promise<void> promise;
+  auto future = promise.get_future();
+
+  pool->Spawn([pool, count, &promise]() {
+    ThreadPool::JoinSet join_set(*pool);
+    for (int i = 0; i < 4; ++i) {
+      join_set.Spawn([count]() { count->fetch_add(1); });
+    }
+    join_set.Wait();
+    promise.set_value();
+  });
+
+  ASSERT_EQ(future.wait_for(TIMEOUT), std::future_status::ready);
+  EXPECT_EQ(count->load(), 4);
+  WITH_TIMEOUT(TIMEOUT, delete pool);
+}
+
+TEST_F(ThreadPoolTest, BlockedThreadsDoNotExceedLimit) {
+  // Threads running outside a BlockingScope never exceed the pool limit, even with nested waits
+  constexpr int limit = 2;
+  ThreadPool *pool = new ThreadPool(limit, *logger_);
+  auto running = std::make_shared<std::atomic<int>>();
+  auto max_running = std::make_shared<std::atomic<int>>();
+
+  auto enter = [running, max_running]() {
+    int current = ++*running;
+    int expected = max_running->load();
+    while (current > expected && !max_running->compare_exchange_weak(expected, current)) {
+    }
+  };
+  auto leave = [running]() { --*running; };
+
+  {
+    ThreadPool::JoinSet outer(*pool);
+    for (int i = 0; i < 8; ++i) {
+      outer.Spawn([pool, enter, leave]() {
+        enter();
+        ThreadPool::JoinSet inner(*pool);
+        for (int j = 0; j < 4; ++j) {
+          inner.Spawn([enter, leave]() {
+            enter();
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+            leave();
+          });
+        }
+        leave();
+        inner.Wait();
+        enter();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        leave();
+      });
+    }
+    ThreadPool::JoinSet *outer_ptr = &outer;
+    WITH_TIMEOUT(TIMEOUT, outer_ptr->Wait());
+  }
+
+  EXPECT_LE(max_running->load(), limit);
+  EXPECT_GT(max_running->load(), 0);
+  WITH_TIMEOUT(TIMEOUT, delete pool);
+}
+
+TEST_F(ThreadPoolTest, UnblockedThreadWaitsForSlot) {
+  // A thread leaving a BlockingScope while all slots are taken waits (Pending) for one to free up
+  ThreadPool *pool = new ThreadPool(1, *logger_);
+  std::mutex mutex;
+  std::condition_variable cv;
+  bool released = false;
+  auto order = std::make_shared<std::vector<int>>();
+  std::mutex order_mutex;
+  auto push = [&](int x) {
+    std::lock_guard<std::mutex> lock(order_mutex);
+    order->push_back(x);
+  };
+
+  {
+    ThreadPool::JoinSet join_set(*pool);
+    join_set.Spawn([&]() {
+      ThreadPool::BlockingWait(mutex, cv, [&]() { return released; });
+      push(2);
+    });
+    join_set.Spawn([&]() {
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        released = true;
+      }
+      cv.notify_all();
+      // The first task is now unblocked, but must not resume before this one ends
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      push(1);
+    });
+    ThreadPool::JoinSet *join_set_ptr = &join_set;
+    WITH_TIMEOUT(TIMEOUT, join_set_ptr->Wait());
+  }
+
+  EXPECT_EQ(*order, (std::vector<int>{1, 2}));
+  WITH_TIMEOUT(TIMEOUT, delete pool);
+}
