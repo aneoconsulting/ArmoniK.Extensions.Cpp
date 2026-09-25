@@ -550,7 +550,8 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
       submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
       override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()),
       download_byte_budget_(properties.configuration.get_control_plane().getDownloadByteBudget()),
-      upload_byte_budget_(properties.configuration.get_control_plane().getUploadByteBudget()) {
+      upload_byte_budget_(properties.configuration.get_control_plane().getUploadByteBudget()),
+      handler_budget_(static_cast<std::int64_t>(thread_pool_.MaxThreads())) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
@@ -579,6 +580,11 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
   std::atomic<bool> hasError(false);
 
   ThreadPool::JoinSet join_set(thread_pool_);
+
+  // A nested WaitResults() called from a result handler (unsupported, see IServiceInvocationHandler)
+  // would wait for handler slots held by its own callers: do not throttle its handlers, so that it
+  // cannot deadlock on them at least. thread_pool_ still bounds its blocked threads.
+  const std::int64_t handler_slot = ThreadPool::IsWorkerThread() ? 0 : 1;
 
   {
     std::lock_guard<std::mutex> _(maps_mutex);
@@ -665,6 +671,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
       // potentially starving) thread_pool_ slots shared with unrelated Submit() work.
       std::int64_t result_bytes =
           status == armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED ? result.size() : 0;
+      handler_budget_.Acquire(handler_slot);
       if (download_byte_budget_.Acquire(result_bytes)) {
         logger_.warning("Downloading a " + std::to_string(result_bytes) +
                         " byte result alone exceeds GrpcClient__DownloadByteBudget (" +
@@ -673,12 +680,12 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
       }
 
       auto result_ptr = std::make_shared<armonik::api::grpc::v1::results::ResultRaw>(std::move(result));
-      join_set.Spawn([&, result_ptr, status, result_bytes]() {
+      join_set.Spawn([&, result_ptr, status, result_bytes, handler_slot]() {
         struct BudgetGuard {
           ByteBudget &budget;
           std::int64_t bytes;
           ~BudgetGuard() { budget.Release(bytes); }
-        } budget_guard{download_byte_budget_, result_bytes};
+        } budget_guard{download_byte_budget_, result_bytes}, handler_guard{handler_budget_, handler_slot};
 
         auto &result = *result_ptr;
         std::shared_ptr<IServiceInvocationHandler> handler{};

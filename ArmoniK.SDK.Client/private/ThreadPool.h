@@ -97,8 +97,9 @@ private:
   /**
    * @brief Scheduling state of a pool thread
    *
-   * Invariant, with L = max_threads_: #Running + #Ready <= L. Reserved, Blocked and Pending threads
-   * are not counted against L, so the pool may own more than L threads.
+   * Invariants, with L = max_threads_ and C = max_blocked_: #Running + #Ready <= L and
+   * #Blocked + #Pending <= C, except for scopes that do not enforce C (see BlockingScope). Reserved,
+   * Blocked and Pending threads are not counted against L, so the pool may own about L + C threads.
    */
   enum class WorkerState {
     Running,  ///< Executing a task, or about to pick one from the queue
@@ -123,9 +124,19 @@ private:
   std::size_t max_threads_;
 
   /**
+   * @brief The maximum number of threads that may be Blocked or Pending at once
+   */
+  std::size_t max_blocked_;
+
+  /**
    * @brief Number of Running threads
    */
   std::size_t running_;
+
+  /**
+   * @brief Number of Blocked or Pending threads
+   */
+  std::size_t blocked_;
 
   /**
    * @brief Mutex to protect the pool
@@ -197,6 +208,7 @@ private:
 
   /**
    * @brief Make a Reserved thread (or a new one) Running, for a queued task. Requires mutex_.
+   * @throw std::system_error if a new thread cannot be created, leaving the pool unchanged
    */
   void StartThread();
 
@@ -209,8 +221,10 @@ private:
 
   /**
    * @brief Running -> Blocked, handing the released slot to a Pending thread or to a queued task
+   * @return false, leaving the thread Running, if enforce_limit and max_blocked_ threads are already
+   * Blocked or Pending
    */
-  void Block(Worker &worker);
+  bool Block(Worker &worker, bool enforce_limit);
 
   /**
    * @brief Blocked -> Running if a slot is free, Blocked -> Pending (waiting for one) otherwise
@@ -226,11 +240,15 @@ public:
    * waits for can still run. Leaving the section may wait for a slot to free up. Off a pool thread,
    * or nested inside another BlockingScope, it does nothing.
    *
+   * If the pool already has its maximum number of threads inside a BlockingScope, the constructor
+   * throws std::runtime_error. With enforce_limit = false (e.g. in a destructor, which must not
+   * throw), it goes past the limit instead: keeping the slot could deadlock the awaited tasks.
+   *
    * @warning Do not hold a lock while leaving the section: it may wait for other pool tasks.
    */
   class BlockingScope {
   public:
-    BlockingScope();
+    explicit BlockingScope(bool enforce_limit = true);
     ~BlockingScope();
     BlockingScope(const BlockingScope &) = delete;
     BlockingScope &operator=(const BlockingScope &) = delete;
@@ -244,8 +262,12 @@ public:
    * @brief Creates a thread pool
    * @param max_threads Maximum number of threads running tasks at once, 0 for hardware concurrency
    * @param logger Logger
+   * @param max_blocked_threads Maximum number of threads inside a BlockingScope at once, 0 for max_threads
+   * @note SessionServiceImpl relies on the default: it keeps at most max_threads result handlers in
+   * flight (see SessionServiceImpl::handler_budget_), and only handlers block in pool tasks, each in at
+   * most one BlockingScope at a time. Keep both limits in sync.
    */
-  explicit ThreadPool(int max_threads, armonik::api::common::logger::Logger &logger);
+  explicit ThreadPool(int max_threads, armonik::api::common::logger::Logger &logger, int max_blocked_threads = 0);
 
   /**
    * @brief Copy constructor
@@ -275,19 +297,31 @@ public:
   void Spawn(Function<void()> &&f);
 
   /**
+   * @brief The maximum number of threads running tasks at once
+   */
+  [[nodiscard]] std::size_t MaxThreads() const { return max_threads_; }
+
+  /**
+   * @brief Whether the calling thread is owned by a thread pool
+   */
+  static bool IsWorkerThread() { return current_pool_ != nullptr; }
+
+  /**
    * @brief Wait on cv until pred() holds, inside a BlockingScope if it does not hold right away
    *
    * pred() is always evaluated with m locked, and may update the state m protects when it returns
    * true (e.g. to reserve a resource atomically with the check). Returns with m unlocked.
+   * enforce_limit is forwarded to BlockingScope.
    */
-  template <typename Pred> static void BlockingWait(std::mutex &m, std::condition_variable &cv, Pred pred) {
+  template <typename Pred>
+  static void BlockingWait(std::mutex &m, std::condition_variable &cv, Pred pred, bool enforce_limit = true) {
     {
       std::lock_guard<std::mutex> lock(m);
       if (pred()) {
         return;
       }
     }
-    BlockingScope blocking;
+    BlockingScope blocking(enforce_limit);
     std::unique_lock<std::mutex> lock(m);
     cv.wait(lock, pred);
   }
