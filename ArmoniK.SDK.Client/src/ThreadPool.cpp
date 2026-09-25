@@ -319,14 +319,19 @@ armonik::api::common::logger::LocalLogger ThreadPool::JoinSet::Logger(armonik::a
 void ThreadPool::JoinSet::Spawn(Function<void()> &&f) { thread_pool_.Spawn(Task(std::move(f), this)); }
 
 void ThreadPool::JoinSet::Wait() {
-  BlockingWait(mutex_, wake_condition_, [this]() { return task_count_ == 0 || exception_; });
+  std::exception_ptr e;
+  // Take the exception atomically with the check, so that it cannot change once the wait is over
+  BlockingWait(mutex_, wake_condition_, [&]() {
+    if (exception_) {
+      e = exception_;
+      exception_ = nullptr;
+      return true;
+    }
+    return task_count_ == 0;
+  });
 
-  std::lock_guard<std::mutex> lock(mutex_);
-
-  if (exception_) {
+  if (e) {
     Logger().debug("Rethrow JoinSet error");
-    auto e = exception_;
-    exception_ = nullptr;
     std::rethrow_exception(e);
   }
 
