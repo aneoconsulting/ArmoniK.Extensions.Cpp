@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 namespace ArmoniK {
@@ -73,10 +74,12 @@ void ThreadPool::Task::RecordError() {
 thread_local ThreadPool *ThreadPool::current_pool_ = nullptr;
 thread_local ThreadPool::Worker *ThreadPool::current_worker_ = nullptr;
 
-ThreadPool::ThreadPool(int max_threads, armonik::api::common::logger::Logger &logger)
-    : max_threads_(max_threads > 0 ? max_threads : std::max(1u, std::thread::hardware_concurrency())), running_(0),
+ThreadPool::ThreadPool(int max_threads, armonik::api::common::logger::Logger &logger, int max_blocked_threads)
+    : max_threads_(max_threads > 0 ? max_threads : std::max(1u, std::thread::hardware_concurrency())),
+      max_blocked_(max_blocked_threads > 0 ? max_blocked_threads : max_threads_), running_(0), blocked_(0),
       logger_(logger), stop_(false) {
-  Logger().debug("ThreadPool created", {{"max_threads", std::to_string(max_threads_)}});
+  Logger().debug("ThreadPool created", {{"max_threads", std::to_string(max_threads_)},
+                                        {"max_blocked_threads", std::to_string(max_blocked_)}});
 }
 
 ThreadPool::~ThreadPool() {
@@ -205,40 +208,68 @@ bool ThreadPool::Idle(Worker &worker, std::unique_lock<std::mutex> &lock) {
 }
 
 void ThreadPool::StartThread() {
-  ++running_;
   if (!reserved_.empty()) {
     Worker *worker = reserved_.back();
     reserved_.pop_back();
+    ++running_;
     worker->state = WorkerState::Running;
     worker->wake.notify_one();
     return;
   }
 
-  workers_.emplace_back(new Worker());
-  Worker *worker = workers_.back().get();
-  worker->thread = std::thread([this, worker]() { Run(*worker); });
+  // Allocate everything before starting the thread, so that a failure leaves the pool unchanged
+  std::unique_ptr<Worker> worker(new Worker());
+  Worker *raw = worker.get();
+  workers_.emplace_back();
+  try {
+    raw->thread = std::thread([this, raw]() { Run(*raw); });
+  } catch (...) {
+    workers_.pop_back();
+    throw;
+  }
+  // The new thread cannot observe the pool before mutex_ is released
+  workers_.back() = std::move(worker);
+  ++running_;
 }
 
-void ThreadPool::Block(Worker &worker) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  --running_;
-  worker.state = WorkerState::Blocked;
+bool ThreadPool::Block(Worker &worker, bool enforce_limit) {
+  std::string error;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (enforce_limit && blocked_ >= max_blocked_) {
+      return false;
+    }
+    ++blocked_;
+    --running_;
+    worker.state = WorkerState::Blocked;
 
-  // Hand the released slot over, first to a Pending thread, then to a queued task
-  if (!pending_.empty()) {
-    Worker *pending = pending_.front();
-    pending_.pop_front();
-    ++running_;
-    pending->state = WorkerState::Running;
-    pending->wake.notify_one();
-  } else if (!pending_tasks_.empty()) {
-    StartThread();
+    // Hand the released slot over, first to a Pending thread, then to a queued task
+    if (!pending_.empty()) {
+      Worker *pending = pending_.front();
+      pending_.pop_front();
+      ++running_;
+      pending->state = WorkerState::Running;
+      pending->wake.notify_one();
+    } else if (!pending_tasks_.empty()) {
+      try {
+        StartThread();
+      } catch (const std::exception &e) {
+        // The slot stays free: the queued task runs once a Running thread or a later Spawn() picks it
+        error = e.what();
+      }
+    }
   }
+
+  if (!error.empty()) {
+    Logger().error("Failed to start a thread for a queued task while blocking: " + error);
+  }
+  return true;
 }
 
 void ThreadPool::Unblock(Worker &worker) {
   std::unique_lock<std::mutex> lock(mutex_);
   if (running_ < max_threads_) {
+    --blocked_;
     ++running_;
     worker.state = WorkerState::Running;
     if (running_ + ready_.size() > max_threads_) {
@@ -255,14 +286,19 @@ void ThreadPool::Unblock(Worker &worker) {
   worker.state = WorkerState::Pending;
   pending_.push_back(&worker);
   worker.wake.wait(lock, [&]() { return worker.state == WorkerState::Running; });
+  --blocked_;
 }
 
-ThreadPool::BlockingScope::BlockingScope() : pool_(current_pool_), worker_(current_worker_) {
-  if (worker_) {
-    // Nested scopes are no-ops
-    current_worker_ = nullptr;
-    pool_->Block(*worker_);
+ThreadPool::BlockingScope::BlockingScope(bool enforce_limit) : pool_(current_pool_), worker_(current_worker_) {
+  if (!worker_) {
+    return;
   }
+  if (!pool_->Block(*worker_, enforce_limit)) {
+    throw std::runtime_error("Too many thread pool threads blocked at once (" + std::to_string(pool_->max_blocked_) +
+                             "), likely nested blocking calls from pool tasks");
+  }
+  // Nested scopes are no-ops
+  current_worker_ = nullptr;
 }
 
 ThreadPool::BlockingScope::~BlockingScope() {
@@ -306,7 +342,8 @@ ThreadPool::JoinSet::JoinSet(ThreadPool &thread_pool) : thread_pool_(thread_pool
 }
 
 ThreadPool::JoinSet::~JoinSet() {
-  BlockingWait(mutex_, wake_condition_, [this]() { return task_count_ == 0; });
+  // A destructor must not throw: go past the blocked-thread limit if needed
+  BlockingWait(mutex_, wake_condition_, [this]() { return task_count_ == 0; }, false);
 
   Logger().debug("JoinSet destroyed");
 }

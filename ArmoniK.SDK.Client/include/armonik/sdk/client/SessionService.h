@@ -127,6 +127,7 @@ public:
    * @param options Wait options
    * @note When waiting for all tasks to finish, if tasks are being submitted concurrently with the wait, this function
    * may return before the concurrent tasks submission is complete
+   * @warning Do not call it from a result handler: see IServiceInvocationHandler
    */
   void WaitResults(std::set<std::string> task_ids = {}, WaitBehavior waitBehavior = All,
                    const WaitOptions &options = WaitOptions());

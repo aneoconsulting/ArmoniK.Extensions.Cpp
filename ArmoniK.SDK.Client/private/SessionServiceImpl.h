@@ -118,6 +118,15 @@ private:
    */
   ByteBudget upload_byte_budget_;
 
+  /**
+   * @brief Bounds the number of result handlers in flight at once during WaitResults(), used as a
+   * counting semaphore. Handlers may block (e.g. chaining a Submit()), and each blocked handler
+   * makes thread_pool_ start another thread: this keeps that number within the pool's limit.
+   * @note Its capacity must not exceed thread_pool_'s blocked-thread limit (max_blocked_threads,
+   * which defaults to MaxThreads()): past that limit, blocking in a handler throws. Keep both in sync.
+   */
+  ByteBudget handler_budget_;
+
 public:
   SessionServiceImpl() = delete;
   SessionServiceImpl(const SessionServiceImpl &) = delete;

@@ -290,16 +290,16 @@ TEST_F(ThreadPoolTest, NestedJoinSetWaitOnSingleThread) {
   // A task waiting on its own subtasks leaves its slot, so the subtasks can run even with one slot
   ThreadPool *pool = new ThreadPool(1, *logger_);
   auto count = std::make_shared<std::atomic<int>>();
-  std::promise<void> promise;
-  auto future = promise.get_future();
+  auto promise = std::make_shared<std::promise<void>>();
+  auto future = promise->get_future();
 
-  pool->Spawn([pool, count, &promise]() {
+  pool->Spawn([pool, count, promise]() {
     ThreadPool::JoinSet join_set(*pool);
     for (int i = 0; i < 4; ++i) {
       join_set.Spawn([count]() { count->fetch_add(1); });
     }
     join_set.Wait();
-    promise.set_value();
+    promise->set_value();
   });
 
   ASSERT_EQ(future.wait_for(TIMEOUT), std::future_status::ready);
@@ -310,7 +310,8 @@ TEST_F(ThreadPoolTest, NestedJoinSetWaitOnSingleThread) {
 TEST_F(ThreadPoolTest, BlockedThreadsDoNotExceedLimit) {
   // Threads running outside a BlockingScope never exceed the pool limit, even with nested waits
   constexpr int limit = 2;
-  ThreadPool *pool = new ThreadPool(limit, *logger_);
+  // All 8 outer tasks may wait on their inner join set at once
+  ThreadPool *pool = new ThreadPool(limit, *logger_, 8);
   auto running = std::make_shared<std::atomic<int>>();
   auto max_running = std::make_shared<std::atomic<int>>();
 
@@ -385,5 +386,40 @@ TEST_F(ThreadPoolTest, UnblockedThreadWaitsForSlot) {
   }
 
   EXPECT_EQ(*order, (std::vector<int>{1, 2}));
+  WITH_TIMEOUT(TIMEOUT, delete pool);
+}
+
+TEST_F(ThreadPoolTest, BlockedThreadLimit) {
+  // Past the blocked-thread limit, entering a BlockingScope throws, unless the limit is not enforced
+  ThreadPool *pool = new ThreadPool(1, *logger_, 1);
+  std::mutex mutex;
+  std::condition_variable cv;
+  bool released = false;
+  auto threw = std::make_shared<std::atomic<bool>>(false);
+
+  {
+    ThreadPool::JoinSet join_set(*pool);
+    join_set.Spawn([&]() { ThreadPool::BlockingWait(mutex, cv, [&]() { return released; }); });
+    join_set.Spawn([&, threw]() {
+      try {
+        ThreadPool::BlockingScope blocking;
+      } catch (const std::runtime_error &) {
+        threw->store(true);
+      }
+      // Without the limit, the slot is still released, so the next task can run and release both waits
+      ThreadPool::BlockingWait(mutex, cv, [&]() { return released; }, false);
+    });
+    join_set.Spawn([&]() {
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        released = true;
+      }
+      cv.notify_all();
+    });
+    ThreadPool::JoinSet *join_set_ptr = &join_set;
+    WITH_TIMEOUT(TIMEOUT, join_set_ptr->Wait());
+  }
+
+  EXPECT_TRUE(threw->load());
   WITH_TIMEOUT(TIMEOUT, delete pool);
 }
