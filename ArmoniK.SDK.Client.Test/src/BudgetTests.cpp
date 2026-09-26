@@ -1,7 +1,9 @@
 // Reproduction tests for the client's two byte-budget backpressure knobs: GrpcClient__DownloadByteBudget
-// (WaitResults) and GrpcClient__UploadByteBudget (Submit/SubmitRaw). The download test compares peak
-// RSS delta between a disabled and a tight budget, since WaitResults() holds each received result in
-// memory. The upload test compares elapsed time instead, since Submit() streams from the caller's own
+// (WaitResults) and GrpcClient__UploadByteBudget (Submit/SubmitRaw). The download test checks the
+// number of result handlers running at once: WaitResults() reserves each result's bytes before its
+// handler is spawned and releases them after it returns, so the budget bounds that number exactly.
+// Peak RSS would be a noisier proxy, as it depends on how much freed memory the heap already holds.
+// The upload test compares elapsed time instead, since Submit() streams from the caller's own
 // buffer rather than copying it, so the budget shows up as serialization, not resident memory.
 //
 // Requires a deployed ArmoniK cluster with the C++ end2end worker, same as the rest of this test
@@ -9,9 +11,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <cstdio>
-#include <fstream>
-#include <functional>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <mutex>
@@ -31,49 +30,22 @@
 
 namespace {
 
-// Resident set size of the current process, in KB, or -1 if it could not be determined.
-long GetProcessRssKB() {
-  std::ifstream status("/proc/self/status");
-  std::string line;
-  while (std::getline(status, line)) {
-    if (line.rfind("VmRSS:", 0) == 0) {
-      long kb = 0;
-      if (std::sscanf(line.c_str(), "VmRSS: %ld kB", &kb) == 1) {
-        return kb;
-      }
-    }
-  }
-  return -1;
-}
-
-// Runs `work` while sampling RSS on a background thread, and returns the peak RSS observed during
-// the call minus the RSS observed just before it started.
-long MeasurePeakRssDeltaKB(const std::function<void()> &work) {
-  std::atomic<bool> stop{false};
-  std::atomic<long> peak{0};
-  long baseline = GetProcessRssKB();
-
-  std::thread sampler([&] {
-    while (!stop.load(std::memory_order_relaxed)) {
-      long delta = GetProcessRssKB() - baseline;
-      long prev = peak.load(std::memory_order_relaxed);
-      while (delta > prev && !peak.compare_exchange_weak(prev, delta, std::memory_order_relaxed)) {
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-  });
-
-  work();
-
-  stop.store(true, std::memory_order_relaxed);
-  sampler.join();
-  return peak.load();
-}
-
 class SizedEchoHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
+  /**
+   * @param hold How long each HandleResponse() call keeps its result, so that concurrent calls overlap
+   */
+  explicit SizedEchoHandler(std::chrono::milliseconds hold = std::chrono::milliseconds(0)) : hold(hold) {}
+
   void HandleResponse(const std::string &result_payload, const std::string & /*taskId*/,
                       const std::string & /*result_id*/) override {
+    int current = ++in_flight;
+    int expected = max_in_flight.load();
+    while (current > expected && !max_in_flight.compare_exchange_weak(expected, current)) {
+    }
+    std::this_thread::sleep_for(hold);
+    --in_flight;
+
     std::lock_guard<std::mutex> _(mutex);
     ++received;
     total_bytes += result_payload.size();
@@ -83,6 +55,9 @@ public:
     ++errors;
   }
 
+  std::chrono::milliseconds hold;
+  std::atomic<int> in_flight{0};
+  std::atomic<int> max_in_flight{0};
   std::mutex mutex;
   int received = 0;
   int errors = 0;
@@ -91,9 +66,10 @@ public:
 
 // Configures a session with both byte budgets pinned explicitly (rather than leaving either to
 // whatever add_env_configuration() picks up from the environment), so the download and upload
-// tests stay hermetic with respect to each other and to ambient env vars.
+// tests stay hermetic with respect to each other and to ambient env vars. thread_pool_size > 0 pins
+// GrpcClient__ThreadPoolSize too.
 std::tuple<ArmoniK::Sdk::Common::Properties, armonik::api::common::logger::Logger>
-init_with_byte_budgets(std::int64_t download_byte_budget, std::int64_t upload_byte_budget) {
+init_with_byte_budgets(std::int64_t download_byte_budget, std::int64_t upload_byte_budget, int thread_pool_size = 0) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
   if (config.get("Worker__Type").empty()) {
@@ -101,6 +77,9 @@ init_with_byte_budgets(std::int64_t download_byte_budget, std::int64_t upload_by
   }
   config.set("GrpcClient__DownloadByteBudget", std::to_string(download_byte_budget));
   config.set("GrpcClient__UploadByteBudget", std::to_string(upload_byte_budget));
+  if (thread_pool_size > 0) {
+    config.set("GrpcClient__ThreadPoolSize", std::to_string(thread_pool_size));
+  }
 
   ArmoniK::Sdk::Common::TaskOptions task_options("libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"),
                                                  "End2EndTest", "EchoService", config.get("PartitionId"));
@@ -121,27 +100,29 @@ std::vector<ArmoniK::Sdk::Common::TaskPayload> generate_sized_payloads(unsigned 
   return payloads;
 }
 
-// Submits kTaskCount same-sized tasks under the given download byte budget (upload budget
-// disabled), waits for all of them at once, and returns the peak RSS delta observed during that
-// wait.
-long RunDownloadBatchAndMeasurePeak(unsigned int task_count, size_t payload_bytes, std::int64_t download_byte_budget) {
-  auto p = init_with_byte_budgets(download_byte_budget, /*upload_byte_budget=*/0);
+// Submits task_count same-sized tasks under the given download byte budget (upload budget
+// disabled) and thread pool size, waits for all of them at once, and returns the peak number of
+// result handlers that ran at once during that wait.
+int RunDownloadBatchAndMeasureMaxHandlers(unsigned int task_count, size_t payload_bytes,
+                                          std::int64_t download_byte_budget, int thread_pool_size) {
+  auto p = init_with_byte_budgets(download_byte_budget, /*upload_byte_budget=*/0, thread_pool_size);
   auto &properties = std::get<0>(p);
   auto &logger = std::get<1>(p);
 
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
 
-  auto handler = std::make_shared<SizedEchoHandler>();
+  // Holding each result lets the handlers of one polling round overlap, up to the limit under test
+  auto handler = std::make_shared<SizedEchoHandler>(std::chrono::milliseconds(100));
   auto task_ids = service.Submit(generate_sized_payloads(task_count, payload_bytes), handler);
   EXPECT_EQ(task_ids.size(), task_count);
 
-  long peak_kb = MeasurePeakRssDeltaKB([&] { service.WaitResults(); });
+  service.WaitResults();
 
   EXPECT_EQ(handler->received, static_cast<int>(task_count));
   EXPECT_EQ(handler->errors, 0);
 
   service.CloseSession();
-  return peak_kb;
+  return handler->max_in_flight.load();
 }
 
 // Submits call_count * tasks_per_call same-sized tasks as call_count concurrent Submit() calls
@@ -205,20 +186,23 @@ long long RunUploadBatchAndMeasureElapsedMs(unsigned int call_count, unsigned in
 TEST(DownloadByteBudget, tight_budget_bounds_peak_download_memory) {
   constexpr unsigned int kTaskCount = 64;
   constexpr size_t kPayloadBytes = 1 * 1024 * 1024; // 1 MiB per result
+  constexpr int kThreadPoolSize = 8;
+  constexpr int kBudgetPayloads = 2;
 
-  // Disabled budget: unbounded, matching pre-existing behavior (concurrency limited only by
-  // GrpcClient__ThreadPoolSize).
-  long unbounded_peak_kb = RunDownloadBatchAndMeasurePeak(kTaskCount, kPayloadBytes, 0);
+  // Disabled budget: handlers limited only by GrpcClient__ThreadPoolSize. Shows that the test can
+  // observe more than kBudgetPayloads handlers at once.
+  int unbounded_max = RunDownloadBatchAndMeasureMaxHandlers(kTaskCount, kPayloadBytes, 0, kThreadPoolSize);
 
-  // Tight budget: room for only a couple of results' worth of payload bytes at once, regardless of
-  // how many results are ready in a given polling round or how many threads the pool has.
-  long tight_peak_kb =
-      RunDownloadBatchAndMeasurePeak(kTaskCount, kPayloadBytes, 2 * static_cast<std::int64_t>(kPayloadBytes));
+  // Tight budget: room for only kBudgetPayloads results' worth of payload bytes at once, regardless
+  // of how many results are ready in a given polling round or how many threads the pool has.
+  int tight_max = RunDownloadBatchAndMeasureMaxHandlers(
+      kTaskCount, kPayloadBytes, kBudgetPayloads * static_cast<std::int64_t>(kPayloadBytes), kThreadPoolSize);
 
-  std::cout << "Peak RSS delta - unbounded: " << unbounded_peak_kb
-            << " KB, tight budget (2 payloads): " << tight_peak_kb << " KB" << std::endl;
+  std::cout << "Max result handlers at once - unbounded: " << unbounded_max << ", tight budget (" << kBudgetPayloads
+            << " payloads): " << tight_max << std::endl;
 
-  EXPECT_LT(tight_peak_kb, unbounded_peak_kb);
+  EXPECT_GT(unbounded_max, kBudgetPayloads);
+  EXPECT_LE(tight_max, kBudgetPayloads);
 }
 
 TEST(UploadByteBudget, tight_budget_serializes_concurrent_uploads) {
