@@ -372,7 +372,7 @@ TEST(SessionService, task_definition_submit_raw_input) {
   auto handler = std::make_shared<ConventionResultHandler>(logger);
   auto task_ids =
       service.Submit({ArmoniK::Sdk::Common::TaskDefinition(
-                         "echo_convention", {{"greeting", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello")}})},
+                         {{"greeting", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello")}})},
                      handler);
 
   ASSERT_EQ(task_ids.size(), 1u);
@@ -404,7 +404,6 @@ TEST(SessionService, task_definition_submit_multiple_tasks) {
   const int n = 5;
   for (int i = 0; i < n; ++i) {
     requests.emplace_back(
-        "echo_convention",
         std::map<std::string, ArmoniK::Sdk::Common::BlobDefinition>{
             {"value", ArmoniK::Sdk::Common::BlobDefinition::FromData("payload-" + std::to_string(i))}});
   }
@@ -428,7 +427,7 @@ TEST(SessionService, task_definition_submit_no_inputs) {
   ArmoniK::Sdk::Client::SessionService service(properties, logger);
 
   auto handler = std::make_shared<EchoServiceHandler>(logger);
-  auto task_ids = service.Submit({ArmoniK::Sdk::Common::TaskDefinition("echo_convention", {})}, handler);
+  auto task_ids = service.Submit({ArmoniK::Sdk::Common::TaskDefinition()}, handler);
 
   ASSERT_EQ(task_ids.size(), 1u);
 

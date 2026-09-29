@@ -492,7 +492,6 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
   // Build ConventionPayloads: existing-blob inputs resolved directly, raw inputs resolved from upload
   std::vector<Common::ConventionPayload> payloads(task_requests.size());
   for (std::size_t i = 0; i < task_requests.size(); ++i) {
-    payloads[i].method_name = task_requests[i].method_name;
     for (const auto &kv : task_requests[i].inputs) {
       const auto &name = kv.first;
       const auto &blob = kv.second;

@@ -97,7 +97,6 @@ TaskPayload TaskPayload::Deserialize(armonik::api::string_view serialized) {
 
 std::string ConventionPayload::Serialize() const {
   nlohmann::json j;
-  j["method"] = method_name;
   j["inputs"] = inputs;
   j["outputs"] = outputs;
   return j.dump();
@@ -107,7 +106,6 @@ ConventionPayload ConventionPayload::Deserialize(armonik::api::string_view seria
   try {
     auto j = nlohmann::json::parse(serialized.begin(), serialized.end());
     ConventionPayload payload;
-    payload.method_name = j.value("method", std::string{});
     payload.inputs = j.at("inputs").get<std::map<std::string, std::string>>();
     payload.outputs = j.at("outputs").get<std::map<std::string, std::string>>();
     return payload;

@@ -18,26 +18,27 @@ namespace Common {
  * Inputs that were already uploaded (e.g. a shared large dataset) can be referenced by blob
  * ID via BlobDefinition::FromBlobId() to avoid re-uploading.
  *
+ * The method to call on the worker is not part of the task definition: it is selected by the
+ * DynamicLibrary::symbol task option.
+ *
  * Example:
  * @code
  * service.Submit({
- *   TaskDefinition{"my_method", {
+ *   TaskDefinition({
  *     {"param_a", BlobDefinition::FromData(raw_bytes_a)},
  *     {"param_b", BlobDefinition::FromBlobId(existing_blob_id)},
- *   }}
+ *   })
  * }, handler);
  * @endcode
  */
 struct TaskDefinition {
   TaskDefinition() = default;
 
-  TaskDefinition(std::string method_name_, std::map<std::string, BlobDefinition> inputs_)
-      : method_name(std::move(method_name_)), inputs(std::move(inputs_)) {}
-
   /**
-   * @brief Method name to dispatch to on the worker
+   * @brief Constructs a task definition
+   * @param inputs_ Named inputs
    */
-  std::string method_name;
+  explicit TaskDefinition(std::map<std::string, BlobDefinition> inputs_) : inputs(std::move(inputs_)) {}
 
   /**
    * @brief Named inputs: maps a user-defined name to a BlobDefinition (raw data or blob ref)
