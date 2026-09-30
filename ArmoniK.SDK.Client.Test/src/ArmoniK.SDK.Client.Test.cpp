@@ -754,10 +754,9 @@ TEST(testSDK, testConventionEcho) {
 
   auto handler = std::make_shared<EchoServiceHandler>(logger);
 
-  auto tasks = service.Submit(
-      {ArmoniK::Sdk::Common::TaskDefinition(
-          {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-convention")}})},
-      handler);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskDefinition(
+                                  {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-convention")}})},
+                              handler);
   std::cout << "Sent : " << tasks[0] << std::endl;
 
   service.WaitResults();
@@ -804,12 +803,10 @@ TEST(testSDK, testConventionChainedSquareThenAdd) {
 
   auto handler_a = std::make_shared<ConventionResultHandler>(logger);
   auto handler_b = std::make_shared<ConventionResultHandler>(logger);
-  service.Submit(
-      {ArmoniK::Sdk::Common::TaskDefinition({{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("2")}})},
-      handler_a, opts_square);
-  service.Submit(
-      {ArmoniK::Sdk::Common::TaskDefinition({{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("3")}})},
-      handler_b, opts_square);
+  service.Submit({ArmoniK::Sdk::Common::TaskDefinition({{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("2")}})},
+                 handler_a, opts_square);
+  service.Submit({ArmoniK::Sdk::Common::TaskDefinition({{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("3")}})},
+                 handler_b, opts_square);
   service.WaitResults();
 
   ASSERT_TRUE(handler_a->received);
