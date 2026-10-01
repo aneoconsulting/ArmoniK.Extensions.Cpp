@@ -9,6 +9,16 @@ namespace Client {
 
 /**
  * @brief Task result handler interface class
+ *
+ * The callbacks run on the SDK thread pool, from inside SessionService::WaitResults().
+ *
+ * A callback may chain a new SessionService::Submit() on the same session. Two constraints apply:
+ * - Do not call SessionService::WaitResults() from a callback. The nested call can wait for
+ *   resources (e.g. GrpcClient__DownloadByteBudget) that its calling callback holds until it
+ *   returns, and then never completes.
+ * - Do not hold a lock across a SessionService::Submit() call if another callback may take the same
+ *   lock. While Submit() waits, other callbacks run on the thread pool; one blocked on that lock
+ *   keeps a pool thread the Submit() may need, and the pool can deadlock.
  */
 class IServiceInvocationHandler {
 public:
