@@ -5,6 +5,8 @@
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskOptions.h>
+#include <armonik/sdk/common/internal/ConventionPayload.h>
+#include <nlohmann/json.hpp>
 
 using namespace ArmoniK::Sdk::Common;
 
@@ -165,9 +167,7 @@ TEST(BlobDefinition, FromBlobIdEmptyString) {
 // ---------------------------------------------------------------------------
 
 TEST(TaskDefinition, BraceInit) {
-  TaskDefinition td("my_method",
-                    {{"x", BlobDefinition::FromData("data_x")}, {"y", BlobDefinition::FromBlobId("blob-y")}});
-  EXPECT_EQ(td.method_name, "my_method");
+  TaskDefinition td({{"x", BlobDefinition::FromData("data_x")}, {"y", BlobDefinition::FromBlobId("blob-y")}});
   EXPECT_EQ(td.inputs.size(), 2u);
   EXPECT_TRUE(td.inputs.at("x").IsRawData());
   EXPECT_EQ(td.inputs.at("x").GetData(), "data_x");
@@ -177,7 +177,6 @@ TEST(TaskDefinition, BraceInit) {
 
 TEST(TaskDefinition, WithInputBuilder) {
   TaskDefinition td;
-  td.method_name = "sum";
   td.WithInput("a", BlobDefinition::FromData("1")).WithInput("b", BlobDefinition::FromData("2"));
 
   EXPECT_EQ(td.inputs.size(), 2u);
@@ -186,8 +185,7 @@ TEST(TaskDefinition, WithInputBuilder) {
 }
 
 TEST(TaskDefinition, NoInputs) {
-  TaskDefinition td("ping", {});
-  EXPECT_EQ(td.method_name, "ping");
+  TaskDefinition td;
   EXPECT_TRUE(td.inputs.empty());
 }
 
@@ -197,4 +195,41 @@ TEST(TaskDefinition, WithInputOverwritesExisting) {
   td.WithInput("k", BlobDefinition::FromData("v2")); // same key, different value
   // std::map::emplace does not overwrite — first insertion wins
   EXPECT_EQ(td.inputs.at("k").GetData(), "v1");
+}
+
+// ---------------------------------------------------------------------------
+// ConventionPayload (JSON format shared with the other SDKs)
+// ---------------------------------------------------------------------------
+
+// The payload holds only "inputs" and "outputs", as in the C# SDK: the method is a task option
+TEST(ConventionPayload, SerializesInputsAndOutputsOnly) {
+  ConventionPayload payload;
+  payload.inputs = {{"a", "blob-a"}};
+  payload.outputs = {{"q", "blob-q"}, {"r", "blob-r"}};
+
+  auto j = nlohmann::json::parse(payload.Serialize());
+  EXPECT_EQ(j.size(), 2u);
+  EXPECT_EQ(j.at("inputs"), (nlohmann::json{{"a", "blob-a"}}));
+  EXPECT_EQ(j.at("outputs"), (nlohmann::json{{"q", "blob-q"}, {"r", "blob-r"}}));
+}
+
+TEST(ConventionPayload, RoundTrip) {
+  ConventionPayload payload;
+  payload.inputs = {{"a", "blob-a"}, {"b", "blob-b"}};
+  payload.outputs = {{"q", "blob-q"}};
+
+  auto restored = ConventionPayload::Deserialize(payload.Serialize());
+  EXPECT_EQ(restored.inputs, payload.inputs);
+  EXPECT_EQ(restored.outputs, payload.outputs);
+}
+
+// Payloads from older clients may carry "method": it is ignored
+TEST(ConventionPayload, IgnoresUnknownFields) {
+  auto restored = ConventionPayload::Deserialize(R"({"method":"m","inputs":{"a":"x"},"outputs":{"q":"y"}})");
+  EXPECT_EQ(restored.inputs.at("a"), "x");
+  EXPECT_EQ(restored.outputs.at("q"), "y");
+}
+
+TEST(ConventionPayload, MissingInputsThrows) {
+  EXPECT_THROW(ConventionPayload::Deserialize(R"({"outputs":{}})"), ArmoniKSdkException);
 }

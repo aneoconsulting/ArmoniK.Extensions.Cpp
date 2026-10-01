@@ -50,7 +50,6 @@ armonik::api::worker::ProcessStatus ApplicationManager::Execute(armonik::api::wo
                                                                 const std::map<std::string, std::string> &inputs,
                                                                 const std::map<std::string, std::string> &outputs) {
   ArmoniK::Sdk::Common::ConventionPayload payload;
-  payload.method_name = method_name;
   payload.inputs = inputs;
   payload.outputs = outputs;
   return Execute(taskHandler, method_name, payload.Serialize());

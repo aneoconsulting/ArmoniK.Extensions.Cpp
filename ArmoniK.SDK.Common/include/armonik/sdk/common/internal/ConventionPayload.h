@@ -11,8 +11,8 @@ namespace Common {
 /**
  * @brief Convention task payload using JSON encoding.
  *
- * Internal wire format for the convention execution path.
- * Serialized format: {"method":"<method_name>","inputs":{...},"outputs":{...}}
+ * Internal wire format for the convention execution path, shared with the other ArmoniK SDKs.
+ * Serialized format: {"inputs":{"<name>":"<blob id>",...},"outputs":{"<name>":"<blob id>",...}}
  *
  * @note This is an internal SDK type. It is not part of the public API and
  *       may change or be removed in any future release without notice.
@@ -20,7 +20,6 @@ namespace Common {
 struct ConventionPayload {
   ConventionPayload() = default;
 
-  std::string method_name;
   std::map<std::string, std::string> inputs;
   std::map<std::string, std::string> outputs;
 

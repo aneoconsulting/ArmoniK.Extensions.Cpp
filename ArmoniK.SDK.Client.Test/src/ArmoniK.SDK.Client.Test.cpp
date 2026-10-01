@@ -725,8 +725,7 @@ INSTANTIATE_TEST_SUITE_P(ExceptionCases, ExceptionServiceTest,
                          ::testing::Values(ExceptionTestParam{"sdkError", 2, 1}, ExceptionTestParam{"retry", 2, 3}));
 
 /* Submit a TaskDefinition via the convention path and verify the task
- * completes successfully. The method name is carried in the TaskDefinition
- * and ends up in the payload's "method" field (C++ to C++ usage). */
+ * completes successfully. The method name is carried by the Symbol task option. */
 TEST(testSDK, testConventionEcho) {
   ArmoniK::Sdk::Common::Configuration config;
   config.add_json_configuration("appsettings.json").add_env_configuration();
@@ -755,60 +754,8 @@ TEST(testSDK, testConventionEcho) {
 
   auto handler = std::make_shared<EchoServiceHandler>(logger);
 
-  auto tasks = service.Submit(
-      {ArmoniK::Sdk::Common::TaskDefinition(
-          "EchoService", {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-convention")}})},
-      handler);
-  std::cout << "Sent : " << tasks[0] << std::endl;
-
-  service.WaitResults();
-
-  ASSERT_FALSE(tasks.empty());
-  ASSERT_TRUE(handler->received);
-  ASSERT_FALSE(handler->is_error);
-
-  service.CloseSession();
-  std::cout << "Convention echo test done!" << std::endl;
-}
-
-/* Submit a TaskDefinition with no method name, relying on the Symbol task
- * option for dispatch. This exercises the cross-SDK interoperability path:
- * a client that does not include "method" in the payload (like the Java SDK)
- * can still dispatch to the right service via the Symbol key in task options. */
-TEST(testSDK, testConventionMethodNameFallback) {
-  ArmoniK::Sdk::Common::Configuration config;
-  config.add_json_configuration("appsettings.json").add_env_configuration();
-
-  std::cout << "\nEndpoint : " << config.get("GrpcClient__Endpoint") << std::endl;
-
-  ArmoniK::Sdk::Common::DynamicLibrary lib;
-  lib.library_path = ConventionWorkerLibPath(config);
-  lib.symbol = "armonik";
-
-  // application_namespace and application_service are forwarded by DynamicWorker to
-  // armonik_create_service — required by the test worker to dispatch to EchoService.
-  ArmoniK::Sdk::Common::TaskOptions task_options("", config.get("WorkerLib__Version"), "End2EndTest", "EchoService",
-                                                 config.get("PartitionId"));
-  task_options.SetDynamicLibrary(lib);
-
-  // Provide the method name via task option — the payload will have none.
-  task_options.options[ArmoniK::Sdk::Common::DynamicLibrary::KeySymbol] = "EchoService";
-  task_options.max_retries = 1;
-
-  ArmoniK::Sdk::Common::Properties properties{config, task_options};
-
-  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
-                                              armonik::api::common::logger::formatter_plain(true),
-                                              armonik::api::common::logger::Level::Debug};
-
-  ArmoniK::Sdk::Client::SessionService service(properties, logger);
-  std::cout << "Session : " << service.getSession() << std::endl;
-
-  auto handler = std::make_shared<EchoServiceHandler>(logger);
-
-  // Empty method_name: the worker falls back to the Symbol key in task options.
   auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskDefinition(
-                                  "", {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-fallback")}})},
+                                  {{"data", ArmoniK::Sdk::Common::BlobDefinition::FromData("hello-convention")}})},
                               handler);
   std::cout << "Sent : " << tasks[0] << std::endl;
 
@@ -819,7 +766,7 @@ TEST(testSDK, testConventionMethodNameFallback) {
   ASSERT_FALSE(handler->is_error);
 
   service.CloseSession();
-  std::cout << "Convention method name fallback test done!" << std::endl;
+  std::cout << "Convention echo test done!" << std::endl;
 }
 
 /* Compute 2^2 + 3^2 = 13 using three chained tasks:
@@ -856,12 +803,10 @@ TEST(testSDK, testConventionChainedSquareThenAdd) {
 
   auto handler_a = std::make_shared<ConventionResultHandler>(logger);
   auto handler_b = std::make_shared<ConventionResultHandler>(logger);
-  service.Submit(
-      {ArmoniK::Sdk::Common::TaskDefinition("square", {{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("2")}})},
-      handler_a, opts_square);
-  service.Submit(
-      {ArmoniK::Sdk::Common::TaskDefinition("square", {{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("3")}})},
-      handler_b, opts_square);
+  service.Submit({ArmoniK::Sdk::Common::TaskDefinition({{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("2")}})},
+                 handler_a, opts_square);
+  service.Submit({ArmoniK::Sdk::Common::TaskDefinition({{"x", ArmoniK::Sdk::Common::BlobDefinition::FromData("3")}})},
+                 handler_b, opts_square);
   service.WaitResults();
 
   ASSERT_TRUE(handler_a->received);
@@ -877,8 +822,8 @@ TEST(testSDK, testConventionChainedSquareThenAdd) {
 
   auto handler_c = std::make_shared<ConventionResultHandler>(logger);
   service.Submit({ArmoniK::Sdk::Common::TaskDefinition(
-                     "add", {{"a", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_a->result_id)},
-                             {"b", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_b->result_id)}})},
+                     {{"a", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_a->result_id)},
+                      {"b", ArmoniK::Sdk::Common::BlobDefinition::FromBlobId(handler_b->result_id)}})},
                  handler_c, opts_add);
   service.WaitResults();
 
