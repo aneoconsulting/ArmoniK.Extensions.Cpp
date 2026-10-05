@@ -25,6 +25,8 @@
 #include "ChannelPool.h"
 #include "End2EndHandlers.h"
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 armonik::api::grpc::v1::tasks::ListTasksRequest::Sort get_default_task_sort() {
   armonik::api::grpc::v1::tasks::ListTasksRequest_Sort sort;
   sort.set_direction(armonik::api::grpc::v1::sort_direction::SORT_DIRECTION_ASC);

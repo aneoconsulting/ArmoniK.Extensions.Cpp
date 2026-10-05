@@ -24,6 +24,8 @@
 #include "ChannelPool.h"
 #include "End2EndHandlers.h"
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 template <typename T> std::string StrSerialize(T a, T b) {
   char payload_val[sizeof(T) * 2];
 

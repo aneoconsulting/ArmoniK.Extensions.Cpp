@@ -5,8 +5,10 @@
 #include "End2EndHandlers.h"
 #include "armonik/sdk/common/TaskPayload.h"
 
-void PythonTestWorkerHandler::HandleResponse(std::string &&result_payload, const std::string &taskId,
-                                             const std::string &result_id) {
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
+void PythonTestWorkerHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                                             armonik::api::string_view result_id) {
   (void)result_id;
   std::cout << "HANDLE RESPONSE : Received result of size " << result_payload.size() << " for taskId " << taskId
             << std::endl;
@@ -18,12 +20,12 @@ void PythonTestWorkerHandler::HandleResponse(std::string &&result_payload, const
   std::cout << " Args length : " << tr.arguments.size() << std::endl;
   std::cout << " Args data : " << tr.arguments.c_str() << std::endl;
 }
-void PythonTestWorkerHandler::HandleError(const std::exception &e, const std::string &taskId) {
+void PythonTestWorkerHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
 }
 
-void AddServiceHandler::HandleResponse(std::string &&result_payload, const std::string &taskId,
-                                       const std::string &result_id) {
+void AddServiceHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                                       armonik::api::string_view result_id) {
   (void)result_id;
   std::lock_guard<std::mutex> lock(mutex);
 
@@ -47,11 +49,11 @@ void AddServiceHandler::HandleResponse(std::string &&result_payload, const std::
   }
   successCounter++;
 }
-void AddServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+void AddServiceHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   std::cerr << "HANDLE ERROR : Error for task id " << taskId << " : " << e.what() << std::endl;
 }
-void EchoServiceHandler::HandleResponse(std::string &&result_payload, const std::string &taskId,
-                                        const std::string &result_id) {
+void EchoServiceHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                                        armonik::api::string_view result_id) {
   (void)result_id;
   std::lock_guard<std::mutex> lock(mutex);
 
@@ -67,7 +69,7 @@ void EchoServiceHandler::HandleResponse(std::string &&result_payload, const std:
   received = true;
   is_error = false;
 }
-void EchoServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+void EchoServiceHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   std::lock_guard<std::mutex> lock(mutex);
 
   std::stringstream ss;
@@ -80,8 +82,8 @@ EchoServiceHandler::EchoServiceHandler(armonik::api::common::logger::Logger &log
 
 StressTestServiceHandler::StressTestServiceHandler(armonik::api::common::logger::Logger &logger)
     : logger(logger.local()) {}
-void StressTestServiceHandler::HandleResponse(std::string &&result_payload, const std::string &taskId,
-                                              const std::string &result_id) {
+void StressTestServiceHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                                              armonik::api::string_view result_id) {
   (void)result_id;
   std::lock_guard<std::mutex> lock(mutex);
 
@@ -90,7 +92,7 @@ void StressTestServiceHandler::HandleResponse(std::string &&result_payload, cons
   if (nb_output_bytes == 0) {
     is_ok = false;
   }
-  auto &result = results[taskId];
+  auto &result = results[std::string(taskId)];
   result.resize(result_payload.size() / sizeof(double), 0.0);
   std::memcpy(result.data(), result_payload.data(), result_payload.size());
   ss << "Handle response: received result of size: " << result_payload.size() << " for taskId " << taskId << "\nRaw: ";
@@ -99,7 +101,7 @@ void StressTestServiceHandler::HandleResponse(std::string &&result_payload, cons
   ss << std::endl;
   logger.debug(ss.str());
 }
-void StressTestServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+void StressTestServiceHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   std::lock_guard<std::mutex> lock(mutex);
 
   is_ok = false;
@@ -108,8 +110,8 @@ void StressTestServiceHandler::HandleError(const std::exception &e, const std::s
   logger.debug(ss.str());
 }
 
-void SegFaultServiceHandler::HandleResponse(std::string &&result_payload, const std::string &taskId,
-                                            const std::string &result_id) {
+void SegFaultServiceHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                                            armonik::api::string_view result_id) {
   (void)result_id;
   std::lock_guard<std::mutex> lock(mutex);
 
@@ -125,7 +127,7 @@ void SegFaultServiceHandler::HandleResponse(std::string &&result_payload, const 
   received = true;
   is_error = false;
 }
-void SegFaultServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+void SegFaultServiceHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   std::lock_guard<std::mutex> lock(mutex);
 
   std::stringstream ss;
@@ -136,8 +138,8 @@ void SegFaultServiceHandler::HandleError(const std::exception &e, const std::str
 }
 SegFaultServiceHandler::SegFaultServiceHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}
 
-void SleepServiceHandler::HandleResponse(std::string &&result_payload, const std::string &taskId,
-                                         const std::string &result_id) {
+void SleepServiceHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                                         armonik::api::string_view result_id) {
   (void)result_id;
   std::lock_guard<std::mutex> lock(mutex);
 
@@ -154,7 +156,7 @@ void SleepServiceHandler::HandleResponse(std::string &&result_payload, const std
   is_error = false;
   received_count++;
 }
-void SleepServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+void SleepServiceHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   std::lock_guard<std::mutex> lock(mutex);
 
   std::stringstream ss;
@@ -166,8 +168,8 @@ void SleepServiceHandler::HandleError(const std::exception &e, const std::string
 SleepServiceHandler::SleepServiceHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}
 
 CountServiceHandler::CountServiceHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}
-void CountServiceHandler::HandleResponse(std::string &&result_payload, const std::string &taskId,
-                                         const std::string &result_id) {
+void CountServiceHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                                         armonik::api::string_view result_id) {
   (void)result_id;
   std::lock_guard<std::mutex> lock(mutex);
 
@@ -177,7 +179,7 @@ void CountServiceHandler::HandleResponse(std::string &&result_payload, const std
   logger.log(armonik::api::common::logger::Level::Debug, ss.str(),
              {{"success", std::to_string(success)}, {"failure", std::to_string(failure)}});
 }
-void CountServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+void CountServiceHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   std::lock_guard<std::mutex> lock(mutex);
 
   std::stringstream ss;
@@ -188,24 +190,25 @@ void CountServiceHandler::HandleError(const std::exception &e, const std::string
 }
 ConventionResultHandler::ConventionResultHandler(armonik::api::common::logger::Logger &logger)
     : logger(logger.local()) {}
-void ConventionResultHandler::HandleResponse(std::string &&payload, const std::string &taskId,
-                                             const std::string &result_id) {
+void ConventionResultHandler::HandleResponse(std::string &&payload, armonik::api::string_view taskId,
+                                             armonik::api::string_view result_id) {
   std::lock_guard<std::mutex> lock(mutex);
   result_payload = payload;
-  this->result_id = result_id;
+  this->result_id = std::string(result_id);
   received = true;
   is_error = false;
-  logger.debug("ConventionResultHandler: received " + std::to_string(payload.size()) + " bytes for task " + taskId);
+  logger.debug("ConventionResultHandler: received " + std::to_string(payload.size()) + " bytes for task " +
+               taskId.data());
 }
-void ConventionResultHandler::HandleError(const std::exception &e, const std::string &taskId) {
+void ConventionResultHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   std::lock_guard<std::mutex> lock(mutex);
   received = true;
   is_error = true;
-  logger.debug(std::string("ConventionResultHandler: error for task ") + taskId + ": " + e.what());
+  logger.debug(std::string("ConventionResultHandler: error for task ") + taskId.data() + ": " + e.what());
 }
 
-void ExceptionServiceHandler::HandleResponse(std::string &&result_payload, const std::string &taskId,
-                                             const std::string &result_id) {
+void ExceptionServiceHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                                             armonik::api::string_view result_id) {
   (void)result_id;
   std::lock_guard<std::mutex> lock(mutex);
 
@@ -221,7 +224,7 @@ void ExceptionServiceHandler::HandleResponse(std::string &&result_payload, const
   received = true;
   is_error = false;
 }
-void ExceptionServiceHandler::HandleError(const std::exception &e, const std::string &taskId) {
+void ExceptionServiceHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   std::lock_guard<std::mutex> lock(mutex);
 
   std::stringstream ss;

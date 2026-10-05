@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <armonik/common/utils/string_view.h>
+
 namespace ArmoniK {
 namespace Sdk {
 namespace Client {
@@ -23,7 +25,9 @@ public:
    * Override this version. The default delegates to the deprecated two-parameter overload for
    * backward compatibility with existing handlers that already override it.
    */
-  virtual void HandleResponse(std::string &&result_payload, const std::string &taskId, const std::string &result_id) {
+  virtual void HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                              armonik::api::string_view result_id) {
+    (void)result_id;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     HandleResponse(std::move(result_payload), taskId);
@@ -36,7 +40,7 @@ public:
    *             This overload exists only for backward compatibility and will be removed in a future release.
    */
   [[deprecated("Override HandleResponse(result_payload, taskId, result_id) instead")]]
-  virtual void HandleResponse(std::string &&result_payload, const std::string &taskId) {
+  virtual void HandleResponse(std::string &&result_payload, armonik::api::string_view taskId) {
     (void)result_payload;
     (void)taskId;
     throw std::logic_error(
@@ -49,7 +53,7 @@ public:
    * @param taskId Task Id
    * @note  It can be called for multiple tasks in parallel, so it must be thread-safe
    */
-  virtual void HandleError(const std::exception &e, const std::string &taskId) = 0;
+  virtual void HandleError(const std::exception &e, armonik::api::string_view taskId) = 0;
 };
 } // namespace Client
 } // namespace Sdk
