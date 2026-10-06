@@ -39,7 +39,6 @@ void AddServiceHandler::HandleResponse(std::string &&result_payload, armonik::ap
   }
   std::cout << std::endl;
 
-  str = result_payload;
   if (is_int) {
     std::memcpy(&int_result, result_payload.data(), sizeof(int32_t));
     std::cout << "HANDLE RESPONSE : Received result data value of " << int_result << std::endl;
@@ -47,6 +46,7 @@ void AddServiceHandler::HandleResponse(std::string &&result_payload, armonik::ap
     std::memcpy(&float_result, result_payload.data(), sizeof(float));
     std::cout << "HANDLE RESPONSE : Received result data value of " << float_result << std::endl;
   }
+  str = std::move(result_payload);
   successCounter++;
 }
 void AddServiceHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
@@ -193,7 +193,7 @@ ConventionResultHandler::ConventionResultHandler(armonik::api::common::logger::L
 void ConventionResultHandler::HandleResponse(std::string &&payload, armonik::api::string_view taskId,
                                              armonik::api::string_view result_id) {
   std::lock_guard<std::mutex> lock(mutex);
-  result_payload = payload;
+  result_payload = std::move(payload);
   this->result_id = std::string(result_id);
   received = true;
   is_error = false;
