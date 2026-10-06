@@ -29,6 +29,8 @@
 #include "armonik/sdk/common/TaskOptions.h"
 #include <armonik/sdk/common/TaskPayload.h>
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 namespace {
 
 // Resident set size of the current process, in KB, or -1 if it could not be determined.
@@ -72,13 +74,13 @@ long MeasurePeakRssDeltaKB(const std::function<void()> &work) {
 
 class SizedEchoHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
-  void HandleResponse(const std::string &result_payload, const std::string & /*taskId*/,
-                      const std::string & /*result_id*/) override {
+  void HandleResponse(std::string &&result_payload, armonik::api::string_view /*taskId*/,
+                      armonik::api::string_view /*result_id*/) override {
     std::lock_guard<std::mutex> _(mutex);
     ++received;
     total_bytes += result_payload.size();
   }
-  void HandleError(const std::exception & /*e*/, const std::string & /*taskId*/) override {
+  void HandleError(const std::exception & /*e*/, armonik::api::string_view /*taskId*/) override {
     std::lock_guard<std::mutex> _(mutex);
     ++errors;
   }
