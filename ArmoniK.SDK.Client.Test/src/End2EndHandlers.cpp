@@ -198,13 +198,13 @@ void ConventionResultHandler::HandleResponse(std::string &&payload, armonik::api
   received = true;
   is_error = false;
   logger.debug("ConventionResultHandler: received " + std::to_string(payload.size()) + " bytes for task " +
-               taskId.data());
+               std::string(taskId));
 }
 void ConventionResultHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   std::lock_guard<std::mutex> lock(mutex);
   received = true;
   is_error = true;
-  logger.debug(std::string("ConventionResultHandler: error for task ") + taskId.data() + ": " + e.what());
+  logger.debug(std::string("ConventionResultHandler: error for task ") + std::string(taskId) + ": " + e.what());
 }
 
 void ExceptionServiceHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,

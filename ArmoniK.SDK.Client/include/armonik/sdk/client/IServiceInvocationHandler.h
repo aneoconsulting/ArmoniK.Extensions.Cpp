@@ -21,31 +21,9 @@ public:
    * @param result_id Blob ID of the result in ArmoniK storage; pass to BlobDefinition::FromBlobId
    *        to use this result as an input for a subsequent task without re-uploading.
    * @note  Called concurrently for multiple tasks; implementation must be thread-safe.
-   *
-   * Override this version. The default delegates to the deprecated two-parameter overload for
-   * backward compatibility with existing handlers that already override it.
    */
   virtual void HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
-                              armonik::api::string_view result_id) {
-    (void)result_id;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    HandleResponse(std::move(result_payload), taskId);
-#pragma GCC diagnostic pop
-  }
-
-  /**
-   * @brief Legacy callback overload — override the three-parameter version instead.
-   * @deprecated Override HandleResponse(result_payload, taskId, result_id) instead.
-   *             This overload exists only for backward compatibility and will be removed in a future release.
-   */
-  [[deprecated("Override HandleResponse(result_payload, taskId, result_id) instead")]]
-  virtual void HandleResponse(std::string &&result_payload, armonik::api::string_view taskId) {
-    (void)result_payload;
-    (void)taskId;
-    throw std::logic_error(
-        "HandleResponse not implemented — override HandleResponse(result_payload, taskId, result_id)");
-  }
+                              armonik::api::string_view result_id) = 0;
 
   /**
    * @brief Callback function called when a tasks fails
