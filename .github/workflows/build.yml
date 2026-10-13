@@ -175,8 +175,7 @@ jobs:
         id: deps
         uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3.2.1
         with:
-          environment-name: grpc
-          create-args: -c conda-forge libgrpc libprotobuf libabseil nlohmann_json zlib
+          environment-file: tools/packaging/windows/environment.yml
           init-shell: none
           cache-downloads: true
 
@@ -187,6 +186,8 @@ jobs:
 
       - name: Build ArmoniK.Api
         run: |
+          # Stop at the first failing native command, pwsh only checks the last one by default
+          $PSNativeCommandUseErrorActionPreference = $true
           cmake -S ArmoniK.Api/packages/cpp -B ArmoniK.Api-build -DBUILD_CLIENT=ON -DBUILD_WORKER=OFF -DBUILD_TEST=OFF "-DCMAKE_PREFIX_PATH=${{ steps.deps.outputs.environment-path }}\Library"
           cmake --build ArmoniK.Api-build --config Release --parallel
           cmake --install ArmoniK.Api-build --config Release --prefix ArmoniK.Api-install
@@ -194,10 +195,44 @@ jobs:
 
       - name: Build ArmoniK Extensions
         run: |
+          $PSNativeCommandUseErrorActionPreference = $true
           # Quote -D arguments: PowerShell splits an unquoted "-Dname=value" at the first '.'
           cmake -S . -B build "-DARMONIK_API_DIR=${{ github.workspace }}\ArmoniK.Api-install" "-DCMAKE_PREFIX_PATH=${{ steps.deps.outputs.environment-path }}\Library" -DBUILD_WORKER=OFF -DBUILD_DYNAMICWORKER=OFF "-DVERSION=${{ needs.versionning.outputs.version }}"
           cmake --build build --config Release --parallel
         shell: pwsh
+
+      # Api and SDK go in one prefix: the SDK CMake package depends on the Api one
+      - name: Package
+        id: package
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          $name = "armoniksdk-${{ needs.versionning.outputs.version }}-win-x64-msvc"
+          cmake --install ArmoniK.Api-build --config Release --prefix $name
+          cmake --install build --config Release --prefix $name
+          Copy-Item tools/packaging/windows/environment.yml, tools/packaging/windows/README.md $name
+          Compress-Archive -Path $name -DestinationPath "$name.zip"
+          "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        shell: pwsh
+
+      # Build and run a consumer from the extracted zip, with the build-time prefixes removed so that
+      # absolute paths leaking into the CMake package files are caught
+      - name: Smoke test the package
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          $name = "${{ steps.package.outputs.name }}"
+          Remove-Item -Recurse -Force $name, ArmoniK.Api-install
+          Expand-Archive "$name.zip" -DestinationPath "$env:RUNNER_TEMP\sdk"
+          cmake -S tools/packaging/windows/smoke -B smoke "-DCMAKE_PREFIX_PATH=$env:RUNNER_TEMP\sdk\$name;${{ steps.deps.outputs.environment-path }}\Library"
+          cmake --build smoke --config Release
+          smoke\Release\smoke.exe
+        shell: pwsh
+
+      - name: Publish package as artefact
+        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a
+        with:
+          if-no-files-found: error
+          path: ${{ steps.package.outputs.name }}.zip
+          name: ${{ steps.package.outputs.name }}.zip
 
   build-upload-artifact:
     strategy:
