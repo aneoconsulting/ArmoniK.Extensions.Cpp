@@ -10,6 +10,7 @@
 #include "armonik/sdk/client/SessionService.h"
 #include "armonik/sdk/common/BlobDefinition.h"
 #include "armonik/sdk/common/Configuration.h"
+#include "armonik/sdk/common/Diagnostics.h"
 #include "armonik/sdk/common/DynamicLibrary.h"
 #include "armonik/sdk/common/Properties.h"
 #include "armonik/sdk/common/TaskDefinition.h"
@@ -25,7 +26,7 @@
 #include "ChannelPool.h"
 #include "End2EndHandlers.h"
 
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+ARMONIK_SDK_SUPPRESS_DEPRECATED_BEGIN
 
 armonik::api::grpc::v1::tasks::ListTasksRequest::Sort get_default_task_sort() {
   armonik::api::grpc::v1::tasks::ListTasksRequest_Sort sort;
@@ -437,3 +438,5 @@ TEST(SessionService, task_definition_submit_no_inputs) {
 
   service.CloseSession();
 }
+
+ARMONIK_SDK_SUPPRESS_DEPRECATED_END

@@ -2,6 +2,7 @@
 #include "ApplicationManager.h"
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/ConventionTask.h>
+#include <armonik/sdk/common/Diagnostics.h>
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/TaskOptions.h>
 #include <armonik/sdk/common/TaskPayload.h>
@@ -53,10 +54,9 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
     }
 
     // Legacy path: use application_name / application_version based loading
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    ARMONIK_SDK_SUPPRESS_DEPRECATED_BEGIN
     auto legacyPayload = ArmoniK::Sdk::Common::TaskPayload::Deserialize(taskHandler.getPayload());
-#pragma GCC diagnostic pop
+    ARMONIK_SDK_SUPPRESS_DEPRECATED_END
     AppId appId{rawOptions.application_name(), rawOptions.application_version()};
     ServiceId serviceId(appId, rawOptions.application_namespace(), rawOptions.application_service());
     return manager.UseApplication(appId)

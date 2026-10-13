@@ -3,9 +3,10 @@
 #include <iostream>
 
 #include "End2EndHandlers.h"
+#include "armonik/sdk/common/Diagnostics.h"
 #include "armonik/sdk/common/TaskPayload.h"
 
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+ARMONIK_SDK_SUPPRESS_DEPRECATED_BEGIN
 
 void PythonTestWorkerHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
                                              armonik::api::string_view result_id) {
@@ -236,3 +237,5 @@ void ExceptionServiceHandler::HandleError(const std::exception &e, armonik::api:
 }
 ExceptionServiceHandler::ExceptionServiceHandler(armonik::api::common::logger::Logger &logger)
     : logger(logger.local()) {}
+
+ARMONIK_SDK_SUPPRESS_DEPRECATED_END

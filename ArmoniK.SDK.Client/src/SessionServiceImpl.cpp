@@ -14,6 +14,7 @@
 #include <armonik/common/objects.pb.h>
 #include <armonik/common/utils/GuuId.h>
 #include <armonik/common/utils/string_view.h>
+#include <armonik/sdk/common/Diagnostics.h>
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskDefinition.h>
@@ -197,7 +198,7 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
           auto &batch = *batch_ptr;
           std::vector<std::string> names(batch.size());
           for (std::size_t j = 0; j < batch.size(); ++j) {
-            int i = batch[j].first;
+            std::size_t i = batch[j].first;
             bool is_output = batch[j].second;
 
             names[j] = (is_output ? "output-" : "input-") + std::to_string(i);
@@ -335,12 +336,10 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
   return task_ids;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-[[maybe_unused]] std::vector<std::string>
-SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
-                           std::shared_ptr<IServiceInvocationHandler> handler,
-                           const Common::TaskOptions &task_options) {
+ARMONIK_SDK_SUPPRESS_DEPRECATED_BEGIN
+std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
+                                                    std::shared_ptr<IServiceInvocationHandler> handler,
+                                                    const Common::TaskOptions &task_options) {
   std::vector<std::string> serialized(task_requests.size());
   std::vector<std::vector<std::string>> deps(task_requests.size());
   ParallelFor(thread_pool_, task_requests.size(), [&](std::size_t i) {
@@ -349,7 +348,7 @@ SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests
   });
   return SubmitRaw(serialized, deps, std::move(handler), task_options);
 }
-#pragma GCC diagnostic pop
+ARMONIK_SDK_SUPPRESS_DEPRECATED_END
 
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler) {
@@ -574,13 +573,12 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
                                : session_id;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+ARMONIK_SDK_SUPPRESS_DEPRECATED_BEGIN
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskPayload> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler) {
   return Submit(task_requests, std::move(handler), taskOptions);
 }
-#pragma GCC diagnostic pop
+ARMONIK_SDK_SUPPRESS_DEPRECATED_END
 
 void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavior behavior,
                                      const WaitOptions &options) {
