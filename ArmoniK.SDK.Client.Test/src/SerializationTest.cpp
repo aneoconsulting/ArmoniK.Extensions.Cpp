@@ -2,6 +2,7 @@
 
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/BlobDefinition.h>
+#include <armonik/sdk/common/ConventionTask.h>
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskOptions.h>
@@ -123,6 +124,72 @@ TEST(TaskOptionsConventionVersion, ReturnsVersionWhenSet) {
 TEST(TaskOptionsConventionVersion, ThrowsWhenMissing) {
   TaskOptions opts("app", "1.0", "ns", "svc", "part");
   EXPECT_THROW(opts.GetConventionVersion(), ArmoniKSdkException);
+}
+
+// ---------------------------------------------------------------------------
+// TaskOptions::GetSymbol / ConventionTask::Decode
+// ---------------------------------------------------------------------------
+
+// A worker with the service compiled in only needs the method name: GetSymbol must
+// not require LibraryPath or LibraryBlobId.
+TEST(TaskOptionsSymbol, ReturnsSymbolWithoutLibraryLocation) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+  opts.options[DynamicLibrary::KeySymbol] = "square";
+
+  EXPECT_EQ(opts.GetSymbol(), "square");
+}
+
+// SetConvention must write only the convention keys, so that a static worker
+// receives no library location.
+TEST(TaskOptionsSymbol, SetConventionWritesNoLibraryKeys) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+  opts.SetConvention("square");
+
+  EXPECT_EQ(opts.GetConventionVersion(), DynamicLibrary::ConventionVersion);
+  EXPECT_EQ(opts.GetSymbol(), "square");
+  EXPECT_EQ(opts.options.count(DynamicLibrary::KeyLibraryPath), 0u);
+  EXPECT_EQ(opts.options.count(DynamicLibrary::KeyLibraryBlobId), 0u);
+}
+
+TEST(TaskOptionsSymbol, ThrowsWhenMissingOrEmpty) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+  EXPECT_THROW(opts.GetSymbol(), ArmoniKSdkException);
+
+  opts.options[DynamicLibrary::KeySymbol] = "";
+  EXPECT_THROW(opts.GetSymbol(), ArmoniKSdkException);
+}
+
+// Decoding must succeed with only ConventionVersion and Symbol set, and replace input
+// values that name a data dependency by the dependency's content.
+TEST(ConventionTask, DecodeWithoutLibraryLocation) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+  opts.SetConvention("square");
+  ASSERT_TRUE(ConventionTask::IsConventionTask(opts));
+
+  ConventionPayload payload;
+  payload.inputs = {{"x", "blob-x"}, {"y", "inline"}};
+  payload.outputs = {{"result", "blob-out"}};
+  const std::map<std::string, std::string> deps = {{"blob-x", "7"}};
+
+  const auto task = ConventionTask::Decode(opts, payload.Serialize(), deps);
+
+  EXPECT_EQ(task.method_name, "square");
+  EXPECT_EQ(task.inputs.at("x"), "7");
+  EXPECT_EQ(task.inputs.at("y"), "inline");
+  EXPECT_EQ(task.outputs.at("result"), "blob-out");
+}
+
+TEST(ConventionTask, DecodeRejectsUnsupportedVersion) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+  opts.options[DynamicLibrary::KeyConventionVersion] = "v0";
+  opts.options[DynamicLibrary::KeySymbol] = "square";
+
+  EXPECT_THROW(ConventionTask::Decode(opts, ConventionPayload().Serialize(), {}), ArmoniKSdkException);
+}
+
+TEST(ConventionTask, NotAConventionTaskWithoutVersion) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+  EXPECT_FALSE(ConventionTask::IsConventionTask(opts));
 }
 
 // ---------------------------------------------------------------------------

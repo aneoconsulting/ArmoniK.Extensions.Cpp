@@ -1,10 +1,10 @@
 #include "DynamicWorker.h"
 #include "ApplicationManager.h"
 #include <armonik/sdk/common/ArmoniKSdkException.h>
+#include <armonik/sdk/common/ConventionTask.h>
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/sdk/common/TaskOptions.h>
 #include <armonik/sdk/common/TaskPayload.h>
-#include <armonik/sdk/common/internal/ConventionPayload.h>
 #include <exception>
 #include <fstream>
 
@@ -23,14 +23,11 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
     const auto &rawOptions = taskHandler.getTaskOptions();
 
     // Convention path: ConventionVersion key present in task options
-    if (rawOptions.options().count(ArmoniK::Sdk::Common::DynamicLibrary::KeyConventionVersion)) {
-      ArmoniK::Sdk::Common::TaskOptions opts(rawOptions);
-      const auto version = opts.GetConventionVersion();
-      if (version != ArmoniK::Sdk::Common::DynamicLibrary::ConventionVersion) {
-        throw ArmoniK::Sdk::Common::ArmoniKSdkException("Unsupported convention version: " + version);
-      }
-      auto lib = opts.GetDynamicLibrary();
+    const ArmoniK::Sdk::Common::TaskOptions opts(rawOptions);
+    if (ArmoniK::Sdk::Common::ConventionTask::IsConventionTask(opts)) {
       const auto &deps = taskHandler.getDataDependencies();
+      const auto task = ArmoniK::Sdk::Common::ConventionTask::Decode(opts, taskHandler.getPayload(), deps);
+      auto lib = opts.GetDynamicLibrary();
 
       // Blob-based loading: fetch the .so content from data dependencies, write to a temp file,
       // then dlopen it. The library is uploaded as a blob by the client and pre-downloaded by
@@ -50,27 +47,9 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
         tmp.write(blob_it->second.data(), static_cast<std::streamsize>(blob_it->second.size()));
       }
 
-      const auto payload = ArmoniK::Sdk::Common::ConventionPayload::Deserialize(taskHandler.getPayload());
-
-      if (lib.symbol.empty()) {
-        throw ArmoniK::Sdk::Common::ArmoniKSdkException(
-            "Convention task has no method name: set the 'Symbol' task option");
-      }
-      const std::string &method_name = lib.symbol;
-
-      // Resolve inputs: if a value matches a data dependency key (blob ID), substitute its downloaded content.
-      // This handles both inline values (C++ native payloads) and blob ID references (cross-SDK interoperability).
-      std::map<std::string, std::string> resolved_inputs;
-      for (const auto &pair : payload.inputs) {
-        const std::string &name = pair.first;
-        const std::string &value = pair.second;
-        const auto dep_it = deps.find(value);
-        resolved_inputs[name] = (dep_it != deps.end()) ? dep_it->second : value;
-      }
-
       return manager.UseLibrary(lib, rawOptions.application_namespace(), rawOptions.application_service())
           .UseSession(taskHandler.getSessionId())
-          .Execute(taskHandler, method_name, resolved_inputs, payload.outputs);
+          .Execute(taskHandler, task.method_name, task.inputs, task.outputs);
     }
 
     // Legacy path: use application_name / application_version based loading
