@@ -102,6 +102,14 @@ struct TaskOptions {
   explicit operator armonik::api::grpc::v1::TaskOptions() const;
 
   /**
+   * @brief Marks the tasks as convention tasks calling the given method.
+   * Sets the ConventionVersion and Symbol keys only. Use it for workers that have the service
+   * compiled in; for the DynamicWorker, use SetDynamicLibrary, which also sets the library location.
+   * @param symbol Name of the method to call
+   */
+  void SetConvention(const std::string &symbol);
+
+  /**
    * @brief Encodes a DynamicLibrary into this->options using the convention keys.
    * Also sets the ConventionVersion key.
    * @param lib DynamicLibrary to encode
@@ -114,6 +122,15 @@ struct TaskOptions {
    * @throws ArmoniKSdkException if the LibraryPath key is missing
    */
   [[nodiscard]] DynamicLibrary GetDynamicLibrary() const;
+
+  /**
+   * @brief Returns the Symbol value (name of the method to call) from this->options.
+   * Unlike GetDynamicLibrary, this does not require a library location, so workers that
+   * have the service compiled in can use it.
+   * @return Method name
+   * @throws ArmoniKSdkException if the Symbol key is absent or empty
+   */
+  [[nodiscard]] std::string GetSymbol() const;
 
   /**
    * @brief Returns the ConventionVersion value from this->options.

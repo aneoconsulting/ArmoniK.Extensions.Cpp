@@ -37,10 +37,14 @@ TaskOptions::TaskOptions(const armonik::api::grpc::v1::TaskOptions &raw)
       max_retries(raw.max_retries()), max_duration{raw.max_duration().seconds(), raw.max_duration().nanos()},
       options(raw.options().begin(), raw.options().end()) {}
 
-void TaskOptions::SetDynamicLibrary(const DynamicLibrary &lib) {
+void TaskOptions::SetConvention(const std::string &symbol) {
   options[DynamicLibrary::KeyConventionVersion] = DynamicLibrary::ConventionVersion;
+  options[DynamicLibrary::KeySymbol] = symbol;
+}
+
+void TaskOptions::SetDynamicLibrary(const DynamicLibrary &lib) {
+  SetConvention(lib.symbol);
   options[DynamicLibrary::KeyLibraryPath] = lib.library_path;
-  options[DynamicLibrary::KeySymbol] = lib.symbol;
   if (!lib.library_blob_id.empty()) {
     options[DynamicLibrary::KeyLibraryBlobId] = lib.library_blob_id;
   }
@@ -73,6 +77,15 @@ DynamicLibrary TaskOptions::GetDynamicLibrary() const {
     lib.symbol = it->second;
   }
   return lib;
+}
+
+std::string TaskOptions::GetSymbol() const {
+  auto it = options.find(DynamicLibrary::KeySymbol);
+  if (it == options.end() || it->second.empty()) {
+    throw ArmoniKSdkException(std::string("Convention task has no method name: set the '") + DynamicLibrary::KeySymbol +
+                              "' task option");
+  }
+  return it->second;
 }
 
 std::string TaskOptions::GetConventionVersion() const {
