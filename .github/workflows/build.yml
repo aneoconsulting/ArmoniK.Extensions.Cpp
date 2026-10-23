@@ -162,12 +162,18 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      # TODO: switch back to ARMONIK_API_VERSION_DEFAULT once the Windows build fixes are released
+      - name: Get ArmoniK.Api version
+        id: api
+        run: |
+          source ./tools/common.sh
+          echo "version=$ARMONIK_API_VERSION_DEFAULT" >> "$GITHUB_OUTPUT"
+        shell: bash
+
       - name: Checkout ArmoniK.Api
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
         with:
           repository: aneoconsulting/ArmoniK.Api
-          ref: jf/ci-cpp-win-client
+          ref: ${{ steps.api.outputs.version }}
           path: ArmoniK.Api
 
       # Prebuilt MSVC binaries from conda-forge, building gRPC with vcpkg takes hours
