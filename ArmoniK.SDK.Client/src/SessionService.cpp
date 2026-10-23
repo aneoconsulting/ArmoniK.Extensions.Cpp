@@ -1,5 +1,6 @@
 #include "armonik/sdk/client/SessionService.h"
 #include "SessionServiceImpl.h"
+#include <armonik/sdk/common/Diagnostics.h>
 #include <armonik/sdk/common/Version.h>
 #include <fstream>
 #include <sstream>
@@ -20,8 +21,7 @@ const std::string &SessionService::getSession() const {
   return impl->getSession();
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+ARMONIK_SDK_SUPPRESS_DEPRECATED_BEGIN
 std::vector<std::string>
 ArmoniK::Sdk::Client::SessionService::Submit(const std::vector<Common::TaskPayload> &requests,
                                              std::shared_ptr<IServiceInvocationHandler> handler,
@@ -34,7 +34,7 @@ std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskPa
   ensure_valid();
   return impl->Submit(requests, std::move(handler));
 }
-#pragma GCC diagnostic pop
+ARMONIK_SDK_SUPPRESS_DEPRECATED_END
 
 std::vector<std::string> SessionService::Submit(const std::vector<Common::TaskDefinition> &requests,
                                                 std::shared_ptr<IServiceInvocationHandler> handler,

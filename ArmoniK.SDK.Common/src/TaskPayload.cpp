@@ -1,5 +1,6 @@
 #include "armonik/sdk/common/TaskPayload.h"
 #include "armonik/sdk/common/ArmoniKSdkException.h"
+#include "armonik/sdk/common/Diagnostics.h"
 #include "armonik/sdk/common/internal/ConventionPayload.h"
 #include <cstdint>
 #include <iomanip>
@@ -57,8 +58,7 @@ armonik::api::string_view advance_sv(armonik::api::string_view &sv, size_t offse
 // TaskPayload (legacy binary format)
 // ---------------------------------------------------------------------------
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+ARMONIK_SDK_SUPPRESS_DEPRECATED_BEGIN
 
 std::string TaskPayload::Serialize() const {
   std::stringstream ss;
@@ -89,7 +89,7 @@ TaskPayload TaskPayload::Deserialize(armonik::api::string_view serialized) {
   return {std::move(method_name), std::move(arguments), std::move(data_dependencies)};
 }
 
-#pragma GCC diagnostic pop
+ARMONIK_SDK_SUPPRESS_DEPRECATED_END
 
 // ---------------------------------------------------------------------------
 // ConventionPayload (JSON wire format for the convention path)

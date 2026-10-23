@@ -25,11 +25,12 @@
 #include "armonik/sdk/client/IServiceInvocationHandler.h"
 #include "armonik/sdk/client/SessionService.h"
 #include "armonik/sdk/common/Configuration.h"
+#include "armonik/sdk/common/Diagnostics.h"
 #include "armonik/sdk/common/Properties.h"
 #include "armonik/sdk/common/TaskOptions.h"
 #include <armonik/sdk/common/TaskPayload.h>
 
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+ARMONIK_SDK_SUPPRESS_DEPRECATED_BEGIN
 
 namespace {
 
@@ -241,3 +242,5 @@ TEST(UploadByteBudget, tight_budget_serializes_concurrent_uploads) {
 
   EXPECT_GT(tight_ms, unbounded_ms);
 }
+
+ARMONIK_SDK_SUPPRESS_DEPRECATED_END
