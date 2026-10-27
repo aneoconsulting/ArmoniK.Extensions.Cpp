@@ -30,7 +30,13 @@ add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common ArmoniK.SDK.Client)
 target_link_libraries(${PROJECT_NAME} PRIVATE GTest::gtest_main nlohmann_json::nlohmann_json)
 if(TARGET ArmoniK.SDK.Worker)
-	target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Worker)
+	target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Worker ${CMAKE_DL_LIBS})
+
+	# Library with its own armonik_call, loaded by the tests as the DynamicWorker loads libraries
+	add_library(ArmoniK.SDK.Worker.CustomCallTest SHARED ${CMAKE_CURRENT_SOURCE_DIR}/libs/CustomCallLibrary.cpp)
+	target_link_libraries(ArmoniK.SDK.Worker.CustomCallTest PRIVATE "-Wl,--whole-archive" ArmoniK.SDK.Worker "-Wl,--no-whole-archive")
+	add_dependencies(${PROJECT_NAME} ArmoniK.SDK.Worker.CustomCallTest)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE "CUSTOM_CALL_LIBRARY=\"$<TARGET_FILE:ArmoniK.SDK.Worker.CustomCallTest>\"")
 endif()
 target_include_directories(${PROJECT_NAME}
 		PUBLIC

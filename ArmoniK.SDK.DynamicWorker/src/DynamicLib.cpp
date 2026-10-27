@@ -54,6 +54,16 @@ void *DynamicLib::get(const char *symbol_name) const {
   return sym;
 }
 
+/**
+ * @brief Retrieve an optional symbol from lib
+ */
+void *DynamicLib::try_get(const char *symbol_name) const {
+  if (!handle) {
+    throw ArmoniK::Sdk::Common::ArmoniKSdkException("Was not dlopen'ed");
+  }
+  return dlsym(handle, symbol_name);
+}
+
 } // namespace DynamicWorker
 } // namespace Sdk
 } // namespace ArmoniK
