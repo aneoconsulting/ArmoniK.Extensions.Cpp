@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace armonik {
 namespace api {
@@ -83,11 +84,16 @@ struct TaskOptions {
    * @param maxRetries Max number of retries for the task, defaults to 3
    * @param maxDuration Max task duration, defaults to 5 minutes
    * @param options User defined options map, defaults to an empty map
+   * @note Defined inline, so that worker libraries can build task options without linking ArmoniK.SDK.Common
    */
   TaskOptions(std::string applicationName, std::string applicationVersion, std::string applicationNamespace,
               std::string applicationService, std::string partitionId = "", std::string engineType = "",
               int priority = 2, int maxRetries = 3, const Duration &maxDuration = {300, 0},
-              const std::map<std::string, std::string> &options = std::map<std::string, std::string>());
+              const std::map<std::string, std::string> &options = std::map<std::string, std::string>())
+      : application_name(std::move(applicationName)), application_version(std::move(applicationVersion)),
+        application_namespace(std::move(applicationNamespace)), application_service(std::move(applicationService)),
+        partition_id(std::move(partitionId)), engine_type(std::move(engineType)), priority(priority),
+        max_retries(maxRetries), max_duration(maxDuration), options(options) {}
 
   /**
    * @brief Converts an ArmoniK compatible TaskOptions object to this TaskOptions object
