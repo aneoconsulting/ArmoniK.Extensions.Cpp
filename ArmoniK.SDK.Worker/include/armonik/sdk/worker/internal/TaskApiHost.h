@@ -38,8 +38,8 @@ public:
       : agent_(agent), options_(TaskOptionsToJson(agent.task_options())) {
     for (const auto &kv : input_values) {
       const auto id = input_ids.find(kv.first);
-      inputs_.push_back({String(kv.first), id == input_ids.end() ? armonik_string_t{"", 0} : String(id->second),
-                         String(kv.second)});
+      inputs_.push_back(
+          {String(kv.first), id == input_ids.end() ? armonik_string_t{"", 0} : String(id->second), String(kv.second)});
     }
     for (const auto &kv : outputs) {
       outputs_.push_back({String(kv.first), String(kv.second)});
@@ -152,8 +152,8 @@ private:
       std::vector<TaskAgent::ResultData> data;
       std::vector<Output *> written;
       for (size_t i = 0; i < count; ++i) {
-        data.push_back({std::string(results[i].id.data, results[i].id.size), results[i].data.data,
-                        results[i].data.size});
+        data.push_back(
+            {std::string(results[i].id.data, results[i].id.size), results[i].data.data, results[i].data.size});
         if (const auto output = self.AvailableOutput(data.back().id)) {
           if (std::find(written.begin(), written.end(), output) != written.end()) {
             throw Common::ArmoniKSdkException("Output '" + output->name + "' is written twice");

@@ -205,8 +205,8 @@ typedef struct armonik_task_t {
                                               void *sink_context, armonik_string_sink_t on_value,
                                               armonik_string_sink_t on_error);
   /** Writes the data of results that the task created or must produce */
-  armonik_status_t (*send_results)(void *agent, const armonik_result_data_t *results, size_t count,
-                                   void *sink_context, armonik_string_sink_t on_error);
+  armonik_status_t (*send_results)(void *agent, const armonik_result_data_t *results, size_t count, void *sink_context,
+                                   armonik_string_sink_t on_error);
   /** Submits tasks with the given options (JSON). on_value receives their ids, in the order of tasks. */
   armonik_status_t (*submit_tasks)(void *agent, armonik_string_t task_options, const armonik_task_request_t *tasks,
                                    size_t count, void *sink_context, armonik_string_sink_t on_value,
@@ -233,9 +233,9 @@ armonik_status_t armonik_process(void *armonik_context, const armonik_task_t *ta
 /**
  * @brief armonik_process function typedef
  */
-typedef armonik_status_t (*armonik_process_t)(void *armonik_context, const armonik_task_t *task,
-                                              void *service_context, void *session_context,
-                                              const char *function_name, armonik_callback_t callback);
+typedef armonik_status_t (*armonik_process_t)(void *armonik_context, const armonik_task_t *task, void *service_context,
+                                              void *session_context, const char *function_name,
+                                              armonik_callback_t callback);
 #ifdef __cplusplus
 }
 #endif
