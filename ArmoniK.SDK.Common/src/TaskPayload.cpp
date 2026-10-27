@@ -1,10 +1,9 @@
 #include "armonik/sdk/common/TaskPayload.h"
 #include "armonik/sdk/common/ArmoniKSdkException.h"
 #include "armonik/sdk/common/Diagnostics.h"
-#include "armonik/sdk/common/internal/ConventionPayload.h"
+#include "armonik/sdk/common/TaskDefinition.h"
 #include <cstdint>
 #include <iomanip>
-#include <nlohmann/json.hpp>
 #include <string>
 
 namespace ArmoniK {
@@ -91,28 +90,7 @@ TaskPayload TaskPayload::Deserialize(armonik::api::string_view serialized) {
 
 ARMONIK_SDK_SUPPRESS_DEPRECATED_END
 
-// ---------------------------------------------------------------------------
-// ConventionPayload (JSON wire format for the convention path)
-// ---------------------------------------------------------------------------
-
-std::string ConventionPayload::Serialize() const {
-  nlohmann::json j;
-  j["inputs"] = inputs;
-  j["outputs"] = outputs;
-  return j.dump();
-}
-
-ConventionPayload ConventionPayload::Deserialize(armonik::api::string_view serialized) {
-  try {
-    auto j = nlohmann::json::parse(serialized.begin(), serialized.end());
-    ConventionPayload payload;
-    payload.inputs = j.at("inputs").get<std::map<std::string, std::string>>();
-    payload.outputs = j.at("outputs").get<std::map<std::string, std::string>>();
-    return payload;
-  } catch (const nlohmann::json::exception &e) {
-    throw ArmoniKSdkException(std::string("Failed to deserialize convention payload JSON: ") + e.what());
-  }
-}
+constexpr const char *TaskDefinition::DefaultOutputName;
 
 } // namespace Common
 } // namespace Sdk
