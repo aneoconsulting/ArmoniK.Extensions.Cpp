@@ -1,7 +1,8 @@
 #pragma once
 
 #include "ServiceBase.h"
-#include <armonik/common/utils/string_view.h>
+#include "TaskContext.h"
+#include "TaskHandlerAgent.h"
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/ConventionTask.h>
 #include <armonik/sdk/common/TaskOptions.h>
@@ -24,6 +25,9 @@ namespace Worker {
  * @endcode
  * Tasks are accepted from any SDK client (C++, Java, C#). The library keys (LibraryPath, LibraryBlobId)
  * are ignored, so a C++ client only needs TaskOptions::SetConvention.
+ *
+ * The executor calls ServiceBase::process with the task's context, then checks that every output was
+ * written or delegated to a subtask.
  *
  * @note This header is not compiled into ArmoniK.SDK.Worker, so the library keeps no dependency on
  *       ArmoniK.Api.Worker. Including it requires ArmoniK.Api.Worker and ArmoniK.SDK.Common.
@@ -59,14 +63,12 @@ public:
       }
       auto task = Common::ConventionTask::Decode(opts, taskHandler.getPayload(), taskHandler.getDataDependencies(),
                                                  taskHandler.getExpectedResults());
-      if (task.outputs.size() != 1) {
-        throw Common::ArmoniKSdkException("This worker runs only convention tasks with a single output");
-      }
 
       UseSession(taskHandler.getSessionId());
-      const auto output = service.call(session_context, task.method_name, task.inputs);
-      taskHandler.send_result(task.outputs.begin()->second, armonik::api::string_view(output.data(), output.size()))
-          .get();
+      TaskHandlerAgent agent(taskHandler);
+      TaskContext context(agent, std::move(task.inputs), task.input_ids, task.outputs, TaskContext::DefaultCall::Inputs);
+      service.process(session_context, task.method_name, context);
+      context.finish();
       return {};
     } catch (const Common::ArmoniKSdkException &e) {
       return armonik::api::worker::ProcessStatus(e.what());

@@ -7,6 +7,8 @@ namespace ArmoniK {
 namespace Sdk {
 namespace Worker {
 
+class TaskContext;
+
 /**
  * @brief Base class to implement a worker in ArmoniK
  * @note This class is useful for use with the ArmoniK.SDK.Worker library which uses the \link ArmoniKSDKInterface.h
@@ -30,6 +32,22 @@ public:
    * @warning This function should free all resources contained in the session context
    */
   virtual void leave_session(void *session_ctx) { (void)session_ctx; }
+
+  /**
+   * @brief Convention-path entry point with the task context, called by ConventionExecutor.
+   * Override this to produce several outputs, to delegate outputs to subtasks or to create blobs and subtasks
+   * (include TaskContext.h). Every output must be written or delegated before it returns.
+   * The default writes the result of call to the single output of the task. Each host keeps the overload of call
+   * it used before (TaskContext::default_call): ConventionExecutor calls call(session_ctx, name, inputs), and the
+   * DynamicWorker calls call(session_ctx, name, payload) with the convention payload, {"inputs": values,
+   * "outputs": blob ids}, whose default calls call(session_ctx, name, inputs).
+   * @param session_ctx User provided session context
+   * @param name Name of the called method
+   * @param context Context of the task
+   * @throws ArmoniKSdkException from the default if the task does not have exactly one output, or if it builds the
+   *         payload and an input is not valid UTF-8
+   */
+  virtual void process(void *session_ctx, const std::string &name, TaskContext &context);
 
   /**
    * @brief Convention-path entry point: called with named, already-resolved inputs.
