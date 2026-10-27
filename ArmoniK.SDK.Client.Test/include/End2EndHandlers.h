@@ -129,6 +129,23 @@ public:
   armonik::api::common::logger::LocalLogger logger;
 };
 
+class NamedOutputsHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
+public:
+  explicit NamedOutputsHandler(armonik::api::common::logger::Logger &logger);
+  void HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                      armonik::api::string_view result_id, armonik::api::string_view output_name) override;
+  void HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
+                      armonik::api::string_view result_id) override;
+  void HandleError(const std::exception &e, armonik::api::string_view taskId,
+                   armonik::api::string_view output_name) override;
+  void HandleError(const std::exception &e, armonik::api::string_view taskId) override;
+
+  std::mutex mutex;
+  std::map<std::string, std::string> payloads;
+  std::map<std::string, std::string> errors;
+  armonik::api::common::logger::LocalLogger logger;
+};
+
 class ExceptionServiceHandler final : public ArmoniK::Sdk::Client::IServiceInvocationHandler {
 public:
   explicit ExceptionServiceHandler(armonik::api::common::logger::Logger &logger);

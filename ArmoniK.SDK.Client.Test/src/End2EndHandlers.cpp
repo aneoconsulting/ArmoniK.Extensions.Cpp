@@ -208,6 +208,30 @@ void ConventionResultHandler::HandleError(const std::exception &e, armonik::api:
   logger.debug(std::string("ConventionResultHandler: error for task ") + std::string(taskId) + ": " + e.what());
 }
 
+NamedOutputsHandler::NamedOutputsHandler(armonik::api::common::logger::Logger &logger) : logger(logger.local()) {}
+void NamedOutputsHandler::HandleResponse(std::string &&payload, armonik::api::string_view taskId,
+                                         armonik::api::string_view result_id, armonik::api::string_view output_name) {
+  (void)result_id;
+  std::lock_guard<std::mutex> lock(mutex);
+  payloads[std::string(output_name)] = std::move(payload);
+  logger.debug("NamedOutputsHandler: received output " + std::string(output_name) + " for task " +
+               std::string(taskId));
+}
+void NamedOutputsHandler::HandleResponse(std::string &&payload, armonik::api::string_view taskId,
+                                         armonik::api::string_view result_id) {
+  HandleResponse(std::move(payload), taskId, result_id, "");
+}
+void NamedOutputsHandler::HandleError(const std::exception &e, armonik::api::string_view taskId,
+                                      armonik::api::string_view output_name) {
+  std::lock_guard<std::mutex> lock(mutex);
+  errors[std::string(output_name)] = e.what();
+  logger.debug("NamedOutputsHandler: error for output " + std::string(output_name) + " of task " +
+               std::string(taskId) + ": " + e.what());
+}
+void NamedOutputsHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
+  HandleError(e, taskId, "");
+}
+
 void ExceptionServiceHandler::HandleResponse(std::string &&result_payload, armonik::api::string_view taskId,
                                              armonik::api::string_view result_id) {
   (void)result_id;
