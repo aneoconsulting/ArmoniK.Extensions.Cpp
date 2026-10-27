@@ -128,6 +128,114 @@ armonik_status_t armonik_call(void *armonik_context, void *service_context, void
 typedef armonik_status_t (*armonik_call_t)(void *armonik_context, void *service_context, void *session_context,
                                            const char *function_name, const char *input, size_t input_size,
                                            armonik_callback_t callback);
+
+/**
+ * @brief Bytes, not null-terminated
+ */
+typedef struct armonik_string_t {
+  const char *data;
+  size_t size;
+} armonik_string_t;
+
+/**
+ * @brief Receives a string from the worker. The string is valid only during the call.
+ */
+typedef void (*armonik_string_sink_t)(void *sink_context, const char *data, size_t size);
+
+/**
+ * @brief An input of a convention task
+ */
+typedef struct armonik_input_t {
+  armonik_string_t name;
+  /** Blob id of the input, empty when the value was given inline in the payload */
+  armonik_string_t id;
+  armonik_string_t data;
+} armonik_input_t;
+
+/**
+ * @brief An output of a convention task
+ */
+typedef struct armonik_output_t {
+  armonik_string_t name;
+  armonik_string_t id;
+} armonik_output_t;
+
+/**
+ * @brief Data to write to a result
+ */
+typedef struct armonik_result_data_t {
+  armonik_string_t id;
+  armonik_string_t data;
+} armonik_result_data_t;
+
+/**
+ * @brief Task to submit
+ */
+typedef struct armonik_task_request_t {
+  armonik_string_t payload;
+  const armonik_string_t *data_dependencies;
+  size_t data_dependencies_count;
+  const armonik_string_t *expected_outputs;
+  size_t expected_outputs_count;
+} armonik_task_request_t;
+
+/**
+ * @brief A convention task, and the operations it can do on ArmoniK, given by the worker to armonik_process.
+ *
+ * Each operation returns ARMONIK_STATUS_OK, or another status after calling on_error with a message.
+ * ARMONIK_STATUS_RETRY means a transient failure. Strings given to the sinks are valid only during the call.
+ * @note Task options are a JSON object with the fields of ArmoniK::Sdk::Common::TaskOptions.
+ */
+typedef struct armonik_task_t {
+  /** sizeof(armonik_task_t) in the worker, so that fields can be added at the end */
+  size_t struct_size;
+  /** Opaque worker context, passed back to the operations */
+  void *agent;
+  armonik_string_t session_id;
+  armonik_string_t task_id;
+  /** Options of the task, as JSON */
+  armonik_string_t task_options;
+  const armonik_input_t *inputs;
+  size_t inputs_count;
+  const armonik_output_t *outputs;
+  size_t outputs_count;
+
+  /** Creates results without data. on_value receives their ids, in the order of names. */
+  armonik_status_t (*create_results_metadata)(void *agent, const armonik_string_t *names, size_t count,
+                                              void *sink_context, armonik_string_sink_t on_value,
+                                              armonik_string_sink_t on_error);
+  /** Writes the data of results that the task created or must produce */
+  armonik_status_t (*send_results)(void *agent, const armonik_result_data_t *results, size_t count,
+                                   void *sink_context, armonik_string_sink_t on_error);
+  /** Submits tasks with the given options (JSON). on_value receives their ids, in the order of tasks. */
+  armonik_status_t (*submit_tasks)(void *agent, armonik_string_t task_options, const armonik_task_request_t *tasks,
+                                   size_t count, void *sink_context, armonik_string_sink_t on_value,
+                                   armonik_string_sink_t on_error);
+} armonik_task_t;
+
+/**
+ * @brief Function called to execute a convention task with its context. Optional: when a library does not export
+ * it, the worker uses armonik_call, which supports only tasks with a single output.
+ * @param armonik_context Opaque ArmoniK context, should be passed to the callback as-is without modification
+ * @param task Task and its operations, valid only during the call
+ * @param service_context User defined service context
+ * @param session_context User defined session context
+ * @param function_name Name of the function to call
+ * @param callback Callback provided by ArmoniK, called only on a failure, with its message. The task writes its
+ *        outputs through task->send_results.
+ * @return Status of the call. See /ref armonik_status_t for more details
+ * @note When using the ArmoniK.SDK.Worker library, this function is already implemented and calls
+ * ServiceBase::process.
+ */
+armonik_status_t armonik_process(void *armonik_context, const armonik_task_t *task, void *service_context,
+                                 void *session_context, const char *function_name, armonik_callback_t callback);
+
+/**
+ * @brief armonik_process function typedef
+ */
+typedef armonik_status_t (*armonik_process_t)(void *armonik_context, const armonik_task_t *task,
+                                              void *service_context, void *session_context,
+                                              const char *function_name, armonik_callback_t callback);
 #ifdef __cplusplus
 }
 #endif
