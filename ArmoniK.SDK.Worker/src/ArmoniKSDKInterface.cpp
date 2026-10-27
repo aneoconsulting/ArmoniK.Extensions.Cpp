@@ -7,6 +7,8 @@
 #include <cstring>
 #include <stdexcept>
 
+// Implementation details, hidden from the documentation
+/// @cond
 namespace {
 
 using ArmoniK::Sdk::Worker::TaskAgent;
@@ -117,6 +119,7 @@ struct CallResult {
 };
 
 } // namespace
+/// @endcond
 
 extern "C" {
 
