@@ -214,8 +214,7 @@ void NamedOutputsHandler::HandleResponse(std::string &&payload, armonik::api::st
   (void)result_id;
   std::lock_guard<std::mutex> lock(mutex);
   payloads[std::string(output_name)] = std::move(payload);
-  logger.debug("NamedOutputsHandler: received output " + std::string(output_name) + " for task " +
-               std::string(taskId));
+  logger.debug("NamedOutputsHandler: received output " + std::string(output_name) + " for task " + std::string(taskId));
 }
 void NamedOutputsHandler::HandleResponse(std::string &&payload, armonik::api::string_view taskId,
                                          armonik::api::string_view result_id) {
@@ -225,8 +224,8 @@ void NamedOutputsHandler::HandleError(const std::exception &e, armonik::api::str
                                       armonik::api::string_view output_name) {
   std::lock_guard<std::mutex> lock(mutex);
   errors[std::string(output_name)] = e.what();
-  logger.debug("NamedOutputsHandler: error for output " + std::string(output_name) + " of task " +
-               std::string(taskId) + ": " + e.what());
+  logger.debug("NamedOutputsHandler: error for output " + std::string(output_name) + " of task " + std::string(taskId) +
+               ": " + e.what());
 }
 void NamedOutputsHandler::HandleError(const std::exception &e, armonik::api::string_view taskId) {
   HandleError(e, taskId, "");
