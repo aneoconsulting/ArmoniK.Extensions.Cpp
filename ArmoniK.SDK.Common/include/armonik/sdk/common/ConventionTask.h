@@ -2,6 +2,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 namespace ArmoniK {
 namespace Sdk {
@@ -26,7 +27,12 @@ struct ConventionTask {
    */
   std::map<std::string, std::string> inputs;
   /**
-   * @brief Named outputs (name → blob id)
+   * @brief Blob id of the inputs given as a data dependency (name → blob id). Inline inputs are absent.
+   */
+  std::map<std::string, std::string> input_ids;
+  /**
+   * @brief Named outputs (name → blob id), one per expected result of the task. A payload without outputs, from an
+   * older client, gives one output named TaskDefinition::DefaultOutputName: the single expected result.
    */
   std::map<std::string, std::string> outputs;
 
@@ -42,11 +48,14 @@ struct ConventionTask {
    * @param options Task options
    * @param payload Raw task payload
    * @param data_dependencies Downloaded data dependencies (blob id → content)
+   * @param expected_results Expected results of the task
    * @return Decoded task
-   * @throws ArmoniKSdkException if the convention version is unsupported, Symbol is missing or the payload is invalid
+   * @throws ArmoniKSdkException if the convention version is unsupported, Symbol is missing, the payload is invalid
+   *         or its outputs are not exactly the expected results
    */
   static ConventionTask Decode(const TaskOptions &options, const std::string &payload,
-                               const std::map<std::string, std::string> &data_dependencies);
+                               const std::map<std::string, std::string> &data_dependencies,
+                               const std::vector<std::string> &expected_results);
 };
 
 } // namespace Common

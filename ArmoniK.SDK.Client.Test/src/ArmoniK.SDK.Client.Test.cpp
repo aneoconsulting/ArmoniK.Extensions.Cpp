@@ -3,6 +3,8 @@
 #include <iostream>
 
 #include <algorithm>
+#include <armonik/client/results/ResultsClient.h>
+#include <armonik/client/results_service.grpc.pb.h>
 #include <armonik/client/tasks_service.grpc.pb.h>
 #include <armonik/common/logger/formatter.h>
 #include <armonik/common/logger/logger.h>
@@ -10,6 +12,7 @@
 #include <armonik/common/tasks_filters.pb.h>
 #include <armonik/sdk/client/IServiceInvocationHandler.h>
 #include <armonik/sdk/client/SessionService.h>
+#include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/BlobDefinition.h>
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/Diagnostics.h>
@@ -17,8 +20,11 @@
 #include <armonik/sdk/common/Properties.h>
 #include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskPayload.h>
+#include <atomic>
 #include <chrono>
 #include <cmath>
+#include <condition_variable>
+#include <mutex>
 #include <numeric>
 #include <thread>
 
@@ -836,6 +842,133 @@ TEST(testSDK, testConventionChainedSquareThenAdd) {
 
   service.CloseSession();
   std::cout << "Convention chained square then add test done!" << std::endl;
+}
+
+namespace {
+/** @brief Session of the ConventionArithmetic service of the worker test library, calling the given method */
+ArmoniK::Sdk::Common::Properties ConventionArithmeticProperties(ArmoniK::Sdk::Common::Configuration &config,
+                                                                const std::string &method) {
+  config.add_json_configuration("appsettings.json").add_env_configuration();
+
+  ArmoniK::Sdk::Common::DynamicLibrary lib;
+  lib.library_path = ConventionWorkerLibPath(config);
+  lib.symbol = method;
+
+  ArmoniK::Sdk::Common::TaskOptions task_options("libArmoniK.SDK.Worker.Test.so", config.get("WorkerLib__Version"),
+                                                 "End2EndTest", "ConventionArithmetic", config.get("PartitionId"));
+  task_options.max_retries = 1;
+  task_options.SetDynamicLibrary(lib);
+  return {config, task_options};
+}
+} // namespace
+
+/* A result has a single owner: an existing blob cannot be the output of two tasks, in one Submit call or while
+ * another task still produces it. */
+TEST(testSDK, testConventionExistingOutputHasOneOwner) {
+  ArmoniK::Sdk::Common::Configuration config;
+  const auto properties = ConventionArithmeticProperties(config, "square");
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  std::string shared;
+  {
+    ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
+    auto channel_guard = pool.GetChannel();
+    shared =
+        armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel_guard.channel))
+            .create_results_metadata(service.getSession(), {"shared"})
+            .at("shared");
+  }
+
+  using ArmoniK::Sdk::Common::BlobDefinition;
+  using ArmoniK::Sdk::Common::TaskDefinition;
+  auto handler = std::make_shared<NamedOutputsHandler>(logger);
+  const auto square = [](const std::string &x) { return TaskDefinition().WithInput("x", BlobDefinition::FromData(x)); };
+
+  EXPECT_THROW(
+      service.Submit({square("2").WithOutput("result", shared), square("3").WithOutput("result", shared)}, handler),
+      ArmoniK::Sdk::Common::ArmoniKSdkException);
+
+  auto tasks = service.Submit({square("3").WithOutput("result", shared)}, handler);
+  ASSERT_EQ(tasks.size(), 1u);
+  EXPECT_THROW(service.Submit({square("4").WithOutput("result", shared)}, handler),
+               ArmoniK::Sdk::Common::ArmoniKSdkException);
+
+  // The rejected submission leaves the first task's handler in place
+  service.WaitResults({tasks[0]});
+  EXPECT_TRUE(handler->errors.empty());
+  EXPECT_EQ(handler->payloads, (std::map<std::string, std::string>{{"result", "9"}}));
+
+  service.CloseSession();
+}
+
+/* Concurrent submissions of the same existing output: exactly one of them takes it, the others are rejected. */
+TEST(testSDK, testConventionExistingOutputConcurrentSubmit) {
+  ArmoniK::Sdk::Common::Configuration config;
+  const auto properties = ConventionArithmeticProperties(config, "square");
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Info};
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  std::string shared;
+  {
+    ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
+    auto channel_guard = pool.GetChannel();
+    shared =
+        armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel_guard.channel))
+            .create_results_metadata(service.getSession(), {"shared"})
+            .at("shared");
+  }
+
+  using ArmoniK::Sdk::Common::BlobDefinition;
+  using ArmoniK::Sdk::Common::TaskDefinition;
+  auto handler = std::make_shared<NamedOutputsHandler>(logger);
+
+  // The submissions start together, so that their checks and registrations interleave
+  const int submitters = 8;
+  std::mutex mutex;
+  std::condition_variable start;
+  bool started = false;
+  std::vector<std::string> accepted;
+  std::atomic<int> rejected(0);
+  std::vector<std::thread> threads;
+  for (int i = 0; i < submitters; ++i) {
+    threads.emplace_back([&, i]() {
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        start.wait(lock, [&]() { return started; });
+      }
+      try {
+        auto tasks = service.Submit(
+            {TaskDefinition().WithInput("x", BlobDefinition::FromData(std::to_string(i))).WithOutput("result", shared)},
+            handler);
+        std::lock_guard<std::mutex> lock(mutex);
+        accepted.insert(accepted.end(), tasks.begin(), tasks.end());
+      } catch (const ArmoniK::Sdk::Common::ArmoniKSdkException &) {
+        ++rejected;
+      }
+    });
+  }
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    started = true;
+  }
+  start.notify_all();
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  ASSERT_EQ(accepted.size(), 1u);
+  EXPECT_EQ(rejected.load(), submitters - 1);
+
+  service.WaitResults({accepted[0]});
+  EXPECT_TRUE(handler->errors.empty());
+  EXPECT_EQ(handler->payloads.size(), 1u);
+
+  service.CloseSession();
 }
 
 ARMONIK_SDK_SUPPRESS_DEPRECATED_END

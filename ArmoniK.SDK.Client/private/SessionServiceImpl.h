@@ -8,6 +8,7 @@
 #include <armonik/sdk/common/TaskOptions.h>
 #include <mutex>
 #include <results_service.grpc.pb.h>
+#include <set>
 
 namespace ArmoniK {
 namespace Sdk {
@@ -46,24 +47,28 @@ private:
   ArmoniK::Sdk::Common::TaskOptions taskOptions;
 
   /**
-   * @brief Map between taskId and resultId
+   * @brief Output of a submitted task that has not been handled yet
    */
-  std::map<std::string, std::string> taskId_resultId;
+  struct PendingOutput {
+    std::string task_id;
+    std::string output_name;
+    std::shared_ptr<IServiceInvocationHandler> handler;
+  };
 
   /**
-   * @brief Map between result id and task id
+   * @brief Map between a result id and the output it holds
    */
-  std::map<std::string, std::string> resultId_taskId;
+  std::map<std::string, PendingOutput> pending_outputs;
 
   /**
-   * @brief Map between the task id to its result ids
+   * @brief Map between a task id and the result ids of its pending outputs
    */
-  std::map<std::string, std::vector<std::string>> tid_rids;
+  std::map<std::string, std::vector<std::string>> taskId_resultIds;
 
   /**
-   * @brief Map between a result_id and it's handler
+   * @brief Existing outputs of tasks being submitted, not yet in pending_outputs
    */
-  std::map<std::string, std::shared_ptr<IServiceInvocationHandler>> result_handlers;
+  std::set<std::string> reserved_outputs;
 
   /**
    * @brief Maps mutex
@@ -231,12 +236,15 @@ private:
    * @brief Core submission logic operating on pre-serialized payloads.
    * @param serialized_payloads Pre-serialized task payload bytes (one per task)
    * @param data_dependencies Per-task list of data dependency result IDs
+   * @param outputs Per-task list of (output name, result id) pairs, created beforehand. If empty, one output named
+   * TaskDefinition::DefaultOutputName is created for each task.
    * @param handler Result handler for this batch
    * @param task_options Task options
    * @return List of task ids
    */
   std::vector<std::string> SubmitRaw(const std::vector<std::string> &serialized_payloads,
                                      const std::vector<std::vector<std::string>> &data_dependencies,
+                                     const std::vector<std::vector<std::pair<std::string, std::string>>> &outputs,
                                      std::shared_ptr<IServiceInvocationHandler> handler,
                                      const Common::TaskOptions &task_options);
 };
