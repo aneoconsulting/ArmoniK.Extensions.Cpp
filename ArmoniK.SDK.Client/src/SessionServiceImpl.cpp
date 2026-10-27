@@ -2,6 +2,7 @@
 #include "Batcher.h"
 #include "ParallelFor.h"
 #include "armonik/sdk/client/IServiceInvocationHandler.h"
+#include <algorithm>
 #include <armonik/client/results/ResultsClient.h>
 #include <armonik/client/results_common.pb.h>
 #include <armonik/client/results_service.grpc.pb.h>
@@ -22,7 +23,6 @@
 #include <armonik/sdk/common/TaskPayload.h>
 #include <armonik/sdk/common/Version.h>
 #include <armonik/sdk/common/internal/ConventionPayload.h>
-#include <algorithm>
 #include <chrono>
 #include <thread>
 #include <utility>
@@ -149,12 +149,10 @@ void EnsureNotCalledFromWorkerThread(const char *entry_point) {
 
 const std::string &SessionServiceImpl::getSession() const { return session; }
 
-std::vector<std::string>
-SessionServiceImpl::SubmitRaw(const std::vector<std::string> &serialized_payloads,
-                              const std::vector<std::vector<std::string>> &data_dependencies,
-                              const std::vector<std::vector<std::pair<std::string, std::string>>> &outputs,
-                              std::shared_ptr<IServiceInvocationHandler> handler,
-                              const Common::TaskOptions &task_options) {
+std::vector<std::string> SessionServiceImpl::SubmitRaw(
+    const std::vector<std::string> &serialized_payloads, const std::vector<std::vector<std::string>> &data_dependencies,
+    const std::vector<std::vector<std::pair<std::string, std::string>>> &outputs,
+    std::shared_ptr<IServiceInvocationHandler> handler, const Common::TaskOptions &task_options) {
   EnsureNotCalledFromWorkerThread("SubmitRaw");
   const bool create_outputs = outputs.empty();
 
@@ -986,8 +984,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
     join_set.Wait();
 
     // If we wait for any and every output of a task is handled, or if we break on error and had an error, then return
-    if ((stopOnFirst && task_done) ||
-        (breakOnError && hasError.load(std::memory_order_relaxed))) {
+    if ((stopOnFirst && task_done) || (breakOnError && hasError.load(std::memory_order_relaxed))) {
       break;
     }
     if (std::chrono::steady_clock::now() > function_stop) {
