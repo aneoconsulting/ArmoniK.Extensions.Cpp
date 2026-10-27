@@ -17,17 +17,17 @@ namespace Internal {
  * @note This is an internal SDK header. It is not part of the public API.
  */
 inline std::string TaskOptionsToJson(const Common::TaskOptions &options) {
-  return nlohmann::json{{"application_name", options.application_name},
-                        {"application_version", options.application_version},
-                        {"application_namespace", options.application_namespace},
-                        {"application_service", options.application_service},
-                        {"partition_id", options.partition_id},
-                        {"engine_type", options.engine_type},
-                        {"priority", options.priority},
-                        {"max_retries", options.max_retries},
-                        {"max_duration",
-                         {{"seconds", options.max_duration.seconds}, {"nanos", options.max_duration.nanos}}},
-                        {"options", options.options}}
+  return nlohmann::json{
+      {"application_name", options.application_name},
+      {"application_version", options.application_version},
+      {"application_namespace", options.application_namespace},
+      {"application_service", options.application_service},
+      {"partition_id", options.partition_id},
+      {"engine_type", options.engine_type},
+      {"priority", options.priority},
+      {"max_retries", options.max_retries},
+      {"max_duration", {{"seconds", options.max_duration.seconds}, {"nanos", options.max_duration.nanos}}},
+      {"options", options.options}}
       .dump();
 }
 

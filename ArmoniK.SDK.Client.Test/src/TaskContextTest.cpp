@@ -562,13 +562,11 @@ TEST(ArmoniKProcess, AgentFailures) {
   TreeService service;
   Failure failure;
   agent.submit_error = std::make_exception_ptr(std::runtime_error("agent unavailable"));
-  EXPECT_EQ(Process(service, agent, {{"n", "2"}}, {}, {{"result", "out"}}, "expand", failure),
-            ARMONIK_STATUS_RETRY);
+  EXPECT_EQ(Process(service, agent, {{"n", "2"}}, {}, {{"result", "out"}}, "expand", failure), ARMONIK_STATUS_RETRY);
   EXPECT_EQ(failure.message, "agent unavailable");
 
   agent.submit_error = std::make_exception_ptr(ArmoniKSdkException("rejected"));
-  EXPECT_EQ(Process(service, agent, {{"n", "2"}}, {}, {{"result", "out"}}, "expand", failure),
-            ARMONIK_STATUS_ERROR);
+  EXPECT_EQ(Process(service, agent, {{"n", "2"}}, {}, {{"result", "out"}}, "expand", failure), ARMONIK_STATUS_ERROR);
   EXPECT_EQ(failure.message, "rejected");
 }
 
@@ -661,8 +659,7 @@ TEST(ArmoniKProcess, LibraryWithItsOwnArmonikCall) {
   {
     const Map outputs{{"result", "out-f"}};
     TaskApiHost host(agent, none, none, outputs);
-    EXPECT_EQ(process(&failure, &host.task(), service.get(), nullptr, "fail", &Failure::Report),
-              ARMONIK_STATUS_ERROR);
+    EXPECT_EQ(process(&failure, &host.task(), service.get(), nullptr, "fail", &Failure::Report), ARMONIK_STATUS_ERROR);
     EXPECT_EQ(failure.message, "custom failure");
     EXPECT_EQ(agent.sent.count("out-f"), 0u);
   }
@@ -671,8 +668,7 @@ TEST(ArmoniKProcess, LibraryWithItsOwnArmonikCall) {
   {
     const Map outputs{{"q", "out-q"}, {"r", "out-r"}};
     TaskApiHost host(agent, none, none, outputs);
-    EXPECT_EQ(process(&failure, &host.task(), service.get(), nullptr, "echo", &Failure::Report),
-              ARMONIK_STATUS_ERROR);
+    EXPECT_EQ(process(&failure, &host.task(), service.get(), nullptr, "echo", &Failure::Report), ARMONIK_STATUS_ERROR);
     EXPECT_NE(failure.message.find("defines armonik_call"), std::string::npos) << failure.message;
   }
 }

@@ -129,8 +129,7 @@ void ServiceManager::UploadResult(void *opaque_context, armonik_status_t status,
   }
 }
 
-void ServiceManager::ReportFailure(void *opaque_context, armonik_status_t status, const char *data,
-                                   size_t data_size) {
+void ServiceManager::ReportFailure(void *opaque_context, armonik_status_t status, const char *data, size_t data_size) {
   auto context = static_cast<ArmonikContext *>(opaque_context);
   if (status == ARMONIK_STATUS_RETRY) {
     context->retry_requested = true;
