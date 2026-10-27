@@ -9,6 +9,11 @@ SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_CLIENT_FILES ${HEADER_FILES_DIR}/*.h)
 
+# The worker task context is tested here when the worker library is built with the client
+if(NOT TARGET ArmoniK.SDK.Worker)
+	list(REMOVE_ITEM SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/TaskContextTest.cpp)
+endif()
+
 find_package(ArmoniK.Api.Client CONFIG REQUIRED)
 
 if(NOT TARGET ArmoniK.SDK.Common)
@@ -18,10 +23,15 @@ if(NOT TARGET ArmoniK.SDK.Client)
 	find_package(ArmoniK.SDK.Client CONFIG REQUIRED)
 endif()
 
+find_package(nlohmann_json REQUIRED)
+
 add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common ArmoniK.SDK.Client)
-target_link_libraries(${PROJECT_NAME} PRIVATE GTest::gtest_main)
+target_link_libraries(${PROJECT_NAME} PRIVATE GTest::gtest_main nlohmann_json::nlohmann_json)
+if(TARGET ArmoniK.SDK.Worker)
+	target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Worker)
+endif()
 target_include_directories(${PROJECT_NAME}
 		PUBLIC
 		"$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
