@@ -82,6 +82,21 @@ public:
   template <class T> T get(const char *symbol_name) const { return (T)get(symbol_name); }
 
   /**
+   * @brief Retrieve an optional symbol from lib
+   * @tparam T Function pointer type
+   * @param symbol_name Name of the symbol
+   * @return Function pointer for the requested symbol, null if the library does not export it
+   */
+  template <class T> T try_get(const char *symbol_name) const { return (T)try_get(symbol_name); }
+
+  /**
+   * @brief Retrieve an optional symbol from lib
+   * @param symbol_name Name of the symbol
+   * @return Pointer to the requested symbol, null if the library does not export it
+   */
+  void *try_get(const char *symbol_name) const;
+
+  /**
    * @brief Test whether a library is loaded or not
    * @return true if a library is loaded
    */

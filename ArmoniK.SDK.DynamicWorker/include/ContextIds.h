@@ -147,6 +147,11 @@ struct ArmoniKFunctionPointers {
    * @brief Function to call a method. See armonik_call()
    */
   armonik_call_t call;
+  /**
+   * @brief Function to execute a convention task with its context. See armonik_process(). Null for libraries built
+   * before it existed.
+   */
+  armonik_process_t process;
 
   /**
    * @brief Clears the function pointers
@@ -157,6 +162,7 @@ struct ArmoniKFunctionPointers {
     enter_session = nullptr;
     leave_session = nullptr;
     call = nullptr;
+    process = nullptr;
   }
 };
 } // namespace DynamicWorker
