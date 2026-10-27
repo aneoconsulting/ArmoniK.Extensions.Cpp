@@ -27,7 +27,11 @@ armonik::api::worker::ProcessStatus DynamicWorker::Execute(armonik::api::worker:
     const ArmoniK::Sdk::Common::TaskOptions opts(rawOptions);
     if (ArmoniK::Sdk::Common::ConventionTask::IsConventionTask(opts)) {
       const auto &deps = taskHandler.getDataDependencies();
-      const auto task = ArmoniK::Sdk::Common::ConventionTask::Decode(opts, taskHandler.getPayload(), deps);
+      const auto task = ArmoniK::Sdk::Common::ConventionTask::Decode(opts, taskHandler.getPayload(), deps,
+                                                                     taskHandler.getExpectedResults());
+      if (task.outputs.size() != 1) {
+        throw ArmoniK::Sdk::Common::ArmoniKSdkException("This worker runs only convention tasks with a single output");
+      }
       auto lib = opts.GetDynamicLibrary();
 
       // Blob-based loading: fetch the .so content from data dependencies, write to a temp file,
