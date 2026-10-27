@@ -5,14 +5,6 @@
 
 using namespace ArmoniK::Sdk::Common;
 
-TaskOptions::TaskOptions(std::string applicationName, std::string applicationVersion, std::string applicationNamespace,
-                         std::string applicationService, std::string partitionId, std::string engineType, int priority,
-                         int maxRetries, const Duration &maxDuration, const std::map<std::string, std::string> &options)
-    : application_name(std::move(applicationName)), application_version(std::move(applicationVersion)),
-      application_namespace(std::move(applicationNamespace)), application_service(std::move(applicationService)),
-      partition_id(std::move(partitionId)), engine_type(std::move(engineType)), priority(priority),
-      max_retries(maxRetries), max_duration(maxDuration), options(options) {}
-
 TaskOptions::operator armonik::api::grpc::v1::TaskOptions() const {
   armonik::api::grpc::v1::TaskOptions raw;
   raw.mutable_max_duration()->set_seconds(max_duration.seconds);
