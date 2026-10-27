@@ -66,7 +66,8 @@ public:
 
       UseSession(taskHandler.getSessionId());
       TaskHandlerAgent agent(taskHandler);
-      TaskContext context(agent, std::move(task.inputs), task.input_ids, task.outputs, TaskContext::DefaultCall::Inputs);
+      TaskContext context(agent, std::move(task.inputs), task.input_ids, task.outputs,
+                          TaskContext::DefaultCall::Inputs);
       service.process(session_context, task.method_name, context);
       context.finish();
       return {};
