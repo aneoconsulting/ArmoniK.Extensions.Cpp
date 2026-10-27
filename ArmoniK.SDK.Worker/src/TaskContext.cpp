@@ -242,8 +242,7 @@ void TaskContext::finish() const {
     unassigned += (unassigned.empty() ? "'" : ", '") + kv.second + "' (" + kv.first + ")";
   }
   if (!unassigned.empty()) {
-    throw Common::ArmoniKSdkException("Blobs created without data and given to no subtask as an output: " +
-                                      unassigned);
+    throw Common::ArmoniKSdkException("Blobs created without data and given to no subtask as an output: " + unassigned);
   }
 }
 

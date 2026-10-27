@@ -70,8 +70,7 @@ public:
     }
     // get() in the same expression: the asynchronous call refers to its by-value options argument
     const auto reply =
-        taskHandler.create_tasks_async(static_cast<armonik::api::grpc::v1::TaskOptions>(task_options), requests)
-            .get();
+        taskHandler.create_tasks_async(static_cast<armonik::api::grpc::v1::TaskOptions>(task_options), requests).get();
     // A rejection by the agent fails the task: a retry would submit the same request again
     if (reply.Response_case() != armonik::api::grpc::v1::agent::CreateTaskReply::kCreationStatusList) {
       throw Common::ArmoniKSdkException("Failed to submit subtasks: " + reply.error());
