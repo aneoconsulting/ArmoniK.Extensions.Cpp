@@ -171,11 +171,12 @@ TEST(ConventionTask, DecodeWithoutLibraryLocation) {
   payload.outputs = {{"result", "blob-out"}};
   const std::map<std::string, std::string> deps = {{"blob-x", "7"}};
 
-  const auto task = ConventionTask::Decode(opts, payload.Serialize(), deps);
+  const auto task = ConventionTask::Decode(opts, payload.Serialize(), deps, {"blob-out"});
 
   EXPECT_EQ(task.method_name, "square");
   EXPECT_EQ(task.inputs.at("x"), "7");
   EXPECT_EQ(task.inputs.at("y"), "inline");
+  EXPECT_EQ(task.input_ids, (std::map<std::string, std::string>{{"x", "blob-x"}}));
   EXPECT_EQ(task.outputs.at("result"), "blob-out");
 }
 
@@ -184,7 +185,28 @@ TEST(ConventionTask, DecodeRejectsUnsupportedVersion) {
   opts.options[DynamicLibrary::KeyConventionVersion] = "v0";
   opts.options[DynamicLibrary::KeySymbol] = "square";
 
-  EXPECT_THROW(ConventionTask::Decode(opts, ConventionPayload().Serialize(), {}), ArmoniKSdkException);
+  EXPECT_THROW(ConventionTask::Decode(opts, ConventionPayload().Serialize(), {}, {"out"}), ArmoniKSdkException);
+}
+
+// The outputs of the payload must be exactly the expected results of the task
+TEST(ConventionTask, DecodeMatchesOutputsAndExpectedResults) {
+  TaskOptions opts("app", "1.0", "ns", "svc", "part");
+  opts.SetConvention("square");
+  ConventionPayload payload;
+  payload.outputs = {{"q", "blob-q"}, {"r", "blob-r"}};
+
+  EXPECT_EQ(ConventionTask::Decode(opts, payload.Serialize(), {}, {"blob-r", "blob-q"}).outputs, payload.outputs);
+  EXPECT_THROW(ConventionTask::Decode(opts, payload.Serialize(), {}, {"blob-q"}), ArmoniKSdkException);
+  EXPECT_THROW(ConventionTask::Decode(opts, payload.Serialize(), {}, {"blob-q", "blob-r", "blob-s"}),
+               ArmoniKSdkException);
+
+  payload.outputs = {{"q", "blob-q"}, {"r", "blob-q"}};
+  EXPECT_THROW(ConventionTask::Decode(opts, payload.Serialize(), {}, {"blob-q"}), ArmoniKSdkException);
+
+  // A payload without outputs, from an older client, has the single expected result
+  const auto legacy = ConventionTask::Decode(opts, ConventionPayload().Serialize(), {}, {"blob-out"});
+  EXPECT_EQ(legacy.outputs, (std::map<std::string, std::string>{{TaskDefinition::DefaultOutputName, "blob-out"}}));
+  EXPECT_THROW(ConventionTask::Decode(opts, ConventionPayload().Serialize(), {}, {"a", "b"}), ArmoniKSdkException);
 }
 
 TEST(ConventionTask, NotAConventionTaskWithoutVersion) {
@@ -234,12 +256,14 @@ TEST(BlobDefinition, FromBlobIdEmptyString) {
 // ---------------------------------------------------------------------------
 
 TEST(TaskDefinition, BraceInit) {
-  TaskDefinition td({{"x", BlobDefinition::FromData("data_x")}, {"y", BlobDefinition::FromBlobId("blob-y")}});
+  TaskDefinition td({{"x", BlobDefinition::FromData("data_x")}, {"y", BlobDefinition::FromBlobId("blob-y")}},
+                    {"sum", "product"});
   EXPECT_EQ(td.inputs.size(), 2u);
   EXPECT_TRUE(td.inputs.at("x").IsRawData());
   EXPECT_EQ(td.inputs.at("x").GetData(), "data_x");
   EXPECT_FALSE(td.inputs.at("y").IsRawData());
   EXPECT_EQ(td.inputs.at("y").GetBlobId(), "blob-y");
+  EXPECT_EQ(td.outputs, (std::set<std::string>{"sum", "product"}));
 }
 
 TEST(TaskDefinition, WithInputBuilder) {
@@ -251,9 +275,18 @@ TEST(TaskDefinition, WithInputBuilder) {
   EXPECT_EQ(td.inputs.at("b").GetData(), "2");
 }
 
-TEST(TaskDefinition, NoInputs) {
+TEST(TaskDefinition, WithOutputBuilder) {
+  TaskDefinition td;
+  td.WithOutput("q").WithOutput("r").WithOutput("q");
+  EXPECT_EQ(td.outputs, (std::set<std::string>{"q", "r"}));
+}
+
+// No declared output: Submit creates a single output named DefaultOutputName
+TEST(TaskDefinition, NoInputsNoOutputs) {
   TaskDefinition td;
   EXPECT_TRUE(td.inputs.empty());
+  EXPECT_TRUE(td.outputs.empty());
+  EXPECT_STREQ(TaskDefinition::DefaultOutputName, "result");
 }
 
 TEST(TaskDefinition, WithInputOverwritesExisting) {
@@ -295,6 +328,11 @@ TEST(ConventionPayload, IgnoresUnknownFields) {
   auto restored = ConventionPayload::Deserialize(R"({"method":"m","inputs":{"a":"x"},"outputs":{"q":"y"}})");
   EXPECT_EQ(restored.inputs.at("a"), "x");
   EXPECT_EQ(restored.outputs.at("q"), "y");
+}
+
+TEST(ConventionPayload, MissingOutputsIsEmpty) {
+  auto restored = ConventionPayload::Deserialize(R"({"inputs":{}})");
+  EXPECT_TRUE(restored.outputs.empty());
 }
 
 TEST(ConventionPayload, MissingInputsThrows) {
