@@ -8,8 +8,8 @@
 #include <armonik/sdk/common/TaskOptions.h>
 #include <istream>
 #include <mutex>
-#include <set>
 #include <results_service.grpc.pb.h>
+#include <set>
 
 namespace ArmoniK {
 namespace Sdk {

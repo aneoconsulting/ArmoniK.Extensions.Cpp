@@ -876,10 +876,10 @@ TEST(testSDK, testConventionExistingOutputHasOneOwner) {
   {
     ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
     auto channel_guard = pool.GetChannel();
-    shared = armonik::api::client::ResultsClient(
-                 armonik::api::grpc::v1::results::Results::NewStub(channel_guard.channel))
-                 .create_results_metadata(service.getSession(), {"shared"})
-                 .at("shared");
+    shared =
+        armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel_guard.channel))
+            .create_results_metadata(service.getSession(), {"shared"})
+            .at("shared");
   }
 
   using ArmoniK::Sdk::Common::BlobDefinition;
@@ -887,9 +887,9 @@ TEST(testSDK, testConventionExistingOutputHasOneOwner) {
   auto handler = std::make_shared<NamedOutputsHandler>(logger);
   const auto square = [](const std::string &x) { return TaskDefinition().WithInput("x", BlobDefinition::FromData(x)); };
 
-  EXPECT_THROW(service.Submit({square("2").WithOutput("result", shared), square("3").WithOutput("result", shared)},
-                              handler),
-               ArmoniK::Sdk::Common::ArmoniKSdkException);
+  EXPECT_THROW(
+      service.Submit({square("2").WithOutput("result", shared), square("3").WithOutput("result", shared)}, handler),
+      ArmoniK::Sdk::Common::ArmoniKSdkException);
 
   auto tasks = service.Submit({square("3").WithOutput("result", shared)}, handler);
   ASSERT_EQ(tasks.size(), 1u);
@@ -917,10 +917,10 @@ TEST(testSDK, testConventionExistingOutputConcurrentSubmit) {
   {
     ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
     auto channel_guard = pool.GetChannel();
-    shared = armonik::api::client::ResultsClient(
-                 armonik::api::grpc::v1::results::Results::NewStub(channel_guard.channel))
-                 .create_results_metadata(service.getSession(), {"shared"})
-                 .at("shared");
+    shared =
+        armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel_guard.channel))
+            .create_results_metadata(service.getSession(), {"shared"})
+            .at("shared");
   }
 
   using ArmoniK::Sdk::Common::BlobDefinition;
