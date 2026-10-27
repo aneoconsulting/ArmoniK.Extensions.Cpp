@@ -79,7 +79,9 @@ private:
     static void OnValue(void *sink, const char *data, size_t size) {
       static_cast<Sink *>(sink)->values.emplace_back(data, size);
     }
-    static void OnError(void *sink, const char *data, size_t size) { static_cast<Sink *>(sink)->error.assign(data, size); }
+    static void OnError(void *sink, const char *data, size_t size) {
+      static_cast<Sink *>(sink)->error.assign(data, size);
+    }
   };
 
   /**
