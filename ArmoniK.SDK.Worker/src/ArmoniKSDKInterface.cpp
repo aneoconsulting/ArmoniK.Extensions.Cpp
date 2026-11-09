@@ -266,7 +266,6 @@ armonik_status_t armonik_process_default(void *armonik_context, const armonik_ta
 #ifdef __linux__
 __attribute__((weak, alias("armonik_process_default")))
 #endif
-armonik_status_t
-armonik_process(void *armonik_context, const armonik_task_t *task, void *service_context, void *session_context,
-                const char *function_name, armonik_callback_t callback);
+armonik_status_t armonik_process(void *armonik_context, const armonik_task_t *task, void *service_context,
+                                 void *session_context, const char *function_name, armonik_callback_t callback);
 }
