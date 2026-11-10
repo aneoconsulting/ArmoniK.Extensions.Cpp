@@ -125,7 +125,10 @@ std::vector<std::string> TaskContext::submit_tasks(const std::vector<Common::Tas
   }
   std::vector<std::string> delegated;
   for (const auto &definition : definitions) {
-    for (const auto &kv : definition.existing_outputs) {
+    for (const auto &kv : definition.outputs) {
+      if (kv.second.empty()) {
+        continue; // A new output, created below
+      }
       const auto own = own_outputs.find(kv.second);
       if (own == own_outputs.end()) {
         continue;
@@ -143,7 +146,10 @@ std::vector<std::string> TaskContext::submit_tasks(const std::vector<Common::Tas
   // The blobs created by create_blobs_metadata that the subtasks produce
   std::vector<std::string> assigned;
   for (const auto &definition : definitions) {
-    for (const auto &kv : definition.existing_outputs) {
+    for (const auto &kv : definition.outputs) {
+      if (kv.second.empty()) {
+        continue; // A new output, created below
+      }
       if (assigned_blobs_.count(kv.second) != 0) {
         throw Common::ArmoniKSdkException("Blob " + kv.second + " is already the output of a subtask");
       }
@@ -205,7 +211,10 @@ std::vector<std::string> TaskContext::submit_tasks(const std::vector<Common::Tas
         requests[i].data_dependencies.push_back(kv.second.GetBlobId());
       }
     }
-    for (const auto &kv : definition.existing_outputs) {
+    for (const auto &kv : definition.outputs) {
+      if (kv.second.empty()) {
+        continue; // A new output, created below
+      }
       payloads[i].outputs[kv.first] = kv.second;
       requests[i].expected_outputs.push_back(kv.second);
     }
