@@ -24,6 +24,7 @@
 #include <armonik/sdk/common/Version.h>
 #include <armonik/sdk/common/internal/ConventionPayload.h>
 #include <chrono>
+#include <future>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -149,12 +150,47 @@ void EnsureNotCalledFromWorkerThread(const char *entry_point) {
 
 const std::string &SessionServiceImpl::getSession() const { return session; }
 
+void SessionServiceImpl::CreateOutputs(ThreadPool::JoinSet &join_set,
+                                       std::vector<std::vector<std::pair<std::string, std::string>>> &outputs) {
+  // Outputs to create, as (task index, output index). The request keys only need to be unique within a request,
+  // since the reply maps each key to its result id.
+  auto refs = std::make_shared<std::vector<std::pair<std::size_t, std::size_t>>>();
+  for (std::size_t i = 0; i < outputs.size(); ++i) {
+    for (std::size_t k = 0; k < outputs[i].size(); ++k) {
+      if (outputs[i][k].second.empty()) {
+        refs->emplace_back(i, k);
+      }
+    }
+  }
+  const std::size_t batch_size = submit_batch_size_ > 0 ? static_cast<std::size_t>(submit_batch_size_) : 1;
+  for (std::size_t begin = 0; begin < refs->size(); begin += batch_size) {
+    const std::size_t end = std::min(refs->size(), begin + batch_size);
+    join_set.Spawn([this, &outputs, refs, begin, end]() {
+      std::vector<std::string> keys;
+      keys.reserve(end - begin);
+      for (std::size_t j = begin; j < end; ++j) {
+        keys.push_back("output-" + std::to_string(j));
+      }
+
+      auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
+        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+            .create_results_metadata(session, keys);
+      });
+
+      // threadsafe: each output is in a single batch
+      for (std::size_t j = begin; j < end; ++j) {
+        const auto &ref = (*refs)[j];
+        outputs[ref.first][ref.second].second = reply.at(keys[j - begin]);
+      }
+    });
+  }
+}
+
 std::vector<std::string> SessionServiceImpl::SubmitRaw(
     const std::vector<std::string> &serialized_payloads, const std::vector<std::vector<std::string>> &data_dependencies,
-    const std::vector<std::vector<std::pair<std::string, std::string>>> &outputs,
+    std::vector<std::vector<std::pair<std::string, std::string>>> outputs,
     std::shared_ptr<IServiceInvocationHandler> handler, const Common::TaskOptions &task_options) {
   EnsureNotCalledFromWorkerThread("SubmitRaw");
-  const bool create_outputs = outputs.empty();
 
   const std::size_t message_overhead = 128;
   std::size_t data_chunk_max_size =
@@ -170,7 +206,6 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(
   std::size_t data_batched = 0;
 
   std::vector<std::string> input_result_ids(serialized_payloads.size());
-  std::vector<std::string> output_result_ids(serialized_payloads.size());
   std::vector<std::string> task_ids(serialized_payloads.size());
 
   // Reserve this call's total upload bytes up front, before any thread-pool work is spawned, to
@@ -193,45 +228,35 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(
 
   ThreadPool::JoinSet join_set(thread_pool_);
 
-  // Batch Result metadata creation (for outputs and large inputs) and upload inputs
-  Batcher<std::pair<std::size_t, bool>> create_metadata_and_upload_batcher(
-      submit_batch_size_, [&](std::vector<std::pair<std::size_t, bool>> &&batch) {
-        auto batch_ptr = std::make_shared<std::vector<std::pair<std::size_t, bool>>>(std::move(batch));
-        join_set.Spawn([&, batch_ptr]() {
-          auto &batch = *batch_ptr;
-          std::vector<std::string> names(batch.size());
-          for (std::size_t j = 0; j < batch.size(); ++j) {
-            std::size_t i = batch[j].first;
-            bool is_output = batch[j].second;
+  // Batch Result metadata creation (for large inputs) and upload inputs
+  Batcher<std::size_t> create_metadata_and_upload_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
+    auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
+    join_set.Spawn([&, batch_ptr]() {
+      auto &batch = *batch_ptr;
+      std::vector<std::string> names(batch.size());
+      for (std::size_t j = 0; j < batch.size(); ++j) {
+        names[j] = "input-" + std::to_string(batch[j]);
+      }
 
-            names[j] = (is_output ? "output-" : "input-") + std::to_string(i);
-          }
-
-          auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
-            return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-                .create_results_metadata(session, names);
-          });
-
-          // threadsafe as the index is unique among all batches
-          for (std::size_t j = 0; j < batch.size(); ++j) {
-            std::size_t i = batch[j].first;
-            bool is_output = batch[j].second;
-
-            if (is_output) {
-              output_result_ids[i] = std::move(reply[names[j]]);
-            } else {
-              input_result_ids[i] = std::move(reply[names[j]]);
-
-              // Upload result using stream. The upload bytes for this whole SubmitRaw call were
-              // already reserved from upload_byte_budget_ up front (see budget_guard above).
-              join_set.Spawn([&, i]() {
-                upload_large_result(channel_pool, session, input_result_ids[i], serialized_payloads[i],
-                                    data_chunk_max_size, logger_);
-              });
-            }
-          }
-        });
+      auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
+        return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
+            .create_results_metadata(session, names);
       });
+
+      // threadsafe as the index is unique among all batches
+      for (std::size_t j = 0; j < batch.size(); ++j) {
+        std::size_t i = batch[j];
+        input_result_ids[i] = std::move(reply[names[j]]);
+
+        // Upload result using stream. The upload bytes for this whole SubmitRaw call were
+        // already reserved from upload_byte_budget_ up front (see budget_guard above).
+        join_set.Spawn([&, i]() {
+          upload_large_result(channel_pool, session, input_result_ids[i], serialized_payloads[i], data_chunk_max_size,
+                              logger_);
+        });
+      }
+    });
+  });
 
   // Batch Result data creation (for small inputs)
   Batcher<std::size_t> create_data_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
@@ -260,10 +285,6 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(
     });
   });
 
-  // Outputs of each task, as (name, result id) pairs. Filled once all results are created.
-  std::vector<std::vector<std::pair<std::string, std::string>>> created_outputs;
-  const auto &task_outputs = create_outputs ? created_outputs : outputs;
-
   // Batch task submission
   Batcher<std::size_t> submit_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
     auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
@@ -277,7 +298,7 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(
 
         request = armonik::api::common::TaskCreation();
         request.payload_id = input_result_ids[i];
-        for (const auto &output : task_outputs[i]) {
+        for (const auto &output : outputs[i]) {
           request.expected_output_keys.push_back(output.second);
         }
         request.data_dependencies.insert(request.data_dependencies.end(), deps.begin(), deps.end());
@@ -295,7 +316,7 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(
 
         std::stringstream ss;
         ss << "Submitted task " << task_ids[i] << " with results";
-        for (const auto &output : task_outputs[i]) {
+        for (const auto &output : outputs[i]) {
           ss << " " << output.first << "=" << output.second;
         }
         logger_.debug(ss.str());
@@ -303,15 +324,13 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(
     });
   });
 
-  // Create all results
+  // Create all results: the outputs without a result id, and the payloads
+  CreateOutputs(join_set, outputs);
   for (std::size_t i = 0; i < serialized_payloads.size(); ++i) {
     auto payload_size = serialized_payloads[i].size();
 
-    if (create_outputs) {
-      create_metadata_and_upload_batcher.Add({i, true});
-    }
     if (payload_size + message_overhead >= data_chunk_max_size) {
-      create_metadata_and_upload_batcher.Add({i, false});
+      create_metadata_and_upload_batcher.Add(i);
     } else {
       // If current batch would be too large, send it right now
       if (data_batched + payload_size + message_overhead >= data_chunk_max_size) {
@@ -328,13 +347,6 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(
   create_data_batcher.ProcessBatch();
   join_set.Wait();
 
-  if (create_outputs) {
-    created_outputs.resize(serialized_payloads.size());
-    for (std::size_t i = 0; i < serialized_payloads.size(); ++i) {
-      created_outputs[i].emplace_back(Common::TaskDefinition::DefaultOutputName, std::move(output_result_ids[i]));
-    }
-  }
-
   // Submit all tasks
   for (std::size_t i = 0; i < serialized_payloads.size(); ++i) {
     submit_batcher.Add(i);
@@ -349,7 +361,7 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(
   for (std::size_t i = 0; i < serialized_payloads.size(); ++i) {
     const auto &task_id = task_ids[i];
     auto &result_ids = taskId_resultIds[task_id];
-    for (const auto &output : task_outputs[i]) {
+    for (const auto &output : outputs[i]) {
       pending_outputs[output.second] = PendingOutput{task_id, output.first, handler};
       result_ids.push_back(output.second);
     }
@@ -368,7 +380,10 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
     serialized[i] = task_requests[i].Serialize();
     deps[i] = task_requests[i].data_dependencies;
   });
-  return SubmitRaw(serialized, deps, {}, std::move(handler), task_options);
+  // A legacy task has a single output, named DefaultOutputName, created by SubmitRaw
+  std::vector<std::vector<std::pair<std::string, std::string>>> outputs(
+      task_requests.size(), {{Common::TaskDefinition::DefaultOutputName, std::string()}});
+  return SubmitRaw(serialized, deps, std::move(outputs), std::move(handler), task_options);
 }
 ARMONIK_SDK_SUPPRESS_DEPRECATED_END
 
@@ -386,6 +401,7 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 
   // A result has a single handler: an existing output must not be waited for by another task. The existing outputs
   // stay reserved until SubmitRaw moves them to pending_outputs, so that concurrent submissions cannot both take one.
+  // This only covers this object: other clients of the session, and outputs already handled, are not tracked.
   struct Reservation {
     SessionServiceImpl &service;
     std::vector<std::string> ids;
@@ -399,7 +415,10 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
   {
     std::lock_guard<std::mutex> lock(maps_mutex);
     for (const auto &task_request : task_requests) {
-      for (const auto &kv : task_request.existing_outputs) {
+      for (const auto &kv : task_request.outputs) {
+        if (kv.second.empty()) {
+          continue;
+        }
         const auto pending = pending_outputs.find(kv.second);
         if (pending != pending_outputs.end()) {
           throw Common::ArmoniKSdkException("Blob " + kv.second + " is already the output '" +
@@ -411,7 +430,10 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
       }
     }
     for (const auto &task_request : task_requests) {
-      for (const auto &kv : task_request.existing_outputs) {
+      for (const auto &kv : task_request.outputs) {
+        if (kv.second.empty()) {
+          continue;
+        }
         reserved_outputs.insert(kv.second);
         reservation.ids.push_back(kv.second);
       }
@@ -449,7 +471,21 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
   // Parallel to raw_inputs: result IDs assigned after creation
   std::vector<std::string> raw_result_ids(raw_inputs.size());
 
-  if (!raw_inputs.empty()) {
+  // Outputs of every task, as (name, result id) pairs. The new outputs have no result id yet: they are created
+  // together with the raw inputs, since the payloads need their ids.
+  std::vector<std::vector<std::pair<std::string, std::string>>> outputs(task_requests.size());
+  for (std::size_t i = 0; i < task_requests.size(); ++i) {
+    for (auto &name : Common::ConventionOutputsToCreate(task_requests[i])) {
+      outputs[i].emplace_back(std::move(name), std::string());
+    }
+    for (const auto &kv : task_requests[i].outputs) {
+      if (!kv.second.empty()) {
+        outputs[i].emplace_back(kv.first, kv.second);
+      }
+    }
+  }
+
+  {
     // Reserve all raw-input upload bytes up front, before any thread-pool work is spawned, to
     // bound peak allocated memory per Submit call. Released once this block exits (or throws).
     std::int64_t total_upload_bytes = 0;
@@ -469,6 +505,7 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
     } budget_guard{upload_byte_budget_, total_upload_bytes};
 
     ThreadPool::JoinSet join_set(thread_pool_);
+    CreateOutputs(join_set, outputs);
 
     // Large inputs: create metadata then stream-upload
     Batcher<std::size_t> large_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
@@ -546,59 +583,6 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
     join_set.Wait();
   }
 
-  // Create the outputs of every task. The keys only need to be unique within a request, since the
-  // reply maps each key to its result id; the output names go in the payload.
-  std::vector<std::vector<std::pair<std::string, std::string>>> outputs(task_requests.size());
-  {
-    struct OutputRef {
-      std::size_t task_idx;
-      std::string name;
-    };
-    std::vector<OutputRef> output_refs;
-    for (std::size_t i = 0; i < task_requests.size(); ++i) {
-      for (auto &name : Common::ConventionOutputsToCreate(task_requests[i])) {
-        output_refs.push_back({i, std::move(name)});
-      }
-    }
-    std::vector<std::string> output_result_ids(output_refs.size());
-
-    ThreadPool::JoinSet join_set(thread_pool_);
-    Batcher<std::size_t> output_batcher(submit_batch_size_, [&](std::vector<std::size_t> &&batch) {
-      auto batch_ptr = std::make_shared<std::vector<std::size_t>>(std::move(batch));
-      join_set.Spawn([&, batch_ptr]() {
-        auto &batch = *batch_ptr;
-        std::vector<std::string> keys;
-        keys.reserve(batch.size());
-        for (std::size_t j : batch) {
-          keys.push_back("output-" + std::to_string(j));
-        }
-
-        auto reply = channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
-          return armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel))
-              .create_results_metadata(session, keys);
-        });
-
-        for (std::size_t k = 0; k < batch.size(); ++k) {
-          output_result_ids[batch[k]] = reply.at(keys[k]); // threadsafe: each j is unique across batches
-        }
-      });
-    });
-    for (std::size_t j = 0; j < output_refs.size(); ++j) {
-      output_batcher.Add(j);
-    }
-    output_batcher.ProcessBatch();
-    join_set.Wait();
-
-    for (std::size_t j = 0; j < output_refs.size(); ++j) {
-      outputs[output_refs[j].task_idx].emplace_back(std::move(output_refs[j].name), std::move(output_result_ids[j]));
-    }
-    for (std::size_t i = 0; i < task_requests.size(); ++i) {
-      for (const auto &kv : task_requests[i].existing_outputs) {
-        outputs[i].emplace_back(kv.first, kv.second);
-      }
-    }
-  }
-
   // Build ConventionPayloads: existing-blob inputs resolved directly, raw inputs resolved from upload
   std::vector<Common::ConventionPayload> payloads(task_requests.size());
   for (std::size_t i = 0; i < task_requests.size(); ++i) {
@@ -641,7 +625,7 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
     }
   }
 
-  return SubmitRaw(serialized, deps, outputs, std::move(handler), task_options);
+  return SubmitRaw(serialized, deps, std::move(outputs), std::move(handler), task_options);
 }
 
 std::string SessionServiceImpl::UploadLibrary(const std::string &content) {
@@ -707,6 +691,39 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
   std::map<std::string, std::size_t> unhandled_results;
   bool task_done = false;
   std::atomic<bool> hasError(false);
+
+  // Error of each failed task, fetched once even when the task has several aborted outputs
+  std::mutex task_errors_mutex;
+  std::map<std::string, std::shared_future<armonik::api::grpc::v1::TaskError>> task_errors;
+  const auto get_task_error = [&](const std::string &owner_task_id) -> armonik::api::grpc::v1::TaskError {
+    std::promise<armonik::api::grpc::v1::TaskError> promise;
+    {
+      std::lock_guard<std::mutex> lock(task_errors_mutex);
+      const auto it = task_errors.find(owner_task_id);
+      if (it != task_errors.end()) {
+        // Another output of the task is fetching it, on a running thread
+        auto future = it->second;
+        return future.get();
+      }
+      task_errors.emplace(owner_task_id, promise.get_future().share());
+    }
+
+    armonik::api::grpc::v1::TaskError error{};
+    error.set_task_id(owner_task_id);
+    try {
+      channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
+        auto task = armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
+                        .get_task(owner_task_id);
+        auto task_error = error.add_errors();
+        task_error->set_detail(std::move(*task.mutable_output()->mutable_error()));
+        task_error->set_task_status(task.status());
+      });
+    } catch (const std::exception &e) {
+      error.add_errors()->set_detail(e.what());
+    }
+    promise.set_value(error);
+    return error;
+  };
 
   ThreadPool::JoinSet join_set(thread_pool_);
 
@@ -942,21 +959,8 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           if (owner_task_id.empty()) {
             handle_error(armonik::api::common::exceptions::ArmoniKApiException("Result is aborted"), "");
           } else {
-            armonik::api::grpc::v1::TaskError error{};
-            error.set_task_id(owner_task_id);
-
             // Retrieve the task error details
-            try {
-              channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
-                auto task = armonik::api::client::TasksClient(armonik::api::grpc::v1::tasks::Tasks::NewStub(channel))
-                                .get_task(owner_task_id);
-                auto task_error = error.add_errors();
-                task_error->set_detail(std::move(*task.mutable_output()->mutable_error()));
-                task_error->set_task_status(task.status());
-              });
-            } catch (const std::exception &e) {
-              error.add_errors()->set_detail(e.what());
-            }
+            const auto error = get_task_error(owner_task_id);
             handle_error(armonik::api::common::exceptions::ArmoniKTaskError("Result is aborted", error), "");
           }
           break;
@@ -1107,9 +1111,9 @@ void SessionServiceImpl::CleanupTasks(std::vector<std::string> task_ids) {
       auto results = armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel));
       std::vector<std::string> resultIds;
       resultIds.reserve(map_results.size());
-      for (auto &&taskId_resultIds : map_results) {
-        resultIds.insert(resultIds.end(), std::make_move_iterator(taskId_resultIds.second.begin()),
-                         std::make_move_iterator(taskId_resultIds.second.end()));
+      for (auto &&task_results : map_results) {
+        resultIds.insert(resultIds.end(), std::make_move_iterator(task_results.second.begin()),
+                         std::make_move_iterator(task_results.second.end()));
       }
       results.delete_results_data(session, resultIds);
     });

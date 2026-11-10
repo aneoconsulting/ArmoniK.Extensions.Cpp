@@ -236,17 +236,26 @@ private:
    * @brief Core submission logic operating on pre-serialized payloads.
    * @param serialized_payloads Pre-serialized task payload bytes (one per task)
    * @param data_dependencies Per-task list of data dependency result IDs
-   * @param outputs Per-task list of (output name, result id) pairs, created beforehand. If empty, one output named
-   * TaskDefinition::DefaultOutputName is created for each task.
+   * @param outputs Per-task list of (output name, result id) pairs. The outputs with an empty result id are created
+   * here, together with the payloads.
    * @param handler Result handler for this batch
    * @param task_options Task options
    * @return List of task ids
    */
   std::vector<std::string> SubmitRaw(const std::vector<std::string> &serialized_payloads,
                                      const std::vector<std::vector<std::string>> &data_dependencies,
-                                     const std::vector<std::vector<std::pair<std::string, std::string>>> &outputs,
+                                     std::vector<std::vector<std::pair<std::string, std::string>>> outputs,
                                      std::shared_ptr<IServiceInvocationHandler> handler,
                                      const Common::TaskOptions &task_options);
+
+  /**
+   * @brief Spawns in join_set the creation of the outputs that have no result id yet, in batches
+   * @param join_set Join set of the caller, which must wait for it before reading the outputs
+   * @param outputs Per-task list of (output name, result id) pairs. The empty result ids are filled in place, so the
+   * vectors must not be resized until join_set is waited for.
+   */
+  void CreateOutputs(ThreadPool::JoinSet &join_set,
+                     std::vector<std::vector<std::pair<std::string, std::string>>> &outputs);
 };
 } // namespace Internal
 } // namespace Client

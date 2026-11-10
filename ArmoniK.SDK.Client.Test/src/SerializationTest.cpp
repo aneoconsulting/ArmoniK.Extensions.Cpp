@@ -263,7 +263,7 @@ TEST(TaskDefinition, BraceInit) {
   EXPECT_EQ(td.inputs.at("x").GetData(), "data_x");
   EXPECT_FALSE(td.inputs.at("y").IsRawData());
   EXPECT_EQ(td.inputs.at("y").GetBlobId(), "blob-y");
-  EXPECT_EQ(td.outputs, (std::set<std::string>{"sum", "product"}));
+  EXPECT_EQ(td.outputs, (std::map<std::string, std::string>{{"product", ""}, {"sum", ""}}));
 }
 
 TEST(TaskDefinition, WithInputBuilder) {
@@ -277,8 +277,20 @@ TEST(TaskDefinition, WithInputBuilder) {
 
 TEST(TaskDefinition, WithOutputBuilder) {
   TaskDefinition td;
-  td.WithOutput("q").WithOutput("r").WithOutput("q");
-  EXPECT_EQ(td.outputs, (std::set<std::string>{"q", "r"}));
+  td.WithOutput("q").WithOutput("r").WithOutput("q").WithOutput("e", "blob-e").WithOutput("e", "blob-e");
+  EXPECT_EQ(td.outputs, (std::map<std::string, std::string>{{"e", "blob-e"}, {"q", ""}, {"r", ""}}));
+}
+
+// An output name has a single meaning: declaring it again differently throws
+TEST(TaskDefinition, WithOutputRejectsConflictsAndEmptyValues) {
+  TaskDefinition td;
+  td.WithOutput("q").WithOutput("e", "blob-e");
+  EXPECT_THROW(td.WithOutput("q", "blob-q"), ArmoniKSdkException);
+  EXPECT_THROW(td.WithOutput("e"), ArmoniKSdkException);
+  EXPECT_THROW(td.WithOutput("e", "blob-other"), ArmoniKSdkException);
+  EXPECT_THROW(td.WithOutput(""), ArmoniKSdkException);
+  EXPECT_THROW(td.WithOutput("r", ""), ArmoniKSdkException);
+  EXPECT_EQ(td.outputs, (std::map<std::string, std::string>{{"e", "blob-e"}, {"q", ""}}));
 }
 
 // No declared output: Submit creates a single output named DefaultOutputName
@@ -287,6 +299,41 @@ TEST(TaskDefinition, NoInputsNoOutputs) {
   EXPECT_TRUE(td.inputs.empty());
   EXPECT_TRUE(td.outputs.empty());
   EXPECT_STREQ(TaskDefinition::DefaultOutputName, "result");
+}
+
+TEST(TaskDefinition, OutputsToCreate) {
+  EXPECT_EQ(ConventionOutputsToCreate(TaskDefinition()), (std::vector<std::string>{"result"}));
+  EXPECT_EQ(ConventionOutputsToCreate(TaskDefinition().WithOutput("q").WithOutput("e", "blob-e")),
+            (std::vector<std::string>{"q"}));
+  EXPECT_TRUE(ConventionOutputsToCreate(TaskDefinition().WithOutput("e", "blob-e")).empty());
+}
+
+TEST(TaskDefinition, ValidateOutputsAcceptsChains) {
+  // b reads the existing output of a, which is allowed: b runs after a
+  EXPECT_NO_THROW(ValidateConventionOutputs(
+      {TaskDefinition().WithOutput("r", "blob-a"),
+       TaskDefinition().WithInput("x", BlobDefinition::FromBlobId("blob-a")).WithOutput("r", "blob-b")}));
+}
+
+TEST(TaskDefinition, ValidateOutputsRejectsSharedOutputAndEmptyName) {
+  EXPECT_THROW(
+      ValidateConventionOutputs({TaskDefinition().WithOutput("r", "blob"), TaskDefinition().WithOutput("s", "blob")}),
+      ArmoniKSdkException);
+  TaskDefinition unnamed;
+  unnamed.outputs[""] = "";
+  EXPECT_THROW(ValidateConventionOutputs({unnamed}), ArmoniKSdkException);
+}
+
+// A task that reads its own output, directly or through other tasks of the batch, would never run
+TEST(TaskDefinition, ValidateOutputsRejectsCycles) {
+  EXPECT_THROW(ValidateConventionOutputs(
+                   {TaskDefinition().WithInput("x", BlobDefinition::FromBlobId("blob")).WithOutput("r", "blob")}),
+               ArmoniKSdkException);
+  EXPECT_THROW(ValidateConventionOutputs(
+                   {TaskDefinition().WithInput("x", BlobDefinition::FromBlobId("blob-b")).WithOutput("r", "blob-a"),
+                    TaskDefinition().WithInput("x", BlobDefinition::FromBlobId("blob-c")).WithOutput("r", "blob-b"),
+                    TaskDefinition().WithInput("x", BlobDefinition::FromBlobId("blob-a")).WithOutput("r", "blob-c")}),
+               ArmoniKSdkException);
 }
 
 TEST(TaskDefinition, WithInputOverwritesExisting) {
