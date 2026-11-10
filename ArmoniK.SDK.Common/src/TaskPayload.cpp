@@ -2,8 +2,11 @@
 #include "armonik/sdk/common/ArmoniKSdkException.h"
 #include "armonik/sdk/common/Diagnostics.h"
 #include "armonik/sdk/common/internal/ConventionPayload.h"
+#include <cerrno>
 #include <cstdint>
+#include <cstdlib>
 #include <iomanip>
+#include <limits>
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -37,14 +40,16 @@ template <typename T> std::string int_to_hex(T i) {
 template <typename T> T hex_to_int(armonik::api::string_view str) {
   char *endPos;
   std::string null_terminated(str.data(), str.size());
-  T result = std::strtol(null_terminated.data(), &endPos, 16);
-  if (errno == ERANGE) {
+  // strtoull, not strtol: long is 32 bits on Windows, so strtol rejects field sizes >= 2^31.
+  errno = 0;
+  unsigned long long value = std::strtoull(null_terminated.data(), &endPos, 16);
+  if (errno == ERANGE || value > (std::numeric_limits<T>::max)()) {
     throw std::runtime_error(null_terminated + " is too large for " + TypeParseTraits<T>::name);
   }
   if (endPos != null_terminated.data() + null_terminated.size()) {
     throw std::runtime_error(null_terminated + " is not convertible to " + TypeParseTraits<T>::name);
   }
-  return result;
+  return static_cast<T>(value);
 }
 
 armonik::api::string_view advance_sv(armonik::api::string_view &sv, size_t offset) {
