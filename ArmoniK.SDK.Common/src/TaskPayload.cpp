@@ -2,11 +2,9 @@
 #include "armonik/sdk/common/ArmoniKSdkException.h"
 #include "armonik/sdk/common/Diagnostics.h"
 #include "armonik/sdk/common/internal/ConventionPayload.h"
-#include <cerrno>
+#include "armonik/sdk/common/internal/HexField.h"
 #include <cstdint>
-#include <cstdlib>
 #include <iomanip>
-#include <limits>
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -21,36 +19,8 @@ namespace Common {
 typedef uint32_t field_size_t;
 
 namespace {
-template <typename T> struct TypeParseTraits;
-
-#define REGISTER_PARSE_TYPE(X)                                                                                         \
-  template <> struct TypeParseTraits<X> {                                                                              \
-    static const char *name;                                                                                           \
-  };                                                                                                                   \
-  const char *TypeParseTraits<X>::name = #X
-
-REGISTER_PARSE_TYPE(uint32_t);
-
-template <typename T> std::string int_to_hex(T i) {
-  std::stringstream stream;
-  stream << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << i;
-  return stream.str();
-}
-
-template <typename T> T hex_to_int(armonik::api::string_view str) {
-  char *endPos;
-  std::string null_terminated(str.data(), str.size());
-  // strtoull, not strtol: long is 32 bits on Windows, so strtol rejects field sizes >= 2^31.
-  errno = 0;
-  unsigned long long value = std::strtoull(null_terminated.data(), &endPos, 16);
-  if (errno == ERANGE || value > (std::numeric_limits<T>::max)()) {
-    throw std::runtime_error(null_terminated + " is too large for " + TypeParseTraits<T>::name);
-  }
-  if (endPos != null_terminated.data() + null_terminated.size()) {
-    throw std::runtime_error(null_terminated + " is not convertible to " + TypeParseTraits<T>::name);
-  }
-  return static_cast<T>(value);
-}
+using internal::hex_to_int;
+using internal::int_to_hex;
 
 armonik::api::string_view advance_sv(armonik::api::string_view &sv, size_t offset) {
   armonik::api::string_view extracted = sv.substr(0, offset);

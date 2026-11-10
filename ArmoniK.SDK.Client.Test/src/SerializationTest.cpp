@@ -7,7 +7,11 @@
 #include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskOptions.h>
 #include <armonik/sdk/common/internal/ConventionPayload.h>
+#include <armonik/sdk/common/internal/HexField.h>
+#include <cerrno>
+#include <cstdint>
 #include <nlohmann/json.hpp>
+#include <stdexcept>
 
 using namespace ArmoniK::Sdk::Common;
 
@@ -299,4 +303,40 @@ TEST(ConventionPayload, IgnoresUnknownFields) {
 
 TEST(ConventionPayload, MissingInputsThrows) {
   EXPECT_THROW(ConventionPayload::Deserialize(R"({"outputs":{}})"), ArmoniKSdkException);
+}
+
+// ---------------------------------------------------------------------------
+// HexField: field sizes of the legacy TaskPayload format
+// ---------------------------------------------------------------------------
+
+using ArmoniK::Sdk::Common::internal::hex_to_int;
+using ArmoniK::Sdk::Common::internal::int_to_hex;
+
+TEST(HexField, RoundTrip) {
+  for (std::uint32_t v : {0u, 1u, 0x7FFFFFFFu, 0x80000000u, 0xFFFFFFFFu}) {
+    EXPECT_EQ(int_to_hex(v).size(), 8u);
+    EXPECT_EQ(hex_to_int<std::uint32_t>(int_to_hex(v)), v);
+  }
+}
+
+// 2^31 and above overflow strtol where long is 32 bits (Windows).
+TEST(HexField, ParsesValuesAbove2Pow31) {
+  EXPECT_EQ(hex_to_int<std::uint32_t>("80000000"), 0x80000000u);
+  EXPECT_EQ(hex_to_int<std::uint32_t>("ffffffff"), 0xFFFFFFFFu);
+}
+
+TEST(HexField, RejectsValuesAboveUint32) {
+  EXPECT_THROW(hex_to_int<std::uint32_t>("100000000"), std::runtime_error);
+  EXPECT_THROW(hex_to_int<std::uint32_t>("-1"), std::runtime_error);
+}
+
+TEST(HexField, RejectsNonHex) {
+  EXPECT_THROW(hex_to_int<std::uint32_t>("0000000g"), std::runtime_error);
+  EXPECT_THROW(hex_to_int<std::uint32_t>("12 34"), std::runtime_error);
+}
+
+// A stale ERANGE from an earlier call must not make a valid parse fail.
+TEST(HexField, IgnoresStaleErrno) {
+  errno = ERANGE;
+  EXPECT_EQ(hex_to_int<std::uint32_t>("0000002a"), 42u);
 }
