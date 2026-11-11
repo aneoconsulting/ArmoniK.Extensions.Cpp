@@ -1,19 +1,23 @@
 #pragma once
 
+#include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/BlobDefinition.h>
 #include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/worker/ServiceBase.h>
 #include <armonik/sdk/worker/TaskContext.h>
+#include <chrono>
+#include <cstdio>
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 namespace ArmoniK {
 namespace Sdk {
 namespace Worker {
 namespace Test {
 
-class ConventionService : ServiceBase {
+class ConventionService : public ServiceBase {
 public:
   std::string call(void *, const std::string &name, const std::map<std::string, std::string> &inputs) override {
     if (name == "square") {
@@ -24,6 +28,20 @@ public:
       int a = std::stoi(inputs.at("a"));
       int b = std::stoi(inputs.at("b"));
       return std::to_string(a + b);
+    }
+    if (name == "hex") {
+      // The bytes of the input, which need not be valid UTF-8
+      std::string hex;
+      for (const unsigned char c : inputs.at("x")) {
+        char digits[3];
+        std::snprintf(digits, sizeof(digits), "%02x", c);
+        hex += digits;
+      }
+      return hex;
+    }
+    if (name == "sleep_ms") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(std::stoi(inputs.at("ms"))));
+      return "late";
     }
     throw std::runtime_error("ConventionService: unknown method: " + name);
   }
@@ -41,10 +59,14 @@ public:
       // quotient_only omits the remainder: the task must fail
       return;
     }
-    if (name == "count") {
-      // HtcMock-style tree: count(n) = count(n - 1) + count(n - 1) = 2^n, with the sum taking over the output
+    if (name == "count" || name == "count_fail") {
+      // HtcMock-style tree: count(n) = count(n - 1) + count(n - 1) = 2^n, with the sum taking over the output.
+      // The leaves of count_fail fail, so the output of the root task is aborted.
       int n = std::stoi(context.input("n").data());
       if (n == 0) {
+        if (name == "count_fail") {
+          throw Common::ArmoniKSdkException("count_fail: leaf failed");
+        }
         context.output("result").write("1");
         return;
       }
