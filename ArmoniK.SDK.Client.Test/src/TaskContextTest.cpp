@@ -307,7 +307,8 @@ TEST(TaskContext, ExistingOutputThatIsNotTheTasks) {
   EXPECT_EQ(agent.submitted.size(), 1u);
 }
 
-// The agent may create some subtasks before it rejects the others: the task must not write a delegated output then
+// After a failed submission the subtasks may exist (transport failure) or not (rejection). The task must not write the
+// delegated output, and finish fails it even if the service caught the exception.
 TEST(TaskContext, OutputStaysDelegatedWhenTheSubmissionFails) {
   FakeAgent agent;
   TaskContext context(agent, {}, {}, {{"result", "out"}});
@@ -316,6 +317,73 @@ TEST(TaskContext, OutputStaysDelegatedWhenTheSubmissionFails) {
   EXPECT_THROW(context.submit_tasks({TaskDefinition().WithOutput("result", "out")}), ArmoniKSdkException);
   EXPECT_THROW(context.output("result").write("1"), ArmoniKSdkException);
   EXPECT_EQ(agent.sent.count("out"), 0u);
+  EXPECT_THROW(context.finish(), ArmoniKSdkException);
+}
+
+// A transport failure keeps its type, so that the worker lets ArmoniK retry the task
+TEST(TaskContext, FinishRethrowsTheFirstSubmissionFailure) {
+  FakeAgent agent;
+  TaskContext context(agent, {}, {}, {{"result", "out"}});
+
+  agent.submit_error = std::make_exception_ptr(std::runtime_error("unavailable"));
+  EXPECT_THROW(context.submit_tasks({TaskDefinition()}), std::runtime_error);
+  agent.submit_error = std::make_exception_ptr(ArmoniKSdkException("rejected"));
+  EXPECT_THROW(context.submit_tasks({TaskDefinition()}), ArmoniKSdkException);
+  agent.submit_error = nullptr;
+  context.output("result").write("1");
+  EXPECT_THROW(context.finish(), std::runtime_error);
+}
+
+// Core rejects a task that lists a pending dependency twice
+TEST(TaskContext, SubmitListsEachDependencyOnce) {
+  FakeAgent agent;
+  agent.options.options[DynamicLibrary::KeyLibraryBlobId] = "library";
+  TaskContext context(agent, {}, {}, {});
+
+  const auto shared = context.create_blobs_metadata({"shared"});
+  context.submit_tasks({TaskDefinition()
+                            .WithInput("a", BlobDefinition::FromBlobId(shared[0]))
+                            .WithInput("b", BlobDefinition::FromBlobId(shared[0]))
+                            .WithInput("lib", BlobDefinition::FromBlobId("library")),
+                        TaskDefinition().WithOutput("result", shared[0])});
+  EXPECT_EQ(agent.submitted[0].data_dependencies, (std::vector<std::string>{shared[0], "library"}));
+  const auto payload = Payload(agent.submitted[0]);
+  EXPECT_EQ(payload["inputs"]["a"], shared[0]);
+  EXPECT_EQ(payload["inputs"]["b"], shared[0]);
+}
+
+// Core transfers to a subtask only the outputs of its parent
+TEST(TaskContext, SubtasksProduceOnlyBlobsOfTheTask) {
+  FakeAgent agent;
+  TaskContext context(agent, {{"x", "7"}}, {{"x", "blob-x"}}, {{"result", "out"}});
+
+  const auto written = context.create_blobs({{"data", "1"}});
+  EXPECT_THROW(context.submit_tasks({TaskDefinition().WithOutput("r", "blob-x")}), ArmoniKSdkException);
+  EXPECT_THROW(context.submit_tasks({TaskDefinition().WithOutput("r", written[0])}), ArmoniKSdkException);
+  EXPECT_THROW(context.submit_tasks({TaskDefinition().WithOutput("r", "elsewhere")}), ArmoniKSdkException);
+  EXPECT_TRUE(agent.submitted.empty());
+  EXPECT_EQ(agent.created.size(), 1u);
+}
+
+// Two subtasks of different calls that read each other's outputs would never run
+TEST(TaskContext, SubmitRejectsCyclesAcrossCalls) {
+  FakeAgent agent;
+  TaskContext context(agent, {}, {}, {{"result", "out"}});
+
+  const auto blobs = context.create_blobs_metadata({"y", "z"});
+  context.submit_tasks(
+      {TaskDefinition().WithInput("y", BlobDefinition::FromBlobId(blobs[0])).WithOutput("z", blobs[1])});
+  EXPECT_THROW(context.submit_tasks(
+                   {TaskDefinition().WithInput("z", BlobDefinition::FromBlobId(blobs[1])).WithOutput("y", blobs[0])}),
+               ArmoniKSdkException);
+  EXPECT_EQ(agent.submitted.size(), 1u);
+
+  // A chain across calls is fine
+  context.submit_tasks(
+      {TaskDefinition().WithInput("z", BlobDefinition::FromBlobId(blobs[1])).WithOutput("result", "out"),
+       TaskDefinition().WithOutput("y", blobs[0])});
+  EXPECT_EQ(agent.submitted.size(), 3u);
+  EXPECT_NO_THROW(context.finish());
 }
 
 // Nothing but a subtask can write a blob created without data

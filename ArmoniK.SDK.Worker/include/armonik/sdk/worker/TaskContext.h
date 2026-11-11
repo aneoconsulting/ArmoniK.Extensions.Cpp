@@ -3,6 +3,7 @@
 #include <armonik/sdk/common/BlobDefinition.h>
 #include <armonik/sdk/common/TaskDefinition.h>
 #include <armonik/sdk/common/TaskOptions.h>
+#include <exception>
 #include <map>
 #include <set>
 #include <string>
@@ -151,7 +152,8 @@ private:
  * @brief Execution context of a convention task, given to ServiceBase::process.
  *
  * It gives the task's inputs and outputs, and lets the service create blobs and submit subtasks.
- * Each output must be written or delegated to a subtask before process returns.
+ * Each output must be written or delegated to a subtask before process returns. A subtask can produce an output of
+ * the task or a blob created by create_blobs_metadata, and nothing else.
  *
  * Results and subtasks created by the task are committed by ArmoniK only if the task succeeds.
  * The context is not thread-safe, and it is valid only during the call to process.
@@ -264,10 +266,14 @@ public:
   /**
    * @brief Submits subtasks
    * @param definitions Subtask definitions. An existing output that is an output of the task delegates it.
-   * @param options Options of the subtasks. They are marked as convention tasks if they are not.
+   * @param options Options of the subtasks, usually from subtask_options. They are marked as convention tasks if they
+   * are not. Options built otherwise lack the library keys of the task, which the DynamicWorker needs to load the
+   * method.
    * @return Task ids, in the order of definitions
-   * @throws ArmoniKSdkException if an output of the task is delegated twice, or written and delegated, or if a blob
-   * created by create_blobs_metadata is given to two subtasks
+   * @throws ArmoniKSdkException if an output of the task is delegated twice, or written and delegated, if a blob
+   * created by create_blobs_metadata is given to two subtasks, if an existing output is neither an output of the task
+   * nor such a blob, if subtasks read each other's outputs in a cycle, also with subtasks of earlier calls, or if the
+   * agent rejects the subtasks. The delegated outputs then stay delegated, and finish rethrows the exception.
    */
   std::vector<std::string> submit_tasks(const std::vector<Common::TaskDefinition> &definitions,
                                         const Common::TaskOptions &options);
@@ -276,6 +282,8 @@ public:
    * @brief Checks that every output was written or delegated, and that every blob created by create_blobs_metadata
    * was given to a subtask. Called by the worker after ServiceBase::process.
    * @throws ArmoniKSdkException if an output was neither written nor delegated, or a blob was given to no subtask
+   * @throws std::exception the exception of a failed submit_tasks call, even if the service caught it: no subtask may
+   * produce the outputs that call delegated
    */
   void finish() const;
 
@@ -297,6 +305,11 @@ private:
   std::map<std::string, std::string> unassigned_blobs_;
   /** Blobs created by create_blobs_metadata that a subtask produces */
   std::set<std::string> assigned_blobs_;
+  /** Submitted subtasks that produce an output of the task or a blob, with only their blob inputs and existing outputs
+   */
+  std::vector<Common::TaskDefinition> producers_;
+  /** First exception of agent_.submit_tasks, rethrown by finish */
+  std::exception_ptr submit_failure_;
 };
 
 } // namespace Worker
