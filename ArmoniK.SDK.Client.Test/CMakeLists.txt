@@ -9,8 +9,8 @@ SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_CLIENT_FILES ${HEADER_FILES_DIR}/*.h)
 
-# The worker task context is tested here when the worker library is built with the client, and the convention
-# executor when ArmoniK.Api.Worker is installed too
+# The worker task context is tested here when the worker library is built with the client, the convention executor
+# when ArmoniK.Api.Worker is installed too, and the DynamicWorker when it is built with them (BUILD_DYNAMICWORKER=ON)
 if(NOT TARGET ArmoniK.SDK.Worker)
 	list(REMOVE_ITEM SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/TaskContextTest.cpp)
 endif()
@@ -19,6 +19,9 @@ if(TARGET ArmoniK.SDK.Worker)
 endif()
 if(NOT TARGET ArmoniK.Api.Worker)
 	list(REMOVE_ITEM SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/ConventionExecutorTest.cpp)
+endif()
+if(NOT TARGET ArmoniK.Api.Worker OR NOT TARGET ArmoniK.SDK.DynamicWorker.Core)
+	list(REMOVE_ITEM SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/DynamicWorkerTest.cpp)
 endif()
 
 find_package(ArmoniK.Api.Client CONFIG REQUIRED)
@@ -47,6 +50,9 @@ if(TARGET ArmoniK.SDK.Worker)
 endif()
 if(TARGET ArmoniK.Api.Worker)
 	target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker)
+	if(TARGET ArmoniK.SDK.DynamicWorker.Core)
+		target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.DynamicWorker.Core)
+	endif()
 endif()
 target_include_directories(${PROJECT_NAME}
 		PUBLIC
