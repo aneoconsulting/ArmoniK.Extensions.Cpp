@@ -13,7 +13,7 @@ namespace Test {
 /**
  * @brief Example implementation of a ArmoniK::Sdk::Worker::ServiceBase
  */
-class SleepService : ServiceBase {
+class SleepService : public ServiceBase {
 public:
   std::string call(void *, const std::string &name, const std::string &input) override {
     std::cout << "SleepService method: " << name << std::endl;

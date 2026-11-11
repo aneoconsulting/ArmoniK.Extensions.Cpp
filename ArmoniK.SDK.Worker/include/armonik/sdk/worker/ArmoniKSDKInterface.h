@@ -49,7 +49,8 @@ typedef enum armonik_status_t {
  * @param service_name Name of the requested service
  * @return A user defined service context
  * @warning When using the ArmoniK.SDK.Worker library, this function is the only mandatory one to be implemented and \b
- * MUST return a pointer to a subclass of ArmoniK::Sdk::Worker::ServiceBase
+ * MUST return an ArmoniK::Sdk::Worker::ServiceBase pointer: the SDK reads the returned void * as one, so convert the
+ * service to ServiceBase * before returning it (static_cast<ArmoniK::Sdk::Worker::ServiceBase *>(new MyService()))
  */
 extern void *armonik_create_service(const char *service_namespace, const char *service_name);
 

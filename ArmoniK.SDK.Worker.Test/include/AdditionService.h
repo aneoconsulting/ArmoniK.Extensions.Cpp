@@ -17,7 +17,7 @@ namespace Test {
 /**
  * @brief Example implementation of a ArmoniK::Sdk::Worker::ServiceBase
  */
-class AdditionService : ServiceBase {
+class AdditionService : public ServiceBase {
 public:
   void *enter_session(const char *session_id) override {
     std::cout << "AdditionService enter session: " << session_id << std::endl;

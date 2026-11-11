@@ -10,22 +10,23 @@
 #include "SleepService.h"
 #include "StressTest.h"
 
+// The SDK reads the returned pointer as a ServiceBase *: convert to it before it becomes a void *
 extern "C" void *armonik_create_service(const char *service_namespace, const char *service_name) {
   std::cout << "Creating service < " << service_namespace << "::" << service_name << " >" << std::endl;
   if (std::strcmp(service_name, "AdditionService") == 0) {
-    return new ArmoniK::Sdk::Worker::Test::AdditionService();
+    return static_cast<ArmoniK::Sdk::Worker::ServiceBase *>(new ArmoniK::Sdk::Worker::Test::AdditionService());
   } else if (std::strcmp(service_name, "EchoService") == 0) {
-    return new ArmoniK::Sdk::Worker::Test::EchoService();
+    return static_cast<ArmoniK::Sdk::Worker::ServiceBase *>(new ArmoniK::Sdk::Worker::Test::EchoService());
   } else if (std::strcmp(service_name, "StressTest") == 0) {
-    return new ArmoniK::Sdk::Worker::Test::StressTest();
+    return static_cast<ArmoniK::Sdk::Worker::ServiceBase *>(new ArmoniK::Sdk::Worker::Test::StressTest());
   } else if (std::strcmp(service_name, "SegFaultService") == 0) {
-    return new ArmoniK::Sdk::Worker::Test::SegFaultService();
+    return static_cast<ArmoniK::Sdk::Worker::ServiceBase *>(new ArmoniK::Sdk::Worker::Test::SegFaultService());
   } else if (std::strcmp(service_name, "SleepService") == 0) {
-    return new ArmoniK::Sdk::Worker::Test::SleepService();
+    return static_cast<ArmoniK::Sdk::Worker::ServiceBase *>(new ArmoniK::Sdk::Worker::Test::SleepService());
   } else if (std::strcmp(service_name, "ConventionArithmetic") == 0) {
-    return new ArmoniK::Sdk::Worker::Test::ConventionService();
+    return static_cast<ArmoniK::Sdk::Worker::ServiceBase *>(new ArmoniK::Sdk::Worker::Test::ConventionService());
   } else if (std::strcmp(service_name, "ExceptionService") == 0) {
-    return new ArmoniK::Sdk::Worker::Test::ExceptionService();
+    return static_cast<ArmoniK::Sdk::Worker::ServiceBase *>(new ArmoniK::Sdk::Worker::Test::ExceptionService());
   }
   std::cout << "Unknown service < " << service_namespace << "::" << service_name << " >" << std::endl;
   throw std::runtime_error(std::string("Unknown service <") + service_namespace + "::" + service_name + ">");
