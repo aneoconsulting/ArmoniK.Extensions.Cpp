@@ -40,12 +40,13 @@ public:
    * The default writes the result of call to the single output of the task. Each host keeps the overload of call
    * it used before (TaskContext::default_call): ConventionExecutor calls call(session_ctx, name, inputs), and the
    * DynamicWorker calls call(session_ctx, name, payload) with the convention payload, {"inputs": values,
-   * "outputs": blob ids}, whose default calls call(session_ctx, name, inputs).
+   * "outputs": blob ids}, whose default calls call(session_ctx, name, inputs). JSON cannot hold an input that is not
+   * valid UTF-8: the DynamicWorker then calls call(session_ctx, name, inputs) directly.
    * @param session_ctx User provided session context
    * @param name Name of the called method
    * @param context Context of the task
-   * @throws ArmoniKSdkException from the default if the task does not have exactly one output, or if it builds the
-   *         payload and an input is not valid UTF-8
+   * @throws ArmoniKSdkException from the default if the task does not have exactly one output, or if an input is not
+   *         valid UTF-8 and the service overrides only call(session_ctx, name, payload)
    */
   virtual void process(void *session_ctx, const std::string &name, TaskContext &context);
 

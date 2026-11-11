@@ -5,6 +5,7 @@
 #include "ServiceManager.h"
 #include <Worker/ProcessStatus.h>
 #include <armonik/common/logger/logger.h>
+#include <armonik/sdk/common/ConventionTask.h>
 #include <armonik/sdk/common/DynamicLibrary.h>
 #include <armonik/worker/Worker/TaskHandler.h>
 #include <map>
@@ -89,18 +90,13 @@ public:
                                               const std::string &method_name, const std::string &method_arguments);
 
   /**
-   * @brief Executes the task given by the task handler using named blob maps (convention mode).
-   * Serializes inputs and outputs to JSON and delegates to Execute(taskHandler, method_name, json).
+   * @brief Executes a convention task. See ServiceManager::Execute(TaskHandler &, const ConventionTask &).
    * @param taskHandler Task handler
-   * @param method_name Name of the method to execute
-   * @param inputs Named input blob IDs
-   * @param outputs Named output blob IDs
+   * @param task Decoded convention task
    * @return ProcessStatus telling whether the call was successful or not
    */
   armonik::api::worker::ProcessStatus Execute(armonik::api::worker::TaskHandler &taskHandler,
-                                              const std::string &method_name,
-                                              const std::map<std::string, std::string> &inputs,
-                                              const std::map<std::string, std::string> &outputs);
+                                              const ArmoniK::Sdk::Common::ConventionTask &task);
 
 private:
   /**

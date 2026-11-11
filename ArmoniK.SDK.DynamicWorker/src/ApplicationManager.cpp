@@ -2,7 +2,6 @@
 #include <armonik/sdk/common/ArmoniKSdkException.h>
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/sdk/common/TaskPayload.h>
-#include <armonik/sdk/common/internal/ConventionPayload.h>
 #include <sstream>
 
 namespace ArmoniK {
@@ -23,7 +22,8 @@ ApplicationManager &ApplicationManager::UseApplication(const AppId &appId) & {
                                              currentLibrary.get<armonik_destroy_service_t>("armonik_destroy_service"),
                                              currentLibrary.get<armonik_enter_session_t>("armonik_enter_session"),
                                              currentLibrary.get<armonik_leave_session_t>("armonik_leave_session"),
-                                             currentLibrary.get<armonik_call_t>("armonik_call")};
+                                             currentLibrary.get<armonik_call_t>("armonik_call"),
+                                             currentLibrary.try_get<armonik_process_t>("armonik_process")};
   currentId = appId;
   logger.info("Successfully loaded application " + appId.application_name + " ( " + appId.application_version + " )");
   return *this;
@@ -46,13 +46,8 @@ armonik::api::worker::ProcessStatus ApplicationManager::Execute(armonik::api::wo
 }
 
 armonik::api::worker::ProcessStatus ApplicationManager::Execute(armonik::api::worker::TaskHandler &taskHandler,
-                                                                const std::string &method_name,
-                                                                const std::map<std::string, std::string> &inputs,
-                                                                const std::map<std::string, std::string> &outputs) {
-  ArmoniK::Sdk::Common::ConventionPayload payload;
-  payload.inputs = inputs;
-  payload.outputs = outputs;
-  return Execute(taskHandler, method_name, payload.Serialize());
+                                                                const ArmoniK::Sdk::Common::ConventionTask &task) {
+  return service_manager.Execute(taskHandler, task);
 }
 
 ApplicationManager &ApplicationManager::UseLibrary(const ArmoniK::Sdk::Common::DynamicLibrary &lib,
@@ -71,13 +66,15 @@ ApplicationManager &ApplicationManager::UseLibrary(const ArmoniK::Sdk::Common::D
                               currentLibrary.get<armonik_destroy_service_t>((prefix + "_destroy_service").c_str()),
                               currentLibrary.get<armonik_enter_session_t>((prefix + "_enter_session").c_str()),
                               currentLibrary.get<armonik_leave_session_t>((prefix + "_leave_session").c_str()),
-                              currentLibrary.get<armonik_call_t>((prefix + "_call").c_str())};
+                              currentLibrary.get<armonik_call_t>((prefix + "_call").c_str()),
+                              currentLibrary.try_get<armonik_process_t>((prefix + "_process").c_str())};
 
   currentLibraryPath = lib.library_path;
   currentLibraryServiceName = service_name;
   service_manager =
       ServiceManager(functionPointers, ServiceId({lib.library_path, ""}, service_namespace, service_name));
-  logger.info("Successfully loaded library " + lib.library_path);
+  logger.info("Successfully loaded library " + lib.library_path +
+              (functionPointers.process ? "" : " (without armonik_process: only tasks with a single output run)"));
   return *this;
 }
 ApplicationManager::ApplicationManager(const ArmoniK::Sdk::Common::Configuration &config,
