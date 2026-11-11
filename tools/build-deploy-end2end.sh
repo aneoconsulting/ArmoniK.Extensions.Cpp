@@ -41,13 +41,16 @@ while getopts ":e:n:v:a:t:" opt; do
     esac
 done
 
-# Check if -b option was provided
+# Host directory of the deployment's shared storage, where the worker pods find the worker test library.
+# Checked before anything is built.
+dyn_lib_path=${ARMONIK_SHARED_HOST_PATH:-$default_dyn_lib_path}
 if [ -z "$dyn_lib_path" ]; then
-    dyn_lib_path=${ARMONIK_SHARED_HOST_PATH:-$default_dyn_lib_path}
-    echo "Warning: Option [-b dyn_lib_path] was not set."
-    echo "         Using value: $dyn_lib_path"
-    echo "         Make sure it is the correct one for your deployment"
+    echo "Error: no directory to copy the worker test library to." >&2
+    echo "       Set ARMONIK_SHARED_HOST_PATH to the host directory mounted as /data in the worker pods," >&2
+    echo "       for example /srv/armonik." >&2
+    exit 1
 fi
+echo "The worker test library will be copied to $dyn_lib_path"
 
 worker_tag="${worker_version}-$(echo "$environment" | awk '{print tolower($0)}')"
 

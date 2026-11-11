@@ -51,6 +51,7 @@ option(BUILD_DYNAMICWORKER "Build DynamicWorker" OFF)
 option(BUILD_WORKERTEST "Build Worker Test" OFF)
 option(BUILD_SDK "Build SDK" ON)
 option(BUILD_EXAMPLES "Build Examples" OFF)
+option(BUILD_UNITTEST "Build the unit tests of the worker side, which need no cluster" OFF)
 
 if(BUILD_SDK)
     add_subdirectory(ArmoniK.SDK.Common)
@@ -66,6 +67,10 @@ endif()
 
 if(BUILD_DYNAMICWORKER)
     add_subdirectory(ArmoniK.SDK.DynamicWorker)
+endif()
+
+if(BUILD_UNITTEST AND BUILD_SDK AND BUILD_WORKER)
+    add_subdirectory(ArmoniK.SDK.Worker.UnitTest)
 endif()
 
 if(BUILD_END2END)

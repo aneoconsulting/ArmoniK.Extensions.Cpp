@@ -9,21 +9,6 @@ SET(HEADER_FILES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 FILE(GLOB_RECURSE SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/*.cpp)
 FILE(GLOB_RECURSE HEADER_CLIENT_FILES ${HEADER_FILES_DIR}/*.h)
 
-# The worker task context is tested here when the worker library is built with the client, the convention executor
-# when ArmoniK.Api.Worker is installed too, and the DynamicWorker when it is built with them (BUILD_DYNAMICWORKER=ON)
-if(NOT TARGET ArmoniK.SDK.Worker)
-	list(REMOVE_ITEM SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/TaskContextTest.cpp)
-endif()
-if(TARGET ArmoniK.SDK.Worker)
-	find_package(ArmoniK.Api.Worker CONFIG QUIET)
-endif()
-if(NOT TARGET ArmoniK.Api.Worker)
-	list(REMOVE_ITEM SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/ConventionExecutorTest.cpp)
-endif()
-if(NOT TARGET ArmoniK.Api.Worker OR NOT TARGET ArmoniK.SDK.DynamicWorker.Core)
-	list(REMOVE_ITEM SRC_CLIENT_FILES ${SOURCES_FILES_DIR}/DynamicWorkerTest.cpp)
-endif()
-
 find_package(ArmoniK.Api.Client CONFIG REQUIRED)
 
 if(NOT TARGET ArmoniK.SDK.Common)
@@ -33,27 +18,10 @@ if(NOT TARGET ArmoniK.SDK.Client)
 	find_package(ArmoniK.SDK.Client CONFIG REQUIRED)
 endif()
 
-find_package(nlohmann_json REQUIRED)
-
 add_executable(${PROJECT_NAME} ${SRC_CLIENT_FILES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ArmoniK.Api.Common ArmoniK.Api.Client ArmoniK.SDK.Common ArmoniK.SDK.Client)
-target_link_libraries(${PROJECT_NAME} PRIVATE GTest::gtest_main nlohmann_json::nlohmann_json)
-if(TARGET ArmoniK.SDK.Worker)
-	target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.Worker ${CMAKE_DL_LIBS})
-
-	# Library with its own armonik_call, loaded by the tests as the DynamicWorker loads libraries
-	add_library(ArmoniK.SDK.Worker.CustomCallTest SHARED ${CMAKE_CURRENT_SOURCE_DIR}/libs/CustomCallLibrary.cpp)
-	target_link_libraries(ArmoniK.SDK.Worker.CustomCallTest PRIVATE "-Wl,--whole-archive" ArmoniK.SDK.Worker "-Wl,--no-whole-archive")
-	add_dependencies(${PROJECT_NAME} ArmoniK.SDK.Worker.CustomCallTest)
-	target_compile_definitions(${PROJECT_NAME} PRIVATE "CUSTOM_CALL_LIBRARY=\"$<TARGET_FILE:ArmoniK.SDK.Worker.CustomCallTest>\"")
-endif()
-if(TARGET ArmoniK.Api.Worker)
-	target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker)
-	if(TARGET ArmoniK.SDK.DynamicWorker.Core)
-		target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.SDK.DynamicWorker.Core)
-	endif()
-endif()
+target_link_libraries(${PROJECT_NAME} PRIVATE GTest::gtest_main)
 target_include_directories(${PROJECT_NAME}
 		PUBLIC
 		"$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"

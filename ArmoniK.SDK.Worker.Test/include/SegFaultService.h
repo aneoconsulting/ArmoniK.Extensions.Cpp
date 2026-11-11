@@ -10,7 +10,7 @@ namespace Test {
 /**
  * @brief Example implementation of a ArmoniK::Sdk::Worker::ServiceBase
  */
-class SegFaultService : ServiceBase {
+class SegFaultService : public ServiceBase {
 public:
   std::string call(void *, const std::string &name, const std::string &input) override {
     std::cout << "SegFaultService method : " << name << std::endl;
