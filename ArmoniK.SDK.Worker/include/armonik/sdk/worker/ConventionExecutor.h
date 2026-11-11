@@ -57,16 +57,16 @@ public:
         throw Common::ArmoniKSdkException(std::string("Not a convention task: missing '") +
                                           Common::DynamicLibrary::KeyConventionVersion + "' task option");
       }
-      const auto task =
-          Common::ConventionTask::Decode(opts, taskHandler.getPayload(), taskHandler.getDataDependencies());
-      const auto &expected = taskHandler.getExpectedResults();
-      if (expected.empty()) {
-        throw Common::ArmoniKSdkException("Convention task has no expected result");
+      auto task = Common::ConventionTask::Decode(opts, taskHandler.getPayload(), taskHandler.getDataDependencies(),
+                                                 taskHandler.getExpectedResults());
+      if (task.outputs.size() != 1) {
+        throw Common::ArmoniKSdkException("This worker runs only convention tasks with a single output");
       }
 
       UseSession(taskHandler.getSessionId());
       const auto output = service.call(session_context, task.method_name, task.inputs);
-      taskHandler.send_result(expected[0], armonik::api::string_view(output.data(), output.size())).get();
+      taskHandler.send_result(task.outputs.begin()->second, armonik::api::string_view(output.data(), output.size()))
+          .get();
       return {};
     } catch (const Common::ArmoniKSdkException &e) {
       return armonik::api::worker::ProcessStatus(e.what());
