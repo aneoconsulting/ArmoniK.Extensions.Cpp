@@ -15,8 +15,10 @@ namespace DynamicWorker {
 namespace {
 struct ArmonikContext {
   armonik::api::worker::TaskHandler &taskHandler;
-  /** Result that armonik_call writes */
+  /** Result that armonik_call writes, empty for armonik_process */
   std::string output_id;
+  /** armonik_call gave its result through the callback */
+  bool result_sent = false;
   armonik::api::worker::ProcessStatus output;
   bool retry_requested = false;
   std::string retry_message;
@@ -26,18 +28,25 @@ struct ArmonikContext {
 };
 
 /**
- * @brief Task status from the status of a library call: a retry throws, so that ArmoniK retries the task
+ * @brief Task status from the status of a library call and from what it reported through the callback. A retry,
+ * returned or reported, throws, so that ArmoniK retries the task. A failure, returned or reported, fails it.
  */
 armonik::api::worker::ProcessStatus Finish(ArmonikContext &callContext, armonik_status_t status) {
   if (callContext.retry_requested) {
     throw std::runtime_error(callContext.retry_message);
   }
+  if (status == ARMONIK_STATUS_RETRY) {
+    throw std::runtime_error("The library asked for a retry without giving a reason");
+  }
   if (status != ARMONIK_STATUS_OK) {
     if (callContext.output.ok()) {
       callContext.output.set_error("Unknown error in worker, check logs.");
     }
-  } else {
-    callContext.output.set_ok();
+    return callContext.output;
+  }
+  // An error reported through the callback stands, even if the call then returns ARMONIK_STATUS_OK
+  if (callContext.output.ok() && !callContext.output_id.empty() && !callContext.result_sent) {
+    callContext.output.set_error("The library returned ARMONIK_STATUS_OK without giving its result");
   }
   return callContext.output;
 }
@@ -121,7 +130,7 @@ void ServiceManager::UploadResult(void *opaque_context, armonik_status_t status,
   }
   try {
     context->taskHandler.send_result(context->output_id, armonik::api::string_view(data, data_size)).get();
-    context->output.set_ok();
+    context->result_sent = true;
   } catch (const std::exception &e) {
     // The result could not reach the agent: a transient failure
     context->retry_requested = true;
