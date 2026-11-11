@@ -3,10 +3,28 @@
 #include "armonik/sdk/common/DynamicLibrary.h"
 #include "armonik/sdk/common/internal/ConventionPayload.h"
 #include <algorithm>
+#include <set>
 
 namespace ArmoniK {
 namespace Sdk {
 namespace Worker {
+
+namespace {
+/**
+ * @brief Removes the repeated ids, keeping the first occurrence of each
+ */
+std::vector<std::string> WithoutDuplicates(std::vector<std::string> ids) {
+  std::set<std::string> seen;
+  std::vector<std::string> unique;
+  unique.reserve(ids.size());
+  for (auto &id : ids) {
+    if (seen.insert(id).second) {
+      unique.push_back(std::move(id));
+    }
+  }
+  return unique;
+}
+} // namespace
 
 void TaskOutput::write(const std::string &data) const { context_->write_output(name_, data); }
 
@@ -123,39 +141,59 @@ std::vector<std::string> TaskContext::submit_tasks(const std::vector<Common::Tas
   for (const auto &kv : outputs_) {
     own_outputs.emplace(kv.second.id(), kv.first);
   }
+  // A subtask can produce an output of this task, or a blob created by create_blobs_metadata: nothing else is
+  // known to be free, and Core transfers to a subtask only the outputs of its parent
   std::vector<std::string> delegated;
-  for (const auto &definition : definitions) {
-    for (const auto &kv : definition.outputs) {
-      if (kv.second.empty()) {
-        continue; // A new output, created below
-      }
-      const auto own = own_outputs.find(kv.second);
-      if (own == own_outputs.end()) {
-        continue;
-      }
-      const auto state = output_states_.at(own->second);
-      if (state == OutputState::Written) {
-        throw Common::ArmoniKSdkException("Output '" + own->second + "' is already written and cannot be delegated");
-      }
-      if (state == OutputState::Delegated) {
-        throw Common::ArmoniKSdkException("Output '" + own->second + "' is already delegated to a subtask");
-      }
-      delegated.push_back(own->second);
-    }
-  }
-  // The blobs created by create_blobs_metadata that the subtasks produce
   std::vector<std::string> assigned;
+  // The subtasks that produce such blobs, with only what orders them: their blob inputs and existing outputs
+  std::vector<Common::TaskDefinition> producers;
   for (const auto &definition : definitions) {
+    Common::TaskDefinition producer;
     for (const auto &kv : definition.outputs) {
       if (kv.second.empty()) {
         continue; // A new output, created below
       }
-      if (assigned_blobs_.count(kv.second) != 0) {
+      producer.outputs.insert(kv);
+      const auto own = own_outputs.find(kv.second);
+      if (own != own_outputs.end()) {
+        const auto state = output_states_.at(own->second);
+        if (state == OutputState::Written) {
+          throw Common::ArmoniKSdkException("Output '" + own->second + "' is already written and cannot be delegated");
+        }
+        if (state == OutputState::Delegated) {
+          throw Common::ArmoniKSdkException("Output '" + own->second + "' is already delegated to a subtask");
+        }
+        delegated.push_back(own->second);
+      } else if (assigned_blobs_.count(kv.second) != 0) {
         throw Common::ArmoniKSdkException("Blob " + kv.second + " is already the output of a subtask");
-      }
-      if (unassigned_blobs_.count(kv.second) != 0) {
+      } else if (unassigned_blobs_.count(kv.second) != 0) {
         assigned.push_back(kv.second);
+      } else {
+        throw Common::ArmoniKSdkException("Blob " + kv.second +
+                                          " is neither an output of the task nor a blob created by "
+                                          "create_blobs_metadata: a subtask cannot produce it");
       }
+    }
+    if (producer.outputs.empty()) {
+      continue;
+    }
+    for (const auto &kv : definition.inputs) {
+      if (!kv.second.IsRawData()) {
+        producer.inputs.insert(kv);
+      }
+    }
+    producers.push_back(std::move(producer));
+  }
+  // A cycle goes only through subtasks that produce such blobs. ValidateConventionOutputs found none within this call,
+  // so look for one through the producers of earlier calls.
+  if (!producers.empty() && !producers_.empty()) {
+    auto all = producers_;
+    all.insert(all.end(), producers.begin(), producers.end());
+    try {
+      Common::ValidateConventionOutputs(all);
+    } catch (const Common::ArmoniKSdkException &) {
+      throw Common::ArmoniKSdkException("Subtasks read each other's outputs in a cycle with subtasks of an earlier "
+                                        "submit_tasks call: these subtasks would never run");
     }
   }
 
@@ -221,11 +259,13 @@ std::vector<std::string> TaskContext::submit_tasks(const std::vector<Common::Tas
     if (library_blob != subtask_options.options.end() && !library_blob->second.empty()) {
       requests[i].data_dependencies.push_back(library_blob->second);
     }
+    // Core rejects a task that lists a pending dependency twice: two inputs may share a blob
+    requests[i].data_dependencies = WithoutDuplicates(std::move(requests[i].data_dependencies));
     requests[i].payload = payloads[i].Serialize();
   }
 
-  // Mark the outputs and blobs before submitting: if the agent creates some subtasks and rejects others, the
-  // created ones may still produce them, so the task must not write them anymore
+  // Mark the outputs and blobs before submitting: after a transport failure, the agent may have registered the
+  // subtasks, which would then produce them, so the task must not write them anymore
   for (const auto &name : delegated) {
     output_states_.at(name) = OutputState::Delegated;
   }
@@ -233,10 +273,23 @@ std::vector<std::string> TaskContext::submit_tasks(const std::vector<Common::Tas
     unassigned_blobs_.erase(id);
     assigned_blobs_.insert(id);
   }
-  return agent_.submit_tasks(subtask_options, requests);
+  producers_.insert(producers_.end(), producers.begin(), producers.end());
+  try {
+    return agent_.submit_tasks(subtask_options, requests);
+  } catch (...) {
+    // The outputs are marked as delegated whether the subtasks exist or not: finish fails the task even if the
+    // service catches this exception
+    if (!submit_failure_) {
+      submit_failure_ = std::current_exception();
+    }
+    throw;
+  }
 }
 
 void TaskContext::finish() const {
+  if (submit_failure_) {
+    std::rethrow_exception(submit_failure_);
+  }
   std::string pending;
   for (const auto &kv : output_states_) {
     if (kv.second == OutputState::Pending) {
