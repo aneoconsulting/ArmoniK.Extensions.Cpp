@@ -10,6 +10,14 @@
 #include <string>
 #include <vector>
 
+// TaskHandler::create_tasks_async reads its by-value options argument from another thread after it returns. GCC and
+// Clang (Itanium ABI) destroy that argument at the end of the caller's full-expression, so calling get() in the same
+// expression is safe. MSVC destroys it in the callee, which makes the read a use after free.
+#ifdef _MSC_VER
+#error                                                                                                                 \
+    "TaskHandlerAgent is not supported with MSVC: TaskHandler::create_tasks_async uses its options after they are destroyed"
+#endif
+
 namespace ArmoniK {
 namespace Sdk {
 namespace Worker {
@@ -68,15 +76,22 @@ public:
         requests[i].add_expected_output_keys(id);
       }
     }
-    // get() in the same expression: the asynchronous call refers to its by-value options argument
+    // get() in the same expression: the asynchronous call refers to its by-value options argument (see the top of
+    // this file)
     const auto reply =
         taskHandler.create_tasks_async(static_cast<armonik::api::grpc::v1::TaskOptions>(task_options), requests).get();
     // A rejection by the agent fails the task: a retry would submit the same request again
     if (reply.Response_case() != armonik::api::grpc::v1::agent::CreateTaskReply::kCreationStatusList) {
       throw Common::ArmoniKSdkException("Failed to submit subtasks: " + reply.error());
     }
+    const auto &statuses = reply.creation_status_list().creation_statuses();
+    if (static_cast<std::size_t>(statuses.size()) != tasks.size()) {
+      throw Common::ArmoniKSdkException("The agent created " + std::to_string(statuses.size()) +
+                                        " subtasks instead of " + std::to_string(tasks.size()));
+    }
     std::vector<std::string> task_ids;
-    for (const auto &status : reply.creation_status_list().creation_statuses()) {
+    task_ids.reserve(tasks.size());
+    for (const auto &status : statuses) {
       if (status.Status_case() != armonik::api::grpc::v1::agent::CreateTaskReply::CreationStatus::kTaskInfo) {
         throw Common::ArmoniKSdkException("Failed to submit a subtask: " + status.error());
       }
