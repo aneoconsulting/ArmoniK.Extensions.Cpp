@@ -8,6 +8,7 @@
 #include <cstring>
 #include <exception>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -70,8 +71,13 @@ public:
   /**
    * @brief Checks that every output was written or delegated. Called by the worker after armonik_process succeeds.
    * @throws ArmoniKSdkException if an output was neither written nor delegated
+   * @throws std::exception the exception of a failed submission, even if the library ignored the error: no subtask
+   * may produce the outputs it delegated
    */
   void finish() const {
+    if (submit_failure_) {
+      std::rethrow_exception(submit_failure_);
+    }
     std::string pending;
     for (const auto &kv : output_states_) {
       if (kv.second.state == OutputState::Pending) {
@@ -178,9 +184,13 @@ private:
       std::vector<TaskAgent::TaskRequest> requests(count);
       for (size_t i = 0; i < count; ++i) {
         requests[i].payload.assign(tasks[i].payload.data, tasks[i].payload.size);
+        // Core rejects a task that lists a pending dependency twice
+        std::set<std::string> dependencies;
         for (size_t j = 0; j < tasks[i].data_dependencies_count; ++j) {
-          requests[i].data_dependencies.emplace_back(tasks[i].data_dependencies[j].data,
-                                                     tasks[i].data_dependencies[j].size);
+          std::string id(tasks[i].data_dependencies[j].data, tasks[i].data_dependencies[j].size);
+          if (dependencies.insert(id).second) {
+            requests[i].data_dependencies.push_back(std::move(id));
+          }
         }
         for (size_t j = 0; j < tasks[i].expected_outputs_count; ++j) {
           requests[i].expected_outputs.emplace_back(tasks[i].expected_outputs[j].data,
@@ -193,11 +203,22 @@ private:
           }
         }
       }
-      // Delegated before submitting: subtasks created before a rejection may still produce the outputs
+      // Delegated before submitting: after a transport failure, the agent may have registered the subtasks, which
+      // would then produce the outputs
       for (const auto output : delegated) {
         output->state = OutputState::Delegated;
       }
-      for (const auto &id : self.agent_.submit_tasks(options, requests)) {
+      std::vector<std::string> ids;
+      try {
+        ids = self.agent_.submit_tasks(options, requests);
+      } catch (...) {
+        // finish fails the task even if the library ignores the error
+        if (!self.submit_failure_) {
+          self.submit_failure_ = std::current_exception();
+        }
+        throw;
+      }
+      for (const auto &id : ids) {
         on_value(sink_context, id.data(), id.size());
       }
     });
@@ -209,6 +230,8 @@ private:
   std::vector<armonik_input_t> inputs_;
   std::vector<armonik_output_t> outputs_;
   armonik_task_t task_{};
+  /** First exception of agent_.submit_tasks, rethrown by finish */
+  std::exception_ptr submit_failure_;
 };
 
 } // namespace Internal

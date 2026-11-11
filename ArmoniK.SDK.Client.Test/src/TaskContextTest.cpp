@@ -616,6 +616,39 @@ TEST(TaskApiHost, ChecksTheOutputsOfTheLibrary) {
   EXPECT_NO_THROW(host.finish());
 }
 
+// A library that ignores a failed submission still fails the task, with the kind of the failure
+TEST(TaskApiHost, FinishRethrowsAFailedSubmission) {
+  using Map = std::map<std::string, std::string>;
+  const Map none, outputs{{"result", "out"}};
+  FakeAgent agent;
+  TaskApiHost host(agent, none, none, outputs);
+  CLibrary library(host.task());
+
+  agent.submit_error = std::make_exception_ptr(std::runtime_error("agent unavailable"));
+  EXPECT_EQ(library.delegate("out"), ARMONIK_STATUS_RETRY);
+  agent.submit_error = nullptr;
+  EXPECT_EQ(library.write("out", "1"), ARMONIK_STATUS_ERROR);
+  EXPECT_THROW(host.finish(), std::runtime_error);
+}
+
+// Core rejects a task that lists a pending dependency twice, whatever the library sends
+TEST(TaskApiHost, ListsEachDependencyOnce) {
+  using Map = std::map<std::string, std::string>;
+  const Map none;
+  FakeAgent agent;
+  TaskApiHost host(agent, none, none, none);
+  const auto &task = host.task();
+  CLibrary library(task);
+
+  const armonik_string_t dependencies[] = {{"a", 1}, {"a", 1}, {"b", 1}};
+  const armonik_task_request_t request{{"", 0}, dependencies, 3, nullptr, 0};
+  ASSERT_EQ(task.submit_tasks(task.agent, task.task_options, &request, 1, &library.error, &CLibrary::Collect,
+                              &CLibrary::Collect),
+            ARMONIK_STATUS_OK)
+      << library.error;
+  EXPECT_EQ(agent.submitted[0].data_dependencies, (std::vector<std::string>{"a", "b"}));
+}
+
 TEST(ArmoniKProcess, RejectsAnIncompatibleTask) {
   EchoService service;
   Failure failure;
