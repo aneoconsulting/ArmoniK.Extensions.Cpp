@@ -98,6 +98,18 @@ public:
   std::string call(void *, const std::string &, const std::string &) override { return "payload"; }
 };
 
+class FailingService final : public ServiceBase {
+public:
+  std::string call(void *, const std::string &, const std::map<std::string, std::string> &) override {
+    throw ArmoniKSdkException("invalid input");
+  }
+};
+
+class PayloadOnlyService final : public ServiceBase {
+public:
+  std::string call(void *, const std::string &, const std::string &input) override { return input; }
+};
+
 nlohmann::json Payload(const TaskAgent::TaskRequest &request) { return nlohmann::json::parse(request.payload); }
 
 } // namespace
@@ -145,13 +157,35 @@ TEST(TaskContext, DefaultProcessCallsTheInputsOverload) {
   EXPECT_EQ(agent.sent.at("out-p"), "payload");
 }
 
-// DynamicWorker: the payload cannot hold inputs that are not valid UTF-8, which is a failure, not a retry
-TEST(TaskContext, DefaultProcessRejectsBinaryInputsInThePayload) {
+// DynamicWorker: JSON cannot hold an input that is not valid UTF-8, so the map overload receives it directly
+TEST(TaskContext, DefaultProcessGivesBinaryInputsToTheMapOverload) {
   FakeAgent agent;
   EchoService service;
-  TaskContext context(agent, {{"x", "\xff"}}, {}, {{"result", "out"}}, TaskContext::DefaultCall::Payload);
+  const std::string binary("\xff\x00\xfe", 3);
+  TaskContext context(agent, {{"x", binary}}, {}, {{"result", "out"}}, TaskContext::DefaultCall::Payload);
+  service.process(nullptr, "echo", context);
+  EXPECT_EQ(agent.sent.at("out"), "echo:" + binary);
 
-  EXPECT_THROW(service.process(nullptr, "echo", context), ArmoniKSdkException);
+  // A failure of the map overload keeps its message
+  FailingService failing;
+  TaskContext failed(agent, {{"x", binary}}, {}, {{"result", "out-f"}}, TaskContext::DefaultCall::Payload);
+  try {
+    failing.process(nullptr, "m", failed);
+    FAIL() << "No exception";
+  } catch (const ArmoniKSdkException &e) {
+    EXPECT_STREQ(e.what(), "invalid input");
+  }
+
+  // A service that overrides only the payload overload cannot receive the input: a failure, not a retry
+  PayloadOnlyService payload_only;
+  TaskContext payload(agent, {{"x", binary}}, {}, {{"result", "out-p"}}, TaskContext::DefaultCall::Payload);
+  try {
+    payload_only.process(nullptr, "m", payload);
+    FAIL() << "No exception";
+  } catch (const ArmoniKSdkException &e) {
+    EXPECT_NE(std::string(e.what()).find("not valid UTF-8"), std::string::npos) << e.what();
+  }
+  EXPECT_EQ(agent.sent.count("out-p"), 0u);
 }
 
 TEST(TaskContext, DefaultProcessRejectsSeveralOutputs) {
@@ -586,6 +620,14 @@ struct CLibrary {
     return task.submit_tasks(task.agent, task.task_options, &request, 1, &error, &Collect, &Collect);
   }
 
+  // Creates a result without data, and gives its id
+  std::string create(const std::string &name) {
+    const armonik_string_t c_name{name.data(), name.size()};
+    std::string id;
+    EXPECT_EQ(task.create_results_metadata(task.agent, &c_name, 1, &id, &Collect, &Collect), ARMONIK_STATUS_OK) << id;
+    return id;
+  }
+
   static void Collect(void *context, const char *data, size_t size) {
     static_cast<std::string *>(context)->assign(data, size);
   }
@@ -629,6 +671,36 @@ TEST(TaskApiHost, FinishRethrowsAFailedSubmission) {
   agent.submit_error = nullptr;
   EXPECT_EQ(library.write("out", "1"), ARMONIK_STATUS_ERROR);
   EXPECT_THROW(host.finish(), std::runtime_error);
+}
+
+// The library writes, and gives to subtasks, only the outputs of the task and the results it created. A result
+// created without data must get it, or a producer.
+TEST(TaskApiHost, ChecksTheResultsTheLibraryCreates) {
+  using Map = std::map<std::string, std::string>;
+  const Map none, outputs{{"result", "out"}};
+  FakeAgent agent;
+  TaskApiHost host(agent, none, none, outputs);
+  CLibrary library(host.task());
+
+  EXPECT_EQ(library.write("elsewhere", "1"), ARMONIK_STATUS_ERROR);
+  EXPECT_EQ(library.delegate("elsewhere"), ARMONIK_STATUS_ERROR);
+  EXPECT_EQ(agent.sent.count("elsewhere"), 0u);
+  EXPECT_TRUE(agent.submitted.empty());
+  ASSERT_EQ(library.write("out", "1"), ARMONIK_STATUS_OK) << library.error;
+
+  const auto shared = library.create("shared");
+  EXPECT_THROW(host.finish(), ArmoniKSdkException);
+  ASSERT_EQ(library.delegate(shared), ARMONIK_STATUS_OK) << library.error;
+  EXPECT_EQ(library.write(shared, "2"), ARMONIK_STATUS_ERROR);
+  EXPECT_EQ(library.delegate(shared), ARMONIK_STATUS_ERROR);
+  EXPECT_NO_THROW(host.finish());
+
+  const auto data = library.create("data");
+  ASSERT_EQ(library.write(data, "3"), ARMONIK_STATUS_OK) << library.error;
+  EXPECT_EQ(library.write(data, "4"), ARMONIK_STATUS_ERROR);
+  EXPECT_EQ(library.delegate(data), ARMONIK_STATUS_ERROR);
+  EXPECT_EQ(agent.sent.at(data), "3");
+  EXPECT_NO_THROW(host.finish());
 }
 
 // Core rejects a task that lists a pending dependency twice, whatever the library sends

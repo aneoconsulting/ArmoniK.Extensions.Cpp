@@ -24,16 +24,22 @@ if(NOT TARGET nlohmann_json::nlohmann_json)
     find_package(nlohmann_json REQUIRED)
 endif()
 
-add_executable(${PROJECT_NAME} ${SRC_DYNAMICWORKER_FILES} ${HEADER_DYNAMICWORKER_FILES})
+# Everything but main, in a library that the unit tests link too (ArmoniK.SDK.Client.Test)
+list(REMOVE_ITEM SRC_DYNAMICWORKER_FILES ${SOURCES_FILES_DIR}/main.cpp)
+set(CORE_NAME ${PROJECT_NAME}.Core)
+add_library(${CORE_NAME} STATIC ${SRC_DYNAMICWORKER_FILES} ${HEADER_DYNAMICWORKER_FILES})
+add_executable(${PROJECT_NAME} ${SOURCES_FILES_DIR}/main.cpp)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
+setup_options(${CORE_NAME})
 setup_options(${PROJECT_NAME})
 split_version(${VERSION})
 setup_lib_version(${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.SDK.Common ArmoniK.Api.Common nlohmann_json::nlohmann_json)
+target_link_libraries(${CORE_NAME} PUBLIC ArmoniK.Api.Worker ArmoniK.SDK.Common ArmoniK.Api.Common nlohmann_json::nlohmann_json)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${CORE_NAME})
 
-target_include_directories(${PROJECT_NAME}
+target_include_directories(${CORE_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
         "$<BUILD_INTERFACE:${ARMONIK_SDK_HEADER_DIR}>"
