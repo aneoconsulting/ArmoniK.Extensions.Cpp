@@ -15,6 +15,8 @@ if(NOT TARGET ArmoniK.SDK.Common)
 endif()
 
 find_package(nlohmann_json REQUIRED)
+# The sources include ArmoniK.SDK.Common headers that include ArmoniK.Api.Common headers
+find_package(ArmoniK.Api.Common CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC ${SRC_CLIENT_FILES} ${HEADER_CLIENT_FILES})
 
@@ -22,8 +24,10 @@ target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+        # TaskContext.h uses the header-only types of ArmoniK.SDK.Common, installed under the same include directory
+        "$<BUILD_INTERFACE:$<TARGET_PROPERTY:ArmoniK.SDK.Common,INTERFACE_INCLUDE_DIRECTORIES>>"
         PRIVATE
-        "$<TARGET_PROPERTY:ArmoniK.SDK.Common,INTERFACE_INCLUDE_DIRECTORIES>"
+        "$<TARGET_PROPERTY:ArmoniK.Api.Common,INTERFACE_INCLUDE_DIRECTORIES>"
         "$<TARGET_PROPERTY:nlohmann_json::nlohmann_json,INTERFACE_INCLUDE_DIRECTORIES>"
         )
 

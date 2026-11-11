@@ -25,6 +25,7 @@
 #include <armonik/sdk/common/internal/ConventionPayload.h>
 #include <chrono>
 #include <future>
+#include <set>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -623,6 +624,14 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
         deps[i].push_back(blob.GetBlobId());
       }
     }
+  }
+  // Core rejects a task that lists a pending dependency twice: two inputs, or an input and the library, may share a
+  // blob
+  for (auto &task_deps : deps) {
+    std::set<std::string> seen;
+    task_deps.erase(std::remove_if(task_deps.begin(), task_deps.end(),
+                                   [&seen](const std::string &id) { return !seen.insert(id).second; }),
+                    task_deps.end());
   }
 
   return SubmitRaw(serialized, deps, std::move(outputs), std::move(handler), task_options);
