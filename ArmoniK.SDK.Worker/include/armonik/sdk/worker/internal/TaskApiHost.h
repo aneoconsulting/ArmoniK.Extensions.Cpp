@@ -20,8 +20,10 @@ namespace Internal {
 /**
  * @brief Worker side of armonik_process: exposes a task and its TaskAgent to a library as an armonik_task_t
  *
- * It tracks the outputs of the task, so that the worker checks them whatever armonik_process the library defines:
- * each output is written once or delegated to a subtask, not both.
+ * It tracks the outputs of the task and the results the library creates, so that the worker checks them whatever
+ * armonik_process the library defines: each is written once or produced by a subtask, not both, and the outputs must
+ * all be produced. The library writes, and gives to subtasks as outputs, only these results. Unlike TaskContext, the
+ * host does not look for subtasks that read each other's outputs in a cycle.
  *
  * @note This is an internal SDK header. It is not part of the public API.
  */
@@ -44,7 +46,7 @@ public:
     }
     for (const auto &kv : outputs) {
       outputs_.push_back({String(kv.first), String(kv.second)});
-      output_states_.emplace(kv.second, Output{kv.first, OutputState::Pending});
+      results_.emplace(kv.second, Result{kv.first, true, ResultState::Pending});
     }
     task_.struct_size = sizeof(armonik_task_t);
     task_.agent = this;
@@ -69,8 +71,10 @@ public:
   const armonik_task_t &task() const { return task_; }
 
   /**
-   * @brief Checks that every output was written or delegated. Called by the worker after armonik_process succeeds.
-   * @throws ArmoniKSdkException if an output was neither written nor delegated
+   * @brief Checks that every output was written or delegated, and that every result created without data was written
+   * or given to a subtask. Called by the worker after armonik_process succeeds.
+   * @throws ArmoniKSdkException if an output was neither written nor delegated, or a created result has no data and no
+   * producer
    * @throws std::exception the exception of a failed submission, even if the library ignored the error: no subtask
    * may produce the outputs it delegated
    */
@@ -78,22 +82,34 @@ public:
     if (submit_failure_) {
       std::rethrow_exception(submit_failure_);
     }
-    std::string pending;
-    for (const auto &kv : output_states_) {
-      if (kv.second.state == OutputState::Pending) {
-        pending += (pending.empty() ? "'" : ", '") + kv.second.name + "'";
+    std::string pending_outputs;
+    std::string pending_results;
+    for (const auto &kv : results_) {
+      if (kv.second.state != ResultState::Pending) {
+        continue;
+      }
+      if (kv.second.is_output) {
+        pending_outputs += (pending_outputs.empty() ? "'" : ", '") + kv.second.name + "'";
+      } else {
+        pending_results += (pending_results.empty() ? "'" : ", '") + kv.second.name + "' (" + kv.first + ")";
       }
     }
-    if (!pending.empty()) {
-      throw Common::ArmoniKSdkException("Outputs neither written nor delegated to a subtask: " + pending);
+    if (!pending_outputs.empty()) {
+      throw Common::ArmoniKSdkException("Outputs neither written nor delegated to a subtask: " + pending_outputs);
+    }
+    if (!pending_results.empty()) {
+      throw Common::ArmoniKSdkException("Results created without data and given to no subtask as an output: " +
+                                        pending_results);
     }
   }
 
 private:
-  enum class OutputState { Pending, Written, Delegated };
-  struct Output {
+  enum class ResultState { Pending, Written, Delegated };
+  /** An output of the task, or a result created by the library */
+  struct Result {
     std::string name;
-    OutputState state;
+    bool is_output;
+    ResultState state;
   };
 
   static armonik_string_t String(const std::string &s) { return {s.data(), s.size()}; }
@@ -120,21 +136,25 @@ private:
   }
 
   /**
-   * @brief Checks that an output of the task can still be written or delegated, if the id is an output of the task
-   * @return The output, or nullptr if the id is not an output of the task
+   * @brief Checks that a result can still be written or given to a subtask as an output
+   * @throws ArmoniKSdkException if the id is neither an output of the task nor a result it created, or if the result is
+   * already written or produced by a subtask
    */
-  Output *AvailableOutput(const std::string &id) {
-    const auto it = output_states_.find(id);
-    if (it == output_states_.end()) {
-      return nullptr;
+  Result &AvailableResult(const std::string &id) {
+    const auto it = results_.find(id);
+    if (it == results_.end()) {
+      throw Common::ArmoniKSdkException("Result " + id +
+                                        " is neither an output of the task nor a result it created: the task cannot "
+                                        "write it or give it to a subtask");
     }
-    if (it->second.state == OutputState::Written) {
-      throw Common::ArmoniKSdkException("Output '" + it->second.name + "' is already written");
+    const auto what = (it->second.is_output ? "Output '" : "Result '") + it->second.name + "'";
+    if (it->second.state == ResultState::Written) {
+      throw Common::ArmoniKSdkException(what + " is already written");
     }
-    if (it->second.state == OutputState::Delegated) {
-      throw Common::ArmoniKSdkException("Output '" + it->second.name + "' is delegated to a subtask");
+    if (it->second.state == ResultState::Delegated) {
+      throw Common::ArmoniKSdkException(what + " is produced by a subtask");
     }
-    return &it->second;
+    return it->second;
   }
 
   static armonik_status_t CreateResultsMetadata(void *host, const armonik_string_t *names, size_t count,
@@ -145,8 +165,15 @@ private:
       for (size_t i = 0; i < count; ++i) {
         result_names.emplace_back(names[i].data, names[i].size);
       }
-      for (const auto &id : static_cast<TaskApiHost *>(host)->agent_.create_results_metadata(result_names)) {
-        on_value(sink_context, id.data(), id.size());
+      auto &self = *static_cast<TaskApiHost *>(host);
+      const auto ids = self.agent_.create_results_metadata(result_names);
+      if (ids.size() != result_names.size()) {
+        throw Common::ArmoniKSdkException("Created " + std::to_string(ids.size()) + " results instead of " +
+                                          std::to_string(result_names.size()));
+      }
+      for (std::size_t i = 0; i < ids.size(); ++i) {
+        self.results_.emplace(ids[i], Result{result_names[i], false, ResultState::Pending});
+        on_value(sink_context, ids[i].data(), ids[i].size());
       }
     });
   }
@@ -156,20 +183,19 @@ private:
     return Guard(sink_context, on_error, [&]() {
       auto &self = *static_cast<TaskApiHost *>(host);
       std::vector<TaskAgent::ResultData> data;
-      std::vector<Output *> written;
+      std::vector<Result *> written;
       for (size_t i = 0; i < count; ++i) {
         data.push_back(
             {std::string(results[i].id.data, results[i].id.size), results[i].data.data, results[i].data.size});
-        if (const auto output = self.AvailableOutput(data.back().id)) {
-          if (std::find(written.begin(), written.end(), output) != written.end()) {
-            throw Common::ArmoniKSdkException("Output '" + output->name + "' is written twice");
-          }
-          written.push_back(output);
+        const auto result = &self.AvailableResult(data.back().id);
+        if (std::find(written.begin(), written.end(), result) != written.end()) {
+          throw Common::ArmoniKSdkException("Result '" + result->name + "' is written twice");
         }
+        written.push_back(result);
       }
       self.agent_.send_results(data);
-      for (const auto output : written) {
-        output->state = OutputState::Written;
+      for (const auto result : written) {
+        result->state = ResultState::Written;
       }
     });
   }
@@ -180,7 +206,7 @@ private:
     return Guard(sink_context, on_error, [&]() {
       auto &self = *static_cast<TaskApiHost *>(host);
       const auto options = TaskOptionsFromJson(task_options.data, task_options.size);
-      std::vector<Output *> delegated;
+      std::vector<Result *> delegated;
       std::vector<TaskAgent::TaskRequest> requests(count);
       for (size_t i = 0; i < count; ++i) {
         requests[i].payload.assign(tasks[i].payload.data, tasks[i].payload.size);
@@ -195,18 +221,17 @@ private:
         for (size_t j = 0; j < tasks[i].expected_outputs_count; ++j) {
           requests[i].expected_outputs.emplace_back(tasks[i].expected_outputs[j].data,
                                                     tasks[i].expected_outputs[j].size);
-          if (const auto output = self.AvailableOutput(requests[i].expected_outputs.back())) {
-            if (std::find(delegated.begin(), delegated.end(), output) != delegated.end()) {
-              throw Common::ArmoniKSdkException("Output '" + output->name + "' is delegated to two subtasks");
-            }
-            delegated.push_back(output);
+          const auto result = &self.AvailableResult(requests[i].expected_outputs.back());
+          if (std::find(delegated.begin(), delegated.end(), result) != delegated.end()) {
+            throw Common::ArmoniKSdkException("Result '" + result->name + "' is given to two subtasks as an output");
           }
+          delegated.push_back(result);
         }
       }
       // Delegated before submitting: after a transport failure, the agent may have registered the subtasks, which
       // would then produce the outputs
-      for (const auto output : delegated) {
-        output->state = OutputState::Delegated;
+      for (const auto result : delegated) {
+        result->state = ResultState::Delegated;
       }
       std::vector<std::string> ids;
       try {
@@ -226,7 +251,8 @@ private:
 
   TaskAgent &agent_;
   std::string options_;
-  std::map<std::string, Output> output_states_; // blob id → output
+  /** Outputs of the task and results created by the library (result id → result) */
+  std::map<std::string, Result> results_;
   std::vector<armonik_input_t> inputs_;
   std::vector<armonik_output_t> outputs_;
   armonik_task_t task_{};
