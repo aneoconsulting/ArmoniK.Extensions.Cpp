@@ -129,6 +129,12 @@ typedef armonik_status_t (*armonik_call_t)(void *armonik_context, void *service_
                                            const char *function_name, const char *input, size_t input_size,
                                            armonik_callback_t callback);
 
+/*
+ * Structures of armonik_process. armonik_task_t starts with its size, so that fields can be added at its end. The
+ * other structures are passed as arrays, whose element size libraries compile in: their layout is frozen. A change
+ * goes into new structures, used by new operations added at the end of armonik_task_t.
+ */
+
 /**
  * @brief Bytes, not null-terminated
  */
@@ -184,6 +190,8 @@ typedef struct armonik_task_request_t {
  *
  * Each operation returns ARMONIK_STATUS_OK, or another status after calling on_error with a message.
  * ARMONIK_STATUS_RETRY means a transient failure. Strings given to the sinks are valid only during the call.
+ * The operations are not thread-safe: call them from one thread at a time.
+ * A task writes, and gives to subtasks as outputs, only its outputs and the results it created.
  * @note Task options are a JSON object with the fields of ArmoniK::Sdk::Common::TaskOptions.
  */
 typedef struct armonik_task_t {
