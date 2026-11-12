@@ -132,17 +132,6 @@ void upload_large_result(ArmoniK::Sdk::Client::Internal::ChannelPool &pool, std:
   }
 }
 
-// Submit()/SubmitRaw() reserve upload_byte_budget_ bytes for the whole call up front, on the calling
-// thread, before spawning anything. A result handler chaining a new submission from inside
-// WaitResults() runs on thread_pool_, so that reservation blocks a pool worker whose freedom is
-// needed to finish (and release the budget for) whichever call currently holds it. With enough
-// concurrent chained calls, every worker ends up blocked this way, deadlocking the pool.
-void EnsureNotCalledFromWorkerThread(const char *entry_point) {
-  if (ThreadPool::IsWorkerThread()) {
-    throw armonik::api::common::exceptions::ArmoniKApiException(std::string(entry_point) +
-                                                                " was called from a result handler (risk of deadlock)");
-  }
-}
 } // namespace
 
 const std::string &SessionServiceImpl::getSession() const { return session; }
@@ -151,8 +140,6 @@ std::vector<std::string> SessionServiceImpl::SubmitRaw(const std::vector<std::st
                                                        const std::vector<std::vector<std::string>> &data_dependencies,
                                                        std::shared_ptr<IServiceInvocationHandler> handler,
                                                        const Common::TaskOptions &task_options) {
-  EnsureNotCalledFromWorkerThread("SubmitRaw");
-
   const std::size_t message_overhead = 128;
   std::size_t data_chunk_max_size =
       override_message_size_
@@ -358,8 +345,6 @@ std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::Ta
 std::vector<std::string> SessionServiceImpl::Submit(const std::vector<Common::TaskDefinition> &task_requests,
                                                     std::shared_ptr<IServiceInvocationHandler> handler,
                                                     const Common::TaskOptions &task_options) {
-  EnsureNotCalledFromWorkerThread("Submit");
-
   const std::size_t message_overhead = 128;
   const std::size_t data_chunk_max_size =
       override_message_size_
@@ -563,7 +548,8 @@ SessionServiceImpl::SessionServiceImpl(const Common::Properties &properties,
       submit_batch_size_(properties.configuration.get_control_plane().getSubmitBatchSize()),
       override_message_size_(properties.configuration.get_control_plane().getOverrideMessageSize()),
       download_byte_budget_(properties.configuration.get_control_plane().getDownloadByteBudget()),
-      upload_byte_budget_(properties.configuration.get_control_plane().getUploadByteBudget()) {
+      upload_byte_budget_(properties.configuration.get_control_plane().getUploadByteBudget()),
+      handler_budget_(static_cast<std::int64_t>(thread_pool_.MaxThreads())) {
   // Creates a new session
   session = session_id.empty() ? channel_pool.WithChannel([&](std::shared_ptr<grpc::Channel> channel) {
     return armonik::api::client::SessionsClient(armonik::api::grpc::v1::sessions::Sessions::NewStub(channel))
@@ -582,6 +568,14 @@ ARMONIK_SDK_SUPPRESS_DEPRECATED_END
 
 void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavior behavior,
                                      const WaitOptions &options) {
+  // From a result handler (or any thread-pool task), the nested call would wait for handler slots its
+  // callers hold, and its handlers could not be throttled: blocked threads, and with them the number of
+  // pool threads, would then have no bound (JoinSet destructors go past the pool's blocked-thread cap).
+  if (ThreadPool::IsWorkerThread()) {
+    throw armonik::api::common::exceptions::ArmoniKApiException(
+        "WaitResults() was called from a result handler, which is not supported");
+  }
+
   auto function_stop = std::chrono::steady_clock::now() + std::chrono::milliseconds(options.timeout);
 
   bool breakOnError = behavior & WaitBehavior::BreakOnError;
@@ -677,6 +671,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
       // potentially starving) thread_pool_ slots shared with unrelated Submit() work.
       std::int64_t result_bytes =
           status == armonik::api::grpc::v1::result_status::RESULT_STATUS_COMPLETED ? result.size() : 0;
+      handler_budget_.Acquire(1);
       if (download_byte_budget_.Acquire(result_bytes)) {
         logger_.warning("Downloading a " + std::to_string(result_bytes) +
                         " byte result alone exceeds GrpcClient__DownloadByteBudget (" +
@@ -690,7 +685,7 @@ void SessionServiceImpl::WaitResults(std::set<std::string> task_ids, WaitBehavio
           ByteBudget &budget;
           std::int64_t bytes;
           ~BudgetGuard() { budget.Release(bytes); }
-        } budget_guard{download_byte_budget_, result_bytes};
+        } budget_guard{download_byte_budget_, result_bytes}, handler_guard{handler_budget_, 1};
 
         auto &result = *result_ptr;
         std::shared_ptr<IServiceInvocationHandler> handler{};
