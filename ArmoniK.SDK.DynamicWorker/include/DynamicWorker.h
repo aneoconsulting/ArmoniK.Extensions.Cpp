@@ -19,6 +19,9 @@ public:
    * @brief Creates a dynamic worker
    * @param agent Stub to communicate with the scheduling agent
    * @param config Configuration
+   * @note Configuration key: `Worker__LibraryDirectory` (default: $TMPDIR, else /tmp) (type: string)
+   * @note Directory where the library blobs are written before they are loaded, in a private subdirectory created by
+   *       the worker. Set it to a writable volume when the root filesystem is read-only or has no /tmp.
    */
   explicit DynamicWorker(std::unique_ptr<armonik::api::grpc::v1::agent::Agent::Stub> agent,
                          const ArmoniK::Sdk::Common::Configuration &config,
@@ -60,6 +63,11 @@ private:
    * @brief Application manager
    */
   ArmoniK::Sdk::DynamicWorker::ApplicationManager manager;
+
+  /**
+   * @brief Directory where library_dir_ is created, from Worker__LibraryDirectory. Empty means $TMPDIR, else /tmp
+   */
+  std::string library_base_dir_;
 };
 } // namespace DynamicWorker
 } // namespace Sdk

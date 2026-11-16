@@ -23,8 +23,8 @@ namespace DynamicWorker {
 DynamicWorker::DynamicWorker(std::unique_ptr<armonik::api::grpc::v1::agent::Agent::Stub> agent,
                              const ArmoniK::Sdk::Common::Configuration &config,
                              const armonik::api::common::logger::Logger &logger)
-    : ArmoniKWorker(std::move(agent)), logger(logger.local({{"WorkerName", "DynamicWorker"}})),
-      manager(config, logger) {}
+    : ArmoniKWorker(std::move(agent)), logger(logger.local({{"WorkerName", "DynamicWorker"}})), manager(config, logger),
+      library_base_dir_(config.get("Worker__LibraryDirectory")) {}
 
 DynamicWorker::~DynamicWorker() {
   if (library_dir_.empty()) {
@@ -48,16 +48,21 @@ std::string DynamicWorker::InstallLibrary(const std::string &blob_id, const char
     throw ArmoniK::Sdk::Common::ArmoniKSdkException("Invalid library blob id '" + blob_id + "'");
   }
 
-  // Private directory of this worker process: unpredictable name, mode 0700, so no other user can create or
-  // replace a file in it
+  // Private directory of this worker process. mkdtemp replaces the trailing XXXXXX with random characters and creates
+  // the directory with mode 0700, so no other user can guess its name, create it first, or write in it.
   if (library_dir_.empty()) {
-    const char *tmpdir = std::getenv("TMPDIR");
-    const std::string tmpl = std::string(tmpdir && *tmpdir ? tmpdir : "/tmp") + "/armonik-libs-XXXXXX";
+    std::string base = library_base_dir_;
+    if (base.empty()) {
+      const char *tmpdir = std::getenv("TMPDIR");
+      base = tmpdir && *tmpdir ? tmpdir : "/tmp";
+    }
+    const std::string tmpl = base + "/armonik-libs-XXXXXX";
     std::vector<char> name(tmpl.begin(), tmpl.end());
     name.push_back('\0');
     if (::mkdtemp(name.data()) == nullptr) {
       throw ArmoniK::Sdk::Common::ArmoniKSdkException("Failed to create library directory " + tmpl + ": " +
-                                                      std::strerror(errno));
+                                                      std::strerror(errno) +
+                                                      ". Set Worker__LibraryDirectory to a writable directory");
     }
     library_dir_ = name.data();
   }
