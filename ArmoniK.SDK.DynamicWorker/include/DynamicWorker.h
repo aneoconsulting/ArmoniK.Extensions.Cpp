@@ -4,6 +4,8 @@
 #include <armonik/common/logger/local_logger.h>
 #include <armonik/sdk/common/Configuration.h>
 #include <armonik/worker/Worker/ArmoniKWorker.h>
+#include <cstddef>
+#include <string>
 
 namespace ArmoniK {
 namespace Sdk {
@@ -29,7 +31,26 @@ public:
    */
   armonik::api::worker::ProcessStatus Execute(armonik::api::worker::TaskHandler &taskHandler) override;
 
+  /**
+   * @brief Removes the libraries written by this worker
+   */
+  ~DynamicWorker();
+
 private:
+  /**
+   * @brief Writes a library blob to this worker's private directory, unless it is already there
+   * @param blob_id Id of the library blob
+   * @param data Content of the library
+   * @param size Size of the content
+   * @return Path to the library file
+   */
+  std::string InstallLibrary(const std::string &blob_id, const char *data, std::size_t size);
+
+  /**
+   * @brief Private directory where the library blobs are written, created on first use
+   */
+  std::string library_dir_;
+
   /**
    * @brief Local logger
    */
