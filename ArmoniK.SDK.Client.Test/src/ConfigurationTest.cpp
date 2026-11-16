@@ -18,6 +18,7 @@ TEST(ControlPlaneConfiguration, valid_values_are_used) {
   testing::internal::CaptureStderr();
   EXPECT_EQ(control_plane_with("GrpcClient__DownloadMaxRetry", "7").getDownloadMaxRetry(), 7);
   EXPECT_EQ(control_plane_with("GrpcClient__WaitBatchSize", " 42 ").getWaitBatchSize(), 42);
+  EXPECT_EQ(control_plane_with("GrpcClient__ChannelCount", "2").getChannelCount(), 2);
   EXPECT_EQ(control_plane_with("GrpcClient__DownloadByteBudget", "8589934592").getDownloadByteBudget(), 8589934592LL);
   EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
 }
@@ -25,6 +26,7 @@ TEST(ControlPlaneConfiguration, valid_values_are_used) {
 TEST(ControlPlaneConfiguration, unset_and_zero_defaults_are_silent) {
   testing::internal::CaptureStderr();
   EXPECT_EQ(control_plane_with("GrpcClient__SubmitBatchSize", "").getSubmitBatchSize(), 200);
+  EXPECT_EQ(control_plane_with("GrpcClient__ChannelCount", "").getChannelCount(), 4);
   EXPECT_EQ(control_plane_with("GrpcClient__ThreadPoolSize", "0").getThreadPoolSize(), 0);
   EXPECT_EQ(control_plane_with("GrpcClient__UploadByteBudget", "0").getUploadByteBudget(), 0);
   EXPECT_EQ(testing::internal::GetCapturedStderr(), "");

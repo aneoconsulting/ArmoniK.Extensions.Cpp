@@ -173,6 +173,14 @@ public:
    */
   [[nodiscard]] std::int64_t getUploadByteBudget() const;
 
+  /**
+   * @brief Number of gRPC channels a session service opens to the control plane
+   * @return Channel count
+   * @note Configuration key: `GrpcClient__ChannelCount` (default: 4)
+   * @note Each channel holds one connection and multiplexes concurrent calls over it
+   */
+  [[nodiscard]] int getChannelCount() const;
+
 private:
   std::unique_ptr<armonik::api::common::options::ControlPlane> impl;
   [[nodiscard]] const armonik::api::common::options::ControlPlane &get_impl() const;
@@ -184,6 +192,7 @@ private:
   int download_max_retry_;
   std::int64_t download_byte_budget_;
   std::int64_t upload_byte_budget_;
+  int channel_count_;
 };
 
 /**

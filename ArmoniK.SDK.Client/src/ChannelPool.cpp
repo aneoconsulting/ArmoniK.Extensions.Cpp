@@ -13,69 +13,26 @@ namespace Client {
 namespace Internal {
 
 std::shared_ptr<grpc::Channel> ChannelPool::AcquireChannel() {
-  std::shared_ptr<grpc::Channel> channel;
-  {
-    std::lock_guard<std::mutex> _(channel_mutex_);
-    if (!channel_pool_.empty()) {
-      channel = channel_pool_.front();
-      channel_pool_.pop();
-    }
-  }
-
-  if (channel != nullptr) {
-    if (ShutdownOnFailure(channel)) {
-      logger_.debug("Shutdown unhealthy channel");
-    } else {
-      logger_.debug("Acquired already existing channel from pool");
-      return channel;
-    }
-  }
-  channel = channel_factory_.create_channel();
-  logger_.debug("Created and acquired new channel from pool");
-  return channel;
+  // A channel is thread-safe and multiplexes concurrent calls: hand them out in turn, without checkout
+  return channels_[next_.fetch_add(1, std::memory_order_relaxed) % channels_.size()];
 }
 
-void ChannelPool::ReleaseChannel(std::shared_ptr<grpc::Channel> channel) {
-  if (ShutdownOnFailure(channel)) {
-    logger_.debug("Shutdown unhealthy channel");
-  } else {
-    logger_.debug("Released channel to pool");
-    std::lock_guard<std::mutex> _(channel_mutex_);
-    channel_pool_.push(channel);
-  }
-}
-
-bool ChannelPool::ShutdownOnFailure(const std::shared_ptr<grpc::Channel> &channel) {
-  // Read the state without try_to_connect: a check must not start a connection on an idle channel. The next RPC on
-  // the channel connects it.
-  switch (channel->GetState(false)) {
-  case GRPC_CHANNEL_CONNECTING:
-    break;
-  case GRPC_CHANNEL_IDLE:
-    break;
-
-  case GRPC_CHANNEL_SHUTDOWN:
-    return true;
-    break;
-
-  case GRPC_CHANNEL_TRANSIENT_FAILURE:
-    return true;
-    break;
-
-  case GRPC_CHANNEL_READY:
-    break;
-
-  default:
-    return false;
-    break;
-  }
-  return false;
+void ChannelPool::ReleaseChannel(std::shared_ptr<grpc::Channel>) {
+  // The channels stay shared: nothing to return. gRPC reconnects a failed channel by itself.
 }
 
 ChannelPool::ChannelPool(ArmoniK::Sdk::Common::Properties properties, armonik::api::common::logger::Logger &logger)
     : properties_(std::move(properties)),
       channel_factory_(static_cast<armonik::api::common::utils::Configuration>(properties_.configuration), logger),
-      logger_(logger.local({{"sdk_version", ArmoniK::Sdk::Common::getVersion()}})) {}
+      logger_(logger.local({{"sdk_version", ArmoniK::Sdk::Common::getVersion()}})) {
+  // Creating a channel opens no connection: each one connects on its first call
+  const auto count = static_cast<std::size_t>(properties_.configuration.get_control_plane().getChannelCount());
+  channels_.reserve(count);
+  for (std::size_t i = 0; i < count; ++i) {
+    channels_.push_back(channel_factory_.create_channel());
+  }
+  logger_.debug("Created " + std::to_string(count) + " shared channels");
+}
 ChannelPool::~ChannelPool() = default;
 
 ChannelPool::ChannelGuard::ChannelGuard(Internal::ChannelPool *pool) : pool_(pool) {

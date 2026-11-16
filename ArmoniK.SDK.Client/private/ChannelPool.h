@@ -5,17 +5,20 @@
 #include <armonik/common/logger/logger.h>
 #include <armonik/common/logger/writer.h>
 #include <armonik/sdk/common/Properties.h>
+#include <atomic>
+#include <cstddef>
 #include <grpcpp/channel.h>
-#include <mutex>
-#include <queue>
 #include <utility>
+#include <vector>
 
 namespace ArmoniK {
 namespace Sdk {
 namespace Client {
 namespace Internal {
 /**
- * @brief A pool for Grpc channels
+ * @brief A fixed set of gRPC channels, shared by all the calls of a session service
+ * @details A gRPC channel is thread-safe and multiplexes concurrent calls over one connection, so a call does not need
+ * a channel of its own. The number of channels, and thus of connections, is GrpcClient__ChannelCount.
  */
 class ChannelPool {
 public:
@@ -27,8 +30,6 @@ public:
 
   /**
    * @brief Copy constructor
-   *
-   * @param other Other channel pool
    */
   ChannelPool(const ChannelPool &) = delete;
 
@@ -59,27 +60,18 @@ public:
   ~ChannelPool();
 
   /**
-   * @brief
+   * @brief Get one of the shared channels, in turn
    *
    * @return std::shared_ptr<grpc::Channel>
    */
   std::shared_ptr<grpc::Channel> AcquireChannel();
 
   /**
-   * @brief Releases a channel to the pool
+   * @brief Does nothing: the channels stay shared
    *
    * @param channel The gRPC channel
    */
   void ReleaseChannel(std::shared_ptr<grpc::Channel> channel);
-
-  /**
-   * @brief Check whether a channel is shut down or failing, without starting a connection
-   *
-   * @param channel The gRPC channel
-   * @return true if the channel must be dropped from the pool
-   * @return false if not
-   */
-  static bool ShutdownOnFailure(const std::shared_ptr<grpc::Channel> &channel);
 
   /**
    * Calls the function with an acquired channel
@@ -175,9 +167,11 @@ private:
   ArmoniK::Sdk::Common::Properties properties_;
   /** Built once from properties_, which must be declared before it */
   armonik::api::client::ChannelFactory channel_factory_;
-  std::queue<std::shared_ptr<grpc::Channel>> channel_pool_;
-  std::mutex channel_mutex_;
   armonik::api::common::logger::LocalLogger logger_;
+  /** The shared channels, created at construction */
+  std::vector<std::shared_ptr<grpc::Channel>> channels_;
+  /** Index of the next channel to hand out, modulo the number of channels */
+  std::atomic<std::size_t> next_{0};
 };
 
 } // namespace Internal

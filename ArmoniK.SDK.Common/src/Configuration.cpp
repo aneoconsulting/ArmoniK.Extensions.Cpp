@@ -144,7 +144,8 @@ ControlPlane::ControlPlane(const Configuration &config)
       override_message_size_(getIntFromConfig(config, "GrpcClient__OverrideMessageSize", 0)),
       download_max_retry_(getIntFromConfig(config, "GrpcClient__DownloadMaxRetry", 3)),
       download_byte_budget_(getInt64FromConfig(config, "GrpcClient__DownloadByteBudget", 0)),
-      upload_byte_budget_(getInt64FromConfig(config, "GrpcClient__UploadByteBudget", 0)) {}
+      upload_byte_budget_(getInt64FromConfig(config, "GrpcClient__UploadByteBudget", 0)),
+      channel_count_(getIntFromConfig(config, "GrpcClient__ChannelCount", 4)) {}
 
 ControlPlane::ControlPlane(const ControlPlane &controlplane)
     : impl(std::unique_ptr<armonik::api::common::options::ControlPlane>(
@@ -152,7 +153,7 @@ ControlPlane::ControlPlane(const ControlPlane &controlplane)
       wait_batch_size_(controlplane.wait_batch_size_), submit_batch_size_(controlplane.submit_batch_size_),
       thread_pool_size_(controlplane.thread_pool_size_), override_message_size_(controlplane.override_message_size_),
       download_max_retry_(controlplane.download_max_retry_), download_byte_budget_(controlplane.download_byte_budget_),
-      upload_byte_budget_(controlplane.upload_byte_budget_) {}
+      upload_byte_budget_(controlplane.upload_byte_budget_), channel_count_(controlplane.channel_count_) {}
 ControlPlane::ControlPlane(ControlPlane &&) noexcept = default;
 
 ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
@@ -165,6 +166,7 @@ ControlPlane &ControlPlane::operator=(const ControlPlane &controlplane) {
   download_max_retry_ = controlplane.download_max_retry_;
   download_byte_budget_ = controlplane.download_byte_budget_;
   upload_byte_budget_ = controlplane.upload_byte_budget_;
+  channel_count_ = controlplane.channel_count_;
   return *this;
 }
 ControlPlane &ControlPlane::operator=(ControlPlane &&) noexcept = default;
@@ -184,6 +186,7 @@ int ControlPlane::getOverrideMessageSize() const { return override_message_size_
 int ControlPlane::getDownloadMaxRetry() const { return download_max_retry_; }
 std::int64_t ControlPlane::getDownloadByteBudget() const { return download_byte_budget_; }
 std::int64_t ControlPlane::getUploadByteBudget() const { return upload_byte_budget_; }
+int ControlPlane::getChannelCount() const { return channel_count_; }
 
 const armonik::api::common::options::ControlPlane &ControlPlane::get_impl() const {
   const static armonik::api::common::options::ControlPlane default_config =
