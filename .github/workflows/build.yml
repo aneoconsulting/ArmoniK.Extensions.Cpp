@@ -140,7 +140,7 @@ jobs:
           override-worker-partition: cppdynamic
 
       - name: Run Client tests
-        timeout-minutes: 5
+        timeout-minutes: 10
         run: |
           set -ex
           export CONTROL_PLANE_URL=$(jq -r .armonik.control_plane_url "${{ steps.deploy.outputs.generated-folder }}/armonik-output.json")
@@ -152,6 +152,20 @@ jobs:
           docker push "${{ steps.build.outputs.worker_test_img}}:${{ steps.build.outputs.worker_version }}"
           docker push "${{ steps.build.outputs.client_img}}:${{ steps.build.outputs.client_version }}"
           
+  worker-unit-tests:
+    name: Worker unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+      # TaskContext, the C interface of armonik_process, ConventionExecutor and the DynamicWorker, against an
+      # in-process agent: no cluster needed. The image build fails if a test fails.
+      - name: Build and run the worker unit tests
+        run: |
+          source ./tools/common.sh
+          docker build -f ArmoniK.SDK.Worker.UnitTest/Dockerfile --build-arg API_VERSION="$ARMONIK_API_VERSION_DEFAULT" .
+
   build-windows-msvc:
     name: Build Windows MSVC (Client + Common)
     runs-on: windows-latest

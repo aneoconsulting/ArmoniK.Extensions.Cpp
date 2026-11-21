@@ -161,7 +161,8 @@ EXCLUDE_PATTERNS       = */cmake-* \
                          */.git/* \
                          */.github/* \
                          */.idea/* \
-                         */ArmoniK.SDK.Client.Test/*
+                         */ArmoniK.SDK.Client.Test/* \
+                         */ArmoniK.SDK.Worker.UnitTest/*
 EXCLUDE_SYMBOLS        = *::Internal::*
 EXAMPLE_PATH           = ArmoniK.SDK.Worker.Test \
                          ArmoniK.SDK.Client.Test

@@ -862,6 +862,131 @@ ArmoniK::Sdk::Common::Properties ConventionArithmeticProperties(ArmoniK::Sdk::Co
 }
 } // namespace
 
+/* A task with two named outputs: divmod(17, 5) -> quotient "3", remainder "2".
+ * The worker library exports armonik_process through ArmoniK.SDK.Worker, so the service writes each output by
+ * name, and the handler receives one call per output. */
+TEST(testSDK, testConventionNamedOutputs) {
+  ArmoniK::Sdk::Common::Configuration config;
+  const auto properties = ConventionArithmeticProperties(config, "divmod");
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  auto handler = std::make_shared<NamedOutputsHandler>(logger);
+  auto tasks = service.Submit({ArmoniK::Sdk::Common::TaskDefinition()
+                                   .WithInput("a", ArmoniK::Sdk::Common::BlobDefinition::FromData("17"))
+                                   .WithInput("b", ArmoniK::Sdk::Common::BlobDefinition::FromData("5"))
+                                   .WithOutput("quotient")
+                                   .WithOutput("remainder")},
+                              handler);
+  ASSERT_EQ(tasks.size(), 1u);
+
+  // Waiting on the task id waits for all of its outputs
+  service.WaitResults({tasks[0]});
+
+  EXPECT_TRUE(handler->errors.empty());
+  EXPECT_EQ(handler->payloads, (std::map<std::string, std::string>{{"quotient", "3"}, {"remainder", "2"}}));
+
+  service.CloseSession();
+}
+
+/* A method that does not produce all declared outputs fails the task: the handler gets one error per output. */
+TEST(testSDK, testConventionMissingOutputFails) {
+  ArmoniK::Sdk::Common::Configuration config;
+  const auto properties = ConventionArithmeticProperties(config, "quotient_only");
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  auto handler = std::make_shared<NamedOutputsHandler>(logger);
+  service.Submit({ArmoniK::Sdk::Common::TaskDefinition({{"a", ArmoniK::Sdk::Common::BlobDefinition::FromData("17")},
+                                                        {"b", ArmoniK::Sdk::Common::BlobDefinition::FromData("5")}},
+                                                       {"quotient", "remainder"})},
+                 handler);
+  service.WaitResults();
+
+  // The task fails, so ArmoniK commits none of its outputs, not even the quotient it wrote
+  EXPECT_EQ(handler->errors.count("quotient"), 1u);
+  EXPECT_EQ(handler->errors.count("remainder"), 1u);
+  EXPECT_TRUE(handler->payloads.empty());
+
+  service.CloseSession();
+}
+
+/* HtcMock-style dynamic graph: count(n) submits two count(n - 1) and an add task that takes over its output,
+ * so the result 2^n arrives once the whole tree is done. */
+TEST(testSDK, testConventionSubtasksDelegateOutput) {
+  ArmoniK::Sdk::Common::Configuration config;
+  const auto properties = ConventionArithmeticProperties(config, "count");
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Debug};
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  auto handler = std::make_shared<NamedOutputsHandler>(logger);
+  auto tasks = service.Submit(
+      {ArmoniK::Sdk::Common::TaskDefinition().WithInput("n", ArmoniK::Sdk::Common::BlobDefinition::FromData("3"))},
+      handler);
+  ASSERT_EQ(tasks.size(), 1u);
+  service.WaitResults({tasks[0]});
+
+  EXPECT_TRUE(handler->errors.empty());
+  EXPECT_EQ(handler->payloads, (std::map<std::string, std::string>{{"result", "8"}}));
+
+  service.CloseSession();
+}
+
+/* A failure inside a delegated subtree: count_fail(1) delegates its output to an add task, whose two count_fail(0)
+ * inputs fail. The task the client submitted succeeds, but its output is aborted. The handler gets the error of the
+ * task that owns the output, the add task, which names the failed subtask and quotes its error. */
+TEST(testSDK, testConventionSubtaskFailureAbortsDelegatedOutput) {
+  ArmoniK::Sdk::Common::Configuration config;
+  const auto properties = ConventionArithmeticProperties(config, "count_fail");
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Info};
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  auto handler = std::make_shared<NamedOutputsHandler>(logger);
+  auto tasks = service.Submit(
+      {ArmoniK::Sdk::Common::TaskDefinition().WithInput("n", ArmoniK::Sdk::Common::BlobDefinition::FromData("1"))},
+      handler);
+  ASSERT_EQ(tasks.size(), 1u);
+  service.WaitResults({tasks[0]});
+
+  EXPECT_TRUE(handler->payloads.empty());
+  ASSERT_EQ(handler->errors.count("result"), 1u);
+  const auto &error = handler->errors.at("result");
+  EXPECT_NE(error.find("count_fail: leaf failed"), std::string::npos) << error;
+  // The error is about the owner of the output, not about the task the client submitted
+  EXPECT_EQ(error.find(tasks[0]), std::string::npos) << error;
+
+  service.CloseSession();
+}
+
+/* Inputs that are not valid UTF-8 reach a service that overrides call(session_ctx, name, inputs) unchanged */
+TEST(testSDK, testConventionBinaryInput) {
+  ArmoniK::Sdk::Common::Configuration config;
+  const auto properties = ConventionArithmeticProperties(config, "hex");
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Info};
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  auto handler = std::make_shared<NamedOutputsHandler>(logger);
+  service.Submit({ArmoniK::Sdk::Common::TaskDefinition().WithInput(
+                     "x", ArmoniK::Sdk::Common::BlobDefinition::FromData(std::string("\xff\x00\xfe\x01", 4)))},
+                 handler);
+  service.WaitResults();
+
+  EXPECT_TRUE(handler->errors.empty());
+  EXPECT_EQ(handler->payloads, (std::map<std::string, std::string>{{"result", "ff00fe01"}}));
+
+  service.CloseSession();
+}
+
 /* A result has a single owner: an existing blob cannot be the output of two tasks, in one Submit call or while
  * another task still produces it. */
 TEST(testSDK, testConventionExistingOutputHasOneOwner) {
@@ -967,6 +1092,57 @@ TEST(testSDK, testConventionExistingOutputConcurrentSubmit) {
   service.WaitResults({accepted[0]});
   EXPECT_TRUE(handler->errors.empty());
   EXPECT_EQ(handler->payloads.size(), 1u);
+
+  service.CloseSession();
+}
+
+/* WaitBehavior::Any returns once every output of one task is handled: not after the first output of a task, and not
+ * after every task. "first" is written by the task, "second" only once a count(3) subtree is done. The other task reads
+ * "second", so it starts only after the first task is complete, then gives its output "late" 10 s later. */
+TEST(testSDK, testConventionWaitAnyWaitsForWholeTask) {
+  ArmoniK::Sdk::Common::Configuration config;
+  const auto properties = ConventionArithmeticProperties(config, "first_then_count");
+  ArmoniK::Sdk::Common::Configuration sleep_config;
+  const auto sleep_options = ConventionArithmeticProperties(sleep_config, "sleep_ms").taskOptions;
+  armonik::api::common::logger::Logger logger{armonik::api::common::logger::writer_console(),
+                                              armonik::api::common::logger::formatter_plain(true),
+                                              armonik::api::common::logger::Level::Info};
+  ArmoniK::Sdk::Client::SessionService service(properties, logger);
+
+  // The output "second" of the first task, created here so that the other task can read it
+  std::string second;
+  {
+    ArmoniK::Sdk::Client::Internal::ChannelPool pool(properties, logger);
+    auto channel_guard = pool.GetChannel();
+    second =
+        armonik::api::client::ResultsClient(armonik::api::grpc::v1::results::Results::NewStub(channel_guard.channel))
+            .create_results_metadata(service.getSession(), {"second"})
+            .at("second");
+  }
+
+  using ArmoniK::Sdk::Common::BlobDefinition;
+  using ArmoniK::Sdk::Common::TaskDefinition;
+  auto handler = std::make_shared<NamedOutputsHandler>(logger);
+  auto tasks = service.Submit(
+      {TaskDefinition().WithInput("n", BlobDefinition::FromData("3")).WithOutput("first").WithOutput("second", second)},
+      handler);
+  ASSERT_EQ(tasks.size(), 1u);
+  auto slow = service.Submit({TaskDefinition()
+                                  .WithInput("ms", BlobDefinition::FromData("10000"))
+                                  .WithInput("after", BlobDefinition::FromBlobId(second))
+                                  .WithOutput("late")},
+                             handler, sleep_options);
+  ASSERT_EQ(slow.size(), 1u);
+
+  service.WaitResults({tasks[0], slow[0]}, ArmoniK::Sdk::Client::WaitBehavior::Any);
+  {
+    std::lock_guard<std::mutex> lock(handler->mutex);
+    EXPECT_TRUE(handler->errors.empty());
+    EXPECT_EQ(handler->payloads, (std::map<std::string, std::string>{{"first", "1"}, {"second", "8"}}));
+  }
+
+  service.WaitResults({slow[0]});
+  EXPECT_EQ(handler->payloads.at("late"), "late");
 
   service.CloseSession();
 }
