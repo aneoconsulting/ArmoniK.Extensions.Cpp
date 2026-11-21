@@ -14,23 +14,36 @@ if(NOT TARGET ArmoniK.SDK.Common)
     find_package(ArmoniK.SDK.Common REQUIRED CONFIG)
 endif()
 
-find_file(ARMONIK_SDK_HEADER ArmoniKSDKInterface.h PATHS ${CMAKE_INSTALL_INCLUDEDIR} ${CMAKE_CURRENT_SOURCE_DIR}/../ArmoniK.SDK.Worker PATH_SUFFIXES armonik/sdk/worker include/armonik/sdk/worker REQUIRED NO_CACHE)
+find_file(ARMONIK_SDK_HEADER ArmoniKSDKInterface.h HINTS ${CMAKE_CURRENT_SOURCE_DIR}/../ArmoniK.SDK.Worker PATHS ${CMAKE_INSTALL_INCLUDEDIR} PATH_SUFFIXES armonik/sdk/worker include/armonik/sdk/worker REQUIRED NO_CACHE)
 message(STATUS "Found ArmoniKSDKInterface.h at location ${ARMONIK_SDK_HEADER}")
 get_filename_component(ARMONIK_SDK_HEADER_DIR ${ARMONIK_SDK_HEADER} DIRECTORY)
+# Include directory of the worker headers (<armonik/sdk/worker/...>), three levels above ArmoniKSDKInterface.h
+get_filename_component(ARMONIK_SDK_INCLUDE_DIR "${ARMONIK_SDK_HEADER_DIR}/../../.." ABSOLUTE)
 
-add_executable(${PROJECT_NAME} ${SRC_DYNAMICWORKER_FILES} ${HEADER_DYNAMICWORKER_FILES})
+if(NOT TARGET nlohmann_json::nlohmann_json)
+    find_package(nlohmann_json REQUIRED)
+endif()
+
+# Everything but main, in a library that the unit tests link too (ArmoniK.SDK.Client.Test)
+list(REMOVE_ITEM SRC_DYNAMICWORKER_FILES ${SOURCES_FILES_DIR}/main.cpp)
+set(CORE_NAME ${PROJECT_NAME}.Core)
+add_library(${CORE_NAME} STATIC ${SRC_DYNAMICWORKER_FILES} ${HEADER_DYNAMICWORKER_FILES})
+add_executable(${PROJECT_NAME} ${SOURCES_FILES_DIR}/main.cpp)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../Utils.cmake)
+setup_options(${CORE_NAME})
 setup_options(${PROJECT_NAME})
 split_version(${VERSION})
 setup_lib_version(${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ArmoniK.Api.Worker ArmoniK.SDK.Common ArmoniK.Api.Common)
+target_link_libraries(${CORE_NAME} PUBLIC ArmoniK.Api.Worker ArmoniK.SDK.Common ArmoniK.Api.Common nlohmann_json::nlohmann_json)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${CORE_NAME})
 
-target_include_directories(${PROJECT_NAME}
+target_include_directories(${CORE_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${HEADER_FILES_DIR}>"
         "$<BUILD_INTERFACE:${ARMONIK_SDK_HEADER_DIR}>"
+        "$<BUILD_INTERFACE:${ARMONIK_SDK_INCLUDE_DIR}>"
         )
 
 add_custom_command(

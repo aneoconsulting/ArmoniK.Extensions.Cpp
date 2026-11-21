@@ -1,8 +1,11 @@
 #pragma once
 
 #include "ContextIds.h"
+#include <armonik/sdk/common/ConventionTask.h>
 #include <armonik/worker/Worker/ProcessStatus.h>
 #include <armonik/worker/Worker/TaskHandler.h>
+#include <map>
+#include <string>
 
 namespace ArmoniK {
 namespace Sdk {
@@ -75,6 +78,17 @@ public:
                                               const std::string &method_name, const std::string &method_arguments);
 
   /**
+   * @brief Executes a convention task with the current service, in the current session.
+   * Uses armonik_process when the library exports it. Otherwise uses armonik_call with the convention payload,
+   * which supports only tasks with a single output.
+   * @param taskHandler ArmoniK task handler
+   * @param task Decoded convention task
+   * @return Task execution status
+   */
+  armonik::api::worker::ProcessStatus Execute(armonik::api::worker::TaskHandler &taskHandler,
+                                              const ArmoniK::Sdk::Common::ConventionTask &task);
+
+  /**
    * @brief Checks if the current service matches the given service id
    * @param service_id Service id to check against
    * @return true if the current service matches the one given
@@ -116,6 +130,15 @@ private:
    * @param data_size Output size
    */
   static void UploadResult(void *opaque_context, armonik_status_t status, const char *data, size_t data_size);
+
+  /**
+   * @brief Callback for the armonik_process: records a failure
+   * @param opaque_context Context
+   * @param status ArmoniK call status
+   * @param data Error message
+   * @param data_size Error message size
+   */
+  static void ReportFailure(void *opaque_context, armonik_status_t status, const char *data, size_t data_size);
 };
 } // namespace DynamicWorker
 } // namespace Sdk
